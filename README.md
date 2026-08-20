@@ -159,12 +159,12 @@ App 启动后自动拉取更新清单,发现新版本就弹窗,确认后带进�
 **发布新版本(开发机上):**
 
 ```sh
-# 1. bump pubspec.yaml 的 version: x.y.z+N(N 是 versionCode,更新判定只看它)
+# 1. bump pubspec.yaml 的 version: x.y.z+N
 # 2. 在 lib/src/changelog.dart 顶部加一条记录并同步 kAppVersion
 SERVER_PASSWORD=服务器密码 tool/publish.sh
 ```
 
-脚本自动构建 release APK(用 debug 密钥签名,与手机上的包签名一致可直接覆盖)、计算 size/sha256、生成 latest.json 并 scp 上传。
+脚本自动构建 release APK(arm64 单架构,debug 密钥签名可直接覆盖)、计算 size/sha256、生成 latest.json 并 scp 上传。**注意**:`--split-per-abi` 会给 versionCode 加架构偏移(arm64 为 +2000),脚本用 aapt 从 APK 里读真实 versionCode 写进清单,手机端比较才不失真 —— 不要手写清单里的 versionCode。
 
 **开发期用局域网加速测试:** 在开发机上 `mkdir /tmp/releases && cp app-release.apk latest.json /tmp/releases/ && (cd /tmp/releases && python3 -m http.server 8000)`,把 `lib/main.dart` 的 `kUpdateManifestUrl` 临时改为 `http://电脑IP:8000/latest.json`(无认证,凭据不校验),手机同一 Wi-Fi 即可秒下。测完改回公网地址。
 

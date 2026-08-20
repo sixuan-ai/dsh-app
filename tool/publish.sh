@@ -42,6 +42,14 @@ fi
 SIZE=$(stat -c%s "$APK")
 SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
 
+# split-per-abi 会给 versionCode 加架构偏移(arm64 +2000),清单必须发布
+# APK 里的真实 versionCode,否则手机端比较永远失真。
+AAPT=$(ls "${ANDROID_HOME:-/home/x/Android/Sdk}"/build-tools/*/aapt 2>/dev/null | tail -1)
+if [ -n "$AAPT" ]; then
+  REAL_CODE=$("$AAPT" dump badging "$APK" 2>/dev/null | sed -n "s/^package:.*versionCode='\([0-9]*\)'.*/\1/p")
+  CODE=${REAL_CODE:-$CODE}
+fi
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 cp "$APK" "$TMP/$APK_NAME"
