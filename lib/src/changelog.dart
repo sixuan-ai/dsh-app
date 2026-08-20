@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.4';
+const kAppVersion = '1.6.5';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.5',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复部分机型(小米/红米 Impeller 渲染)头像裁剪页全黑且无法操作:渲染路径改为直接绘制,不再使用 Transform 组件'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.4',
     date: '2026-08-20',

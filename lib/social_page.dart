@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img_lib;
@@ -1299,6 +1300,7 @@ class AvatarCropPage extends StatefulWidget {
 class _AvatarCropPageState extends State<AvatarCropPage> {
   img_lib.Image? _image;
   Uint8List? _displayBytes;
+  ui.Image? _paintImage;
   double _viewport = 0;
   double _coverScale = 1;
 
@@ -1317,13 +1319,19 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
   @override
   void initState() {
     super.initState();
+    _decode();
+  }
+
+  Future<void> _decode() async {
     final decoded = img_lib.decodeImage(widget.bytes);
-    if (decoded != null) {
-      // Bake EXIF orientation so display and export see the same pixels.
-      _image = img_lib.bakeOrientation(decoded);
-      _displayBytes =
-          Uint8List.fromList(img_lib.encodeJpg(_image!, quality: 92));
-    }
+    if (decoded == null) return;
+    // Bake EXIF orientation so display and export see the same pixels.
+    _image = img_lib.bakeOrientation(decoded);
+    _displayBytes =
+        Uint8List.fromList(img_lib.encodeJpg(_image!, quality: 92));
+    final codec = await ui.instantiateImageCodec(_displayBytes!);
+    final frame = await codec.getNextFrame();
+    if (mounted) setState(() => _paintImage = frame.image);
   }
 
   /// Fits the image to cover the [side] viewport, centered.
@@ -1469,31 +1477,22 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                             border: Border.all(
                                 color: Colors.white54, width: 1.5),
                           ),
-                          child: ClipRect(
-                            child: GestureDetector(
-                              onScaleStart: (_) {},
-                              onScaleUpdate: _onScaleUpdate,
-                              child: Stack(
-                                children: [
-                                  Transform(
-                                    transform: Matrix4.identity()
-                                      ..setTranslationRaw(_offset.dx,
-                                          _offset.dy, 0)
-                                      ..scaleByDouble(
-                                          _scale, _scale, 1.0, 1.0),
-                                    child: Image.memory(
-                                      display,
-                                      width: image.width.toDouble(),
-                                      height: image.height.toDouble(),
-                                      fit: BoxFit.fill,
-                                      gaplessPlayback: true,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onScaleStart: (_) {},
+                            onScaleUpdate: _onScaleUpdate,
+                            child: _paintImage == null
+                                ? const SizedBox.expand()
+                                : CustomPaint(
+                                    size: Size.square(side),
+                                    painter: _CropPainter(
+                                      image: _paintImage!,
+                                      scale: _scale,
+                                      offset: _offset,
                                     ),
                                   ),
-                                ],
-                              ),
                             ),
-                          ),
-                        );
+                          );
                       },
                     ),
                   ),
@@ -1510,4 +1509,40 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
             ),
     );
   }
+}
+
+
+/// Paints the crop region directly: viewport pixel v maps to image pixel
+/// (v - offset) / scale, the exact inverse of the export mapping.
+class _CropPainter extends CustomPainter {
+  _CropPainter({
+    required this.image,
+    required this.scale,
+    required this.offset,
+  });
+
+  final ui.Image image;
+  final double scale;
+  final Offset offset;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (scale <= 0) return;
+    final src = Rect.fromLTWH(
+      -offset.dx / scale,
+      -offset.dy / scale,
+      size.width / scale,
+      size.height / scale,
+    );
+    canvas.drawImageRect(
+      image,
+      src,
+      Offset.zero & size,
+      Paint()..filterQuality = FilterQuality.high,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CropPainter oldDelegate) =>
+      oldDelegate.scale != scale || oldDelegate.offset != offset;
 }

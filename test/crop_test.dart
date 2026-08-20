@@ -29,15 +29,18 @@ void main() {
   testWidgets('crop page cover-scales, drags, and pinches', (tester) async {
     final bytes = testImage(800, 600);
     await tester.pumpWidget(MaterialApp(home: AvatarCropPage(bytes: bytes)));
-    await tester.pumpAndSettle();
+    // The paint image decodes on a real async zone; give it real time.
+    await tester.runAsync(() => Future<void>.delayed(
+        const Duration(milliseconds: 300)));
+    await tester.pump();
 
     final viewportFinder = find.byKey(const Key('avatar-crop-viewport'));
-    Matrix4 matrix() => tester
-        .widget<Transform>(find.descendant(
-            of: viewportFinder, matching: find.byType(Transform)))
-        .transform;
-    double scale() => matrix().storage[0];
-    Offset offset() => Offset(matrix().storage[12], matrix().storage[13]);
+    CustomPaint painterWidget() => tester.widget<CustomPaint>(
+        find.descendant(of: viewportFinder, matching: find.byType(CustomPaint)));
+    double scale() =>
+        (painterWidget().painter as dynamic).scale as double;
+    Offset offset() =>
+        (painterWidget().painter as dynamic).offset as Offset;
 
     final viewport = tester.getSize(viewportFinder).width;
     expect(viewport, greaterThan(0));
@@ -63,6 +66,8 @@ void main() {
 
     final bytes = testImage(800, 600);
     await tester.pumpWidget(MaterialApp(home: AvatarCropPage(bytes: bytes)));
+    await tester.runAsync(() => Future<void>.delayed(
+        const Duration(milliseconds: 300)));
     await tester.pumpAndSettle();
 
     tester.view.physicalSize = const Size(800, 700);
@@ -70,11 +75,11 @@ void main() {
 
     final viewportFinder = find.byKey(const Key('avatar-crop-viewport'));
     final viewport = tester.getSize(viewportFinder).width;
-    final matrix = tester
-        .widget<Transform>(find.descendant(
-            of: viewportFinder, matching: find.byType(Transform)))
-        .transform;
+    final painter = tester
+        .widget<CustomPaint>(find.descendant(
+            of: viewportFinder, matching: find.byType(CustomPaint)))
+        .painter as dynamic;
     // The crop must fit the settled viewport, not the transient one.
-    expect(matrix.storage[0], closeTo(viewport / 600, 0.01));
+    expect(painter.scale as double, closeTo(viewport / 600, 0.01));
   });
 }
