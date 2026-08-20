@@ -146,6 +146,23 @@ SERVER_PASSWORD=服务器密码 tool/publish.sh
 
 **开发期用局域网加速测试:** 在开发机上 `mkdir /tmp/releases && cp app-release.apk latest.json /tmp/releases/ && (cd /tmp/releases && python3 -m http.server 8000)`,把 `lib/main.dart` 的 `kUpdateManifestUrl` 临时改为 `http://电脑IP:8000/latest.json`(无认证,凭据不校验),手机同一 Wi-Fi 即可秒下。测完改回公网地址。
 
+## iOS / App Store 准备
+
+iOS 工程已生成并预配好(Mac 上无需再 `flutter create`):
+
+- `ios/Runner/Info.plist` 已含:`NSAllowsLocalNetworking`(局域网 HTTP 直连自建服务器)、`ITSAppUsesNonExemptEncryption = false`(免加密出口申报问答)
+- OTA 自更新仅 Android 编译(Apple 条例 2.5.2 禁止绕过商店安装代码);iOS 的测试分发走 **TestFlight**
+
+Mac 上的步骤:
+
+1. 装 Xcode(App Store)→ `sudo xcodebuild -license accept`;装 CocoaPods(`brew install cocoapods`)
+2. 装 Flutter SDK,`flutter doctor` 全绿
+3. clone 本仓库,`flutter pub get`
+4. 注册 Apple Developer 账号($99/年,需实名),Xcode → Settings → Accounts 登录
+5. `open ios/Runner.xcworkspace` → Signing & Capabilities 选你的 Team;Bundle ID 按需从 `dev.dsh.dsh_mobile` 改成自己的
+6. 真机调试 `flutter run`;出包 `flutter build ipa`,用 Xcode Organizer / Transporter 上传
+7. App Store Connect 建 App:6.9"/6.5" 截图、隐私政策 URL、年龄分级;**审核信息里填演示账号密码**,并保证审核期间你的 dsh 服务器在线
+
 ## 构建与安装
 
 ```sh

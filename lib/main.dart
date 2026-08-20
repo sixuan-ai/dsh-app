@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -452,8 +453,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Polls the release manifest once per home-page lifetime; [manual] checks
-  /// (drawer entry) always run and report every outcome.
+  /// (drawer entry) always run and report every outcome. Android-only: iOS
+  /// distribution must go through the App Store / TestFlight (guideline 2.5.2).
   Future<void> _checkForUpdate({bool manual = false}) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
     if (!manual) {
       if (_updateChecked) return;
       _updateChecked = true;
@@ -1004,14 +1007,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.system_update_alt, size: 20),
-              title: const Text('检查更新', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                widget.onCheckUpdate();
-              },
-            ),
+            // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
+            if (defaultTargetPlatform == TargetPlatform.android)
+              ListTile(
+                leading: const Icon(Icons.system_update_alt, size: 20),
+                title: const Text('检查更新', style: TextStyle(fontSize: 14)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  widget.onCheckUpdate();
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.new_releases_outlined, size: 20),
               title: const Text('更新日志', style: TextStyle(fontSize: 14)),
