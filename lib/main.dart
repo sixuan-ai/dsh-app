@@ -1,4 +1,4 @@
-/// DSH Mobile — Flutter client for the DeepSeek Harness web API.
+/// xHarmess — Flutter client for the DeepSeek Harness web API.
 ///
 /// Server URL is a built-in default; the user only ever enters credentials.
 library;
@@ -121,7 +121,7 @@ class _DshAppState extends State<DshApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DSH Mobile',
+      title: 'xHarmess',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       home: AnimatedBuilder(
@@ -281,7 +281,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         const _BrandMark(size: 84),
                         const SizedBox(height: 20),
                         Text(
-                          'DSH Mobile',
+                          'xHarmess',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -913,7 +913,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final row = _selectedRow();
         final title = row?.title?.isNotEmpty == true
             ? row!.title!
-            : (sessionId == null ? 'DSH Mobile' : '新会话');
+            : (sessionId == null ? 'xHarmess' : '新会话');
         return Scaffold(
           drawer: SessionDrawer(
             state: state,
@@ -1159,7 +1159,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                     children: [
                       Icon(Icons.auto_awesome, color: Colors.white, size: 22),
                       SizedBox(width: 8),
-                      Text('DSH Mobile',
+                      Text('xHarmess',
                           style: TextStyle(
                               color: Colors.white,
                               fontSize: 17,

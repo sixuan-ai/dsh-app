@@ -1,6 +1,6 @@
-# DSH App
+# xHarmess
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(DSH)的 Flutter 手机客户端,通过 DSH Web 服务器的 HTTP + WebSocket API 连接,复刻网页版核心功能:在手机上发起会话、看流式输出、处理审批与提问、切换模型与推理强度。
+DeepSeek Harness(DSH)的 Flutter 手机客户端,通过 DSH Web 服务器的 HTTP + WebSocket API 连接,复刻网页版核心功能:在手机上发起会话、看流式输出、处理审批与提问、切换模型与推理强度。
 
 ## Hermes Agent 品牌视觉
 

@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.7.0';
+const kAppVersion = '1.7.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.7.1',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.improvement, '产品更名为 xHarmess(应用名称与界面同步更新),产品官网同步上线'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.7.0',
     date: '2026-08-20',
