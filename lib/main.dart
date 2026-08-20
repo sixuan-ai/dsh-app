@@ -8,13 +8,20 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
+import 'src/updater.dart';
 import 'state.dart';
 
 /// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
 const kDefaultServerUrl = 'https://dsh.ainotex.com';
+
+/// Release manifest polled by the in-app updater. During development this can
+/// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
+/// download tests; production uses the public domain.
+const kUpdateManifestUrl = 'https://dsh.ainotex.com/releases/latest.json';
 
 /// Brand accent gradient used for bubbles, buttons, and the logo.
 const kBrandGradient = LinearGradient(
@@ -431,13 +438,106 @@ class _HomePageState extends State<HomePage> {
   final Set<String> _shownApprovals = {};
   final Set<String> _shownQuestions = {};
   String? _modelsLoadedFor;
+  bool _updateChecked = false;
 
   AppState get state => widget.state;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowWhatsNew());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowWhatsNew();
+      _checkForUpdate();
+    });
+  }
+
+  /// Polls the release manifest once per home-page lifetime; [manual] checks
+  /// (drawer entry) always run and report every outcome.
+  Future<void> _checkForUpdate({bool manual = false}) async {
+    if (!manual) {
+      if (_updateChecked) return;
+      _updateChecked = true;
+    }
+    final checker = UpdateChecker(
+        username: state.authUsername, password: state.authPassword);
+    final info = await checker.fetchManifest(kUpdateManifestUrl);
+    if (!mounted) return;
+    if (info == null) {
+      if (manual) _toast('检查更新失败,请稍后重试');
+      return;
+    }
+    final package = await PackageInfo.fromPlatform();
+    final currentCode = int.tryParse(package.buildNumber) ?? 0;
+    if (!mounted) return;
+    if (info.versionCode <= currentCode) {
+      if (manual) _toast('已是最新版本 (v${package.version})');
+      return;
+    }
+    _showUpdateDialog(checker, info);
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  void _showUpdateDialog(UpdateChecker checker, UpdateInfo info) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.system_update_alt, color: Colors.greenAccent),
+            SizedBox(width: 10),
+            Text('发现新版本'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('v${info.version}',
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold)),
+            if (info.size != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(_fmtBytes(info.size!),
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white38)),
+              ),
+            if (info.notes != null && info.notes!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(info.notes!,
+                    style: const TextStyle(
+                        fontSize: 13, height: 1.5, color: Colors.white70)),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('稍后'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) =>
+                    _UpdateDownloadDialog(checker: checker, info: info),
+              );
+            },
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text('立即更新'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Shows the release notes once per app version after an update.
@@ -645,9 +745,11 @@ class _HomePageState extends State<HomePage> {
             : (sessionId == null ? 'DSH Mobile' : '新会话');
         return Scaffold(
           drawer: SessionDrawer(
-              state: state,
-              onLogout: _logout,
-              onNewSession: _showNewSessionSheet),
+            state: state,
+            onLogout: _logout,
+            onNewSession: _showNewSessionSheet,
+            onCheckUpdate: () => _checkForUpdate(manual: true),
+          ),
           appBar: AppBar(
             title: Row(
               children: [
@@ -785,6 +887,7 @@ class SessionDrawer extends StatefulWidget {
     required this.state,
     required this.onLogout,
     required this.onNewSession,
+    required this.onCheckUpdate,
   });
 
   final AppState state;
@@ -792,6 +895,9 @@ class SessionDrawer extends StatefulWidget {
 
   /// Opens the new-session directory picker (HomePage owns the context).
   final VoidCallback onNewSession;
+
+  /// Runs a manual update check (HomePage owns the context).
+  final VoidCallback onCheckUpdate;
 
   @override
   State<SessionDrawer> createState() => _SessionDrawerState();
@@ -898,6 +1004,14 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
             ),
             const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.system_update_alt, size: 20),
+              title: const Text('检查更新', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(context).pop();
+                widget.onCheckUpdate();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.new_releases_outlined, size: 20),
               title: const Text('更新日志', style: TextStyle(fontSize: 14)),
@@ -3113,6 +3227,101 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 ),
               ),
             ),
+          ),
+      ],
+    );
+  }
+}
+
+String _fmtBytes(int bytes) {
+  if (bytes >= 1048576) return '${(bytes / 1048576).toStringAsFixed(1)} MB';
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  return '$bytes B';
+}
+
+// ---------------------------------------------------------------------------
+// Update download
+// ---------------------------------------------------------------------------
+
+/// Modal download-progress dialog; on completion it hands the APK to the
+/// system installer and closes itself.
+class _UpdateDownloadDialog extends StatefulWidget {
+  const _UpdateDownloadDialog({required this.checker, required this.info});
+
+  final UpdateChecker checker;
+  final UpdateInfo info;
+
+  @override
+  State<_UpdateDownloadDialog> createState() => _UpdateDownloadDialogState();
+}
+
+class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
+  int _received = 0;
+  int? _total;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    try {
+      final file = await widget.checker.downloadApk(
+        widget.info,
+        onProgress: (received, total) {
+          if (mounted) {
+            setState(() {
+              _received = received;
+              _total = total;
+            });
+          }
+        },
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      await widget.checker.install(file);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _total;
+    final progress = total != null && total > 0 ? _received / total : null;
+    return AlertDialog(
+      title: Text('下载 v${widget.info.version}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_error != null)
+            Text(_error!,
+                style:
+                    const TextStyle(color: Colors.redAccent, fontSize: 13))
+          else ...[
+            LinearProgressIndicator(value: progress),
+            const SizedBox(height: 10),
+            Text(
+              total != null
+                  ? '${_fmtBytes(_received)} / ${_fmtBytes(total)}'
+                  : '${_fmtBytes(_received)} 已下载',
+              style: const TextStyle(fontSize: 12.5, color: Colors.white54),
+            ),
+            if (progress != null)
+              Text('${(progress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                      fontSize: 12.5, color: Colors.white54)),
+          ],
+        ],
+      ),
+      actions: [
+        if (_error != null)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
           ),
       ],
     );

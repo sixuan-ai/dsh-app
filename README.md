@@ -15,6 +15,7 @@
 - 本地 SQLite 缓存:聊天记录与会话列表冷启动秒开,弱网先显后刷新
 - 等级系统:按对话次数升级,抽屉显示等级徽章与进度,升级有庆祝提示
 - 内置更新日志:抽屉入口 + 版本更新后自动弹"新功能"提示
+- **应用内更新(OTA)**:启动自动检查 + 抽屉手动检查,发现新版本后带进度下载并调起系统安装器覆盖安装
 - 断线自动重连(3 秒退避,重连后刷新会话与历史)
 
 ## 连接方式总览
@@ -99,6 +100,52 @@ dart run tool/smoke.dart https://dsh.example.com 用户名 密码
 # 检查 host.describe / session.list / session.history / 两条 WS 下行流 / 建会话-发问-取消全链路
 ```
 
+## 应用内更新(OTA)
+
+App 启动后自动拉取更新清单,发现新版本就弹窗,确认后带进度下载 APK、校验 sha256、调起系统安装器覆盖安装 —— 日常更新不再需要数据线。抽屉里也有"检查更新"手动入口。
+
+**更新源结构(公网服务器上):**
+
+```
+/var/www/dsh-releases/
+  latest.json            # {"version","versionCode","url","notes","size","sha256"}
+  dsh-app-1.3.0.apk      # 各版本 APK
+```
+
+**公网服务器一次性配置:**
+
+1. nginx 443 server 块内加(`server/nginx-dsh.conf.sample` 已含):
+
+   ```nginx
+   location /releases/ {
+       alias /var/www/dsh-releases/;
+       auth_basic "dsh releases";
+       auth_basic_user_file /etc/nginx/.htpasswd-dsh;
+       autoindex off;
+       add_header Cache-Control "no-store";
+   }
+   ```
+
+2. 建密码文件(App 会复用登录凭据下载,建议和认证代理同一组):
+
+   ```sh
+   htpasswd -bc /etc/nginx/.htpasswd-dsh 用户名 密码
+   mkdir -p /var/www/dsh-releases
+   nginx -t && systemctl reload nginx
+   ```
+
+**发布新版本(开发机上):**
+
+```sh
+# 1. bump pubspec.yaml 的 version: x.y.z+N(N 是 versionCode,更新判定只看它)
+# 2. 在 lib/src/changelog.dart 顶部加一条记录并同步 kAppVersion
+SERVER_PASSWORD=服务器密码 tool/publish.sh
+```
+
+脚本自动构建 release APK(用 debug 密钥签名,与手机上的包签名一致可直接覆盖)、计算 size/sha256、生成 latest.json 并 scp 上传。
+
+**开发期用局域网加速测试:** 在开发机上 `mkdir /tmp/releases && cp app-release.apk latest.json /tmp/releases/ && (cd /tmp/releases && python3 -m http.server 8000)`,把 `lib/main.dart` 的 `kUpdateManifestUrl` 临时改为 `http://电脑IP:8000/latest.json`(无认证,凭据不校验),手机同一 Wi-Fi 即可秒下。测完改回公网地址。
+
 ## 构建与安装
 
 ```sh
@@ -117,11 +164,13 @@ lib/
   src/protocol.dart    DSH Web 线协议:一元 RPC、WS 下行流、审批/提问应答(纯 Dart,无 Flutter 依赖)
   src/localstore.dart  SQLite 本地缓存:聊天记录、会话列表、对话计数
   src/changelog.dart   内置更新日志数据(发版时在顶部加一条并同步 kAppVersion 与 pubspec 版本号)
+  src/updater.dart     应用内更新:清单拉取、版本比较、带进度的 APK 下载、sha256 校验、安装通道
 server/
   dsh-auth-proxy.js    认证代理:Basic 认证 + 登录页 + Host 改写 + 防爆破(零依赖 Node 脚本)
   frpc-dsh.toml.sample dsh 电脑上的 frpc 配置样例
   nginx-dsh.conf.sample 公网服务器 nginx 配置样例
 tool/smoke.dart        协议冒烟测试
+tool/publish.sh        一键构建 + 发布 OTA 更新到公网服务器
 test/state_test.dart   事件折叠 / 序列化 / 等级计算单测
 ```
 

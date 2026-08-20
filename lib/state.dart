@@ -216,6 +216,10 @@ class AppState extends ChangeNotifier {
     lastLevelUp = null;
   }
 
+  /// Credentials of the active connection, reused for update downloads.
+  String? authUsername;
+  String? authPassword;
+
   LocalStore? _store;
   Timer? _saveTimer;
 
@@ -248,6 +252,8 @@ class AppState extends ChangeNotifier {
       final api = DshApi(url, username: username, password: password);
       await api.call('host.describe', {});
       _api = api;
+      authUsername = username;
+      authPassword = password;
       _store = LocalStore();
       // Paint the cached session list and prompt counter before the network
       // refresh so cold starts render instantly.
@@ -277,6 +283,8 @@ class AppState extends ChangeNotifier {
     _api = null;
     unawaited(_store?.close());
     _store = null;
+    authUsername = null;
+    authPassword = null;
     sessions.clear();
     items.clear();
     _itemCache.clear();

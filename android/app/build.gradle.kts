@@ -40,6 +40,11 @@ kotlin {
     }
 }
 
+dependencies {
+    // FileProvider backs the in-app update installer channel.
+    implementation("androidx.core:core:1.13.1")
+}
+
 flutter {
     source = "../.."
 }
