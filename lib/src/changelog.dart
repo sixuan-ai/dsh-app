@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.3';
+const kAppVersion = '1.6.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.4',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复头像裁剪页卡死:初始布局落在路由/键盘动画的瞬态小尺寸上导致图片缩到角落且手势失效,现改为视口变化自动重适配'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.3',
     date: '2026-08-20',

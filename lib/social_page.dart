@@ -1309,6 +1309,11 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
   Offset _offset = Offset.zero;
   bool _exporting = false;
 
+  /// Whether the user already adjusted the crop; untouched crops refit
+  /// automatically when the viewport size settles (route transitions and
+  /// keyboard animations can present a transient tiny first layout).
+  bool _dirty = false;
+
   @override
   void initState() {
     super.initState();
@@ -1321,15 +1326,29 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     }
   }
 
-  void _initTransform() {
+  /// Fits the image to cover the [side] viewport, centered.
+  void _fit(double side) {
     final image = _image!;
-    _coverScale =
-        math.max(_viewport / image.width, _viewport / image.height);
+    _viewport = side;
+    _coverScale = math.max(side / image.width, side / image.height);
     _scale = _coverScale;
     _offset = Offset(
-      (_viewport - image.width * _scale) / 2,
-      (_viewport - image.height * _scale) / 2,
+      (side - image.width * _scale) / 2,
+      (side - image.height * _scale) / 2,
     );
+  }
+
+  /// Viewport changed after the user adjusted: keep the relative crop by
+  /// scaling the transform with the cover ratio.
+  void _refitDirty(double side) {
+    final image = _image!;
+    final newCover = math.max(side / image.width, side / image.height);
+    final ratio = newCover / _coverScale;
+    _viewport = side;
+    _coverScale = newCover;
+    _scale *= ratio;
+    _offset = _offset * ratio;
+    _clamp();
   }
 
   /// The image must always cover the whole square: no empty edges.
@@ -1346,6 +1365,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
   void _onScaleUpdate(ScaleUpdateDetails details) {
     final image = _image;
     if (image == null) return;
+    _dirty = true;
     setState(() {
       if (details.scale != 1.0) {
         // Pinch: zoom about the focal point so it stays under the fingers.
@@ -1362,7 +1382,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     });
   }
 
-  void _reset() => setState(_initTransform);
+  void _reset() => setState(() => _fit(_viewport));
 
   Future<void> _confirm() async {
     final image = _image;
@@ -1434,14 +1454,12 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                       builder: (context, constraints) {
                         final side = math.min(constraints.maxWidth,
                             constraints.maxHeight);
-                        if (_viewport != side) {
-                          _viewport = side;
-                          WidgetsBinding.instance
-                              .addPostFrameCallback((_) {
-                            if (mounted && _scale == 1) {
-                              setState(_initTransform);
-                            }
-                          });
+                        if (side > 0 && _viewport != side) {
+                          if (_dirty) {
+                            _refitDirty(side);
+                          } else {
+                            _fit(side);
+                          }
                         }
                         return Container(
                           key: const Key('avatar-crop-viewport'),

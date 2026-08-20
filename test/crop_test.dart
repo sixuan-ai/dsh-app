@@ -52,6 +52,29 @@ void main() {
     await tester.drag(viewportFinder, const Offset(-40, 0));
     await tester.pump();
     expect(offset().dx, lessThan(before.dx - 10));
+  });
 
+  testWidgets('refits when a transient tiny layout settles', (tester) async {
+    // Simulates opening the page while the keyboard is collapsing: the
+    // first layout is short, the final layout is tall.
+    tester.view.physicalSize = const Size(800, 260);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final bytes = testImage(800, 600);
+    await tester.pumpWidget(MaterialApp(home: AvatarCropPage(bytes: bytes)));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(800, 700);
+    await tester.pumpAndSettle();
+
+    final viewportFinder = find.byKey(const Key('avatar-crop-viewport'));
+    final viewport = tester.getSize(viewportFinder).width;
+    final matrix = tester
+        .widget<Transform>(find.descendant(
+            of: viewportFinder, matching: find.byType(Transform)))
+        .transform;
+    // The crop must fit the settled viewport, not the transient one.
+    expect(matrix.storage[0], closeTo(viewport / 600, 0.01));
   });
 }
