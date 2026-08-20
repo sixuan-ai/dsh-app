@@ -26,10 +26,18 @@ APK_NAME="dsh-app-${VERSION}.apk"
 
 echo "==> 构建 v${VERSION}+${CODE}"
 export PATH="$PATH:/home/x/flutter/bin"
-# release 构建体积约为 debug 的 1/4,且模板用 debug 密钥签名 release,
-# 与手机上的 debug 包签名一致,可直接覆盖安装。
-flutter build apk --release >/dev/null
-APK=build/app/outputs/flutter-apk/app-release.apk
+# release + 单架构:胖包含三份 Flutter 引擎(arm64/armv7/x86_64),目标手机是
+# arm64,只打 arm64 可把下载体积砍到约 1/3;release 模板用 debug 密钥签名,
+# 与手机上的包签名一致,可直接覆盖安装。
+# 需要兼容其他架构时把 ABI 设为 all(打胖包)。
+ABI="${ABI:-arm64-v8a}"
+if [ "$ABI" = "all" ]; then
+  flutter build apk --release >/dev/null
+  APK=build/app/outputs/flutter-apk/app-release.apk
+else
+  flutter build apk --release --split-per-abi >/dev/null
+  APK="build/app/outputs/flutter-apk/app-${ABI}-release.apk"
+fi
 
 SIZE=$(stat -c%s "$APK")
 SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
