@@ -175,7 +175,8 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             return None
-        if length <= 0 or length > 64 * 1024:
+        # 头像 base64 走 JSON 体:400KB blob → ~534KB base64,留出余量。
+        if length <= 0 or length > 768 * 1024:
             return None
         try:
             return json.loads(self.rfile.read(length).decode("utf-8"))

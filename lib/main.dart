@@ -4,6 +4,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -991,12 +992,40 @@ class _SessionDrawerState extends State<SessionDrawer> {
   /// Workspace keys (cwd) the user collapsed; persisted across launches.
   final Set<String> _collapsed = {};
 
+  /// Cached social profile for the header (nickname + avatar).
+  Map<String, dynamic>? _profile;
+  String? _profileRaw;
+
   AppState get state => widget.state;
 
   @override
   void initState() {
     super.initState();
     _loadCollapsed();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('socialProfile');
+    if (raw != _profileRaw && mounted) {
+      _profileRaw = raw;
+      setState(() {
+        _profile =
+            raw == null ? null : (jsonDecode(raw) as Map).cast<String, dynamic>();
+      });
+    }
+  }
+
+  void _openCommunity() {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CommunityPage(
+        state: state,
+        socialBaseUrl:
+            '${state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl}/social',
+      ),
+    ));
   }
 
   Future<void> _loadCollapsed() async {
@@ -1017,6 +1046,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    unawaited(_loadProfile());
     final host = Uri.parse(state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl).host;
     return Drawer(
       child: SafeArea(
@@ -1033,6 +1063,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _profileHeader(),
                   const Row(
                     children: [
                       Icon(Icons.auto_awesome, color: Colors.white, size: 22),
@@ -1091,16 +1122,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ListTile(
               leading: const Icon(Icons.groups_outlined, size: 20),
               title: const Text('社区', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => CommunityPage(
-                    state: state,
-                    socialBaseUrl:
-                        '${state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl}/social',
-                  ),
-                ));
-              },
+              onTap: _openCommunity,
             ),
             // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
             if (defaultTargetPlatform == TargetPlatform.android)
@@ -1150,6 +1172,88 @@ class _SessionDrawerState extends State<SessionDrawer> {
       ),
     );
   }
+  /// Social identity row at the top of the drawer header; hidden until the
+  /// user joined the community once. Taps through to the community page.
+  Widget _profileHeader() {
+    final profile = _profile;
+    if (profile == null) return const SizedBox.shrink();
+    final base =
+        state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl;
+    final userId = profile['userId'] as String? ?? '';
+    final nickname = profile['nickname'] as String? ?? '';
+    final ver = (profile['avatarVer'] as num?)?.toInt() ?? 0;
+    final token = profile['token'] as String? ?? '';
+    final headers = <String, String>{
+      if ((state.authUsername ?? '').isNotEmpty)
+        'authorization':
+            'Basic ${base64Encode(utf8.encode('${state.authUsername}:${state.authPassword ?? ''}'))}',
+      'x-social-token': token,
+    };
+    return InkWell(
+      onTap: _openCommunity,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            if (ver > 0)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  '$base/social/avatar?userId=$userId&v=$ver',
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  headers: headers,
+                  errorBuilder: (_, _, _) => _letterAvatar(nickname),
+                  loadingBuilder: (_, child, progress) =>
+                      progress == null ? child : _letterAvatar(nickname),
+                ),
+              )
+            else
+              _letterAvatar(nickname),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nickname,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold)),
+                  Text(
+                      'Lv.${profile['level']} · ${profile['title']}',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _letterAvatar(String nickname) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        nickname.isEmpty ? '?' : nickname.characters.first,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   /// Groups sessions by workspace directory (cwd), mirroring the web client;
   /// sessions without one collect in an 未分组 section at the end.
   List<Widget> _groupedSessionTiles(BuildContext context) {

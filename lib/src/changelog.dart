@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.5.0';
+const kAppVersion = '1.5.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.5.1',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复头像上传失败(JSON 字段错误):服务端请求体上限从 64KB 提到 768KB,App 侧加强压缩'),
+      ChangelogChange(
+          ChangelogChangeType.feature, '左侧边栏顶部显示社区头像与昵称,点击直达社区'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.5.0',
     date: '2026-08-20',

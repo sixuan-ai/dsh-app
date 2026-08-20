@@ -152,6 +152,7 @@ class _CommunityPageState extends State<CommunityPage> {
       }
       // Report the local level so friends' rankings see fresh numbers.
       unawaited(_api.uploadStats(widget.state.userLevel.count));
+      await _cacheProfile();
     } on SocialError catch (error) {
       // A stale token (server reset) falls back to re-registration.
       if (error.message.contains('token')) {
@@ -165,6 +166,25 @@ class _CommunityPageState extends State<CommunityPage> {
       _bootError = error.toString();
     }
     if (mounted) setState(() => _booting = false);
+  }
+
+  /// Persists the profile (with token) so the main drawer can show the
+  /// avatar and nickname without entering the community first.
+  Future<void> _cacheProfile() async {
+    final me = _me;
+    final token = _api.token;
+    if (me == null || token == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'socialProfile',
+        jsonEncode({
+          'userId': me.userId,
+          'nickname': me.nickname,
+          'level': me.level,
+          'title': me.title,
+          'avatarVer': me.avatarVer,
+          'token': token,
+        }));
   }
 
   Future<String?> _askNickname() {
@@ -227,6 +247,7 @@ class _CommunityPageState extends State<CommunityPage> {
                         try {
                           final me = await _api.me();
                           if (mounted) setState(() => _me = me);
+                          await _cacheProfile();
                         } catch (_) {}
                       },
                     ),
@@ -676,9 +697,9 @@ class _FriendsTabState extends State<FriendsTab>
       if (action == 'pick') {
         final picked = await ImagePicker().pickImage(
           source: ImageSource.gallery,
-          maxWidth: 512,
-          maxHeight: 512,
-          imageQuality: 85,
+          maxWidth: 448,
+          maxHeight: 448,
+          imageQuality: 80,
         );
         if (picked == null) return;
         final bytes = await picked.readAsBytes();
