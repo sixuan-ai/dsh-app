@@ -25,6 +25,7 @@ class SocialUser {
     required this.level,
     required this.title,
     this.friendCode,
+    this.avatarVer = 0,
   });
 
   factory SocialUser.fromJson(Map<String, dynamic> json) => SocialUser(
@@ -34,6 +35,7 @@ class SocialUser {
         level: (json['level'] as num?)?.toInt() ?? 1,
         title: json['title'] as String? ?? '',
         friendCode: json['friendCode'] as String?,
+        avatarVer: (json['avatarVer'] as num?)?.toInt() ?? 0,
       );
 
   final String userId;
@@ -42,6 +44,10 @@ class SocialUser {
   final int level;
   final String title;
   final String? friendCode;
+
+  /// Avatar content version (0 = default letter avatar); the avatar URL
+  /// embeds it so clients can long-cache.
+  final int avatarVer;
 }
 
 /// One conversation row in the message list.
@@ -52,6 +58,7 @@ class Conversation {
     required this.lastText,
     required this.lastTime,
     required this.unread,
+    this.avatarVer = 0,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
@@ -60,6 +67,7 @@ class Conversation {
         lastText: json['lastText'] as String? ?? '',
         lastTime: (json['lastTime'] as num?)?.toInt() ?? 0,
         unread: (json['unread'] as num?)?.toInt() ?? 0,
+        avatarVer: (json['avatarVer'] as num?)?.toInt() ?? 0,
       );
 
   final String userId;
@@ -67,6 +75,7 @@ class Conversation {
   final String lastText;
   final int lastTime;
   final int unread;
+  final int avatarVer;
 }
 
 /// One private message.
@@ -107,6 +116,7 @@ class Post {
     required this.mine,
     required this.time,
     this.levelInfo,
+    this.avatarVer = 0,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) => Post(
@@ -121,6 +131,7 @@ class Post {
         time: (json['time'] as num?)?.toInt() ?? 0,
         levelInfo:
             (json['levelInfo'] as Map?)?.cast<String, dynamic>(),
+        avatarVer: (json['avatarVer'] as num?)?.toInt() ?? 0,
       );
 
   final int id;
@@ -133,6 +144,7 @@ class Post {
   final bool mine;
   final int time;
   final Map<String, dynamic>? levelInfo;
+  final int avatarVer;
 }
 
 /// Friends endpoint result: own profile plus the ranking rows.
@@ -209,6 +221,23 @@ class SocialApi {
 
   Future<void> rename(String nickname) =>
       _request('POST', '/me/nickname', {'nickname': nickname});
+
+  /// Uploads a custom avatar (base64 image ≤ 400KB, jpeg/png/webp).
+  Future<int> uploadAvatar(String base64Data, String mime) async =>
+      ((await _request('POST', '/me/avatar', {'data': base64Data, 'mime': mime}))
+              ['avatarVer'] as num?)
+          ?.toInt() ??
+      0;
+
+  /// Clears the custom avatar, restoring the letter default.
+  Future<void> clearAvatar() => _request('POST', '/me/avatar', {'data': ''});
+
+  /// Avatar image URL for a user; [ver] is the content version (0 = none).
+  String avatarUrl(String userId, int ver) =>
+      '$baseUrl/avatar?userId=$userId&v=$ver';
+
+  /// Headers (Basic + token) for Image.network avatar loads.
+  Map<String, String> get imageHeaders => _headers;
 
   Future<SocialUser> addFriend(String friendCode) async => SocialUser.fromJson(
       (await _request('POST', '/friends/add', {'friendCode': friendCode}))['friend']

@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.4.1';
+const kAppVersion = '1.5.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.5.0',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '自定义头像:好友页点头像从相册选图(自动压缩),动态/排行榜/会话列表同步显示,可随时恢复字母头像'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.4.1',
     date: '2026-08-20',

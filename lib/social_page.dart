@@ -3,8 +3,10 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,12 +31,20 @@ String _ago(int millis) {
   return '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
 }
 
-/// Letter avatar with a hash-stable tint.
+/// Letter avatar with a hash-stable tint; shows the uploaded image when
+/// [imageUrl] is given and falls back to the letter on load failure.
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, this.size = 36});
+  const _Avatar({
+    required this.name,
+    this.size = 36,
+    this.imageUrl,
+    this.headers,
+  });
 
   final String name;
   final double size;
+  final String? imageUrl;
+  final Map<String, String>? headers;
 
   static const _colors = [
     Color(0xFF4D6BFE),
@@ -47,6 +57,26 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl;
+    if (url != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.3),
+        child: Image.network(
+          url,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          headers: headers,
+          errorBuilder: (_, _, _) => _letter(),
+          loadingBuilder: (_, child, progress) =>
+              progress == null ? child : _letter(),
+        ),
+      );
+    }
+    return _letter();
+  }
+
+  Widget _letter() {
     final tint = _colors[name.hashCode.abs() % _colors.length];
     return Container(
       width: size,
@@ -440,7 +470,13 @@ class _PostCardState extends State<_PostCard> {
         children: [
           Row(
             children: [
-              _Avatar(name: post.nickname),
+              _Avatar(
+                name: post.nickname,
+                imageUrl: post.avatarVer > 0
+                    ? widget.api.avatarUrl(post.userId, post.avatarVer)
+                    : null,
+                headers: widget.api.imageHeaders,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -613,6 +649,60 @@ class _FriendsTabState extends State<FriendsTab>
     }
   }
 
+  Future<void> _changeAvatar() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择头像'),
+              onTap: () => Navigator.of(sheetContext).pop('pick'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.text_fields),
+              title: const Text('恢复默认字母头像'),
+              onTap: () => Navigator.of(sheetContext).pop('clear'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    try {
+      if (action == 'pick') {
+        final picked = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 512,
+          maxHeight: 512,
+          imageQuality: 85,
+        );
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        if (bytes.length > 400 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('图片过大,请换一张')));
+          }
+          return;
+        }
+        await widget.api.uploadAvatar(base64Encode(bytes), 'image/jpeg');
+      } else {
+        await widget.api.clearAvatar();
+      }
+      widget.onChanged();
+      await _refresh();
+    } on SocialError catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   Future<void> _rename() async {
     final controller = TextEditingController(text: widget.me.nickname);
     final name = await showDialog<String>(
@@ -669,7 +759,35 @@ class _FriendsTabState extends State<FriendsTab>
               children: [
                 Row(
                   children: [
-                    _Avatar(name: me.nickname, size: 44),
+                    GestureDetector(
+                      onTap: _changeAvatar,
+                      child: Stack(
+                        children: [
+                          _Avatar(
+                            name: me.nickname,
+                            size: 44,
+                            imageUrl: me.avatarVer > 0
+                                ? widget.api
+                                    .avatarUrl(me.userId, me.avatarVer)
+                                : null,
+                            headers: widget.api.imageHeaders,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.photo_camera,
+                                  size: 11, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -807,7 +925,14 @@ class _FriendsTabState extends State<FriendsTab>
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white38)),
               ),
-              _Avatar(name: user.nickname, size: 32),
+              _Avatar(
+                name: user.nickname,
+                size: 32,
+                imageUrl: user.avatarVer > 0
+                    ? widget.api.avatarUrl(user.userId, user.avatarVer)
+                    : null,
+                headers: widget.api.imageHeaders,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -910,7 +1035,13 @@ class _MessagesTabState extends State<MessagesTab>
         itemBuilder: (context, index) {
           final c = _items[index];
           return ListTile(
-            leading: _Avatar(name: c.nickname),
+            leading: _Avatar(
+              name: c.nickname,
+              imageUrl: c.avatarVer > 0
+                  ? widget.api.avatarUrl(c.userId, c.avatarVer)
+                  : null,
+              headers: widget.api.imageHeaders,
+            ),
             title: Text(c.nickname),
             subtitle: Text(c.lastText,
                 maxLines: 1,

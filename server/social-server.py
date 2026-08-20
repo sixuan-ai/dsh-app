@@ -7,6 +7,7 @@ x-social-token 头;等级由客户端上报 promptCount,服务端按与 App 相�
 阈值表折算等级称号,排名只认服务端最后一次上报值。
 """
 
+import base64
 import json
 import re
 import secrets
@@ -80,8 +81,22 @@ def init_db():
                 userId TEXT NOT NULL,
                 PRIMARY KEY(postId, userId)
             );
+            CREATE TABLE IF NOT EXISTS avatars(
+                userId TEXT PRIMARY KEY,
+                mime TEXT NOT NULL,
+                data BLOB NOT NULL,
+                updatedAt INTEGER NOT NULL
+            );
             """
         )
+
+
+def avatar_ver(user_id):
+    with _db_lock:
+        row = _db.execute(
+            "SELECT updatedAt FROM avatars WHERE userId = ?", (user_id,)
+        ).fetchone()
+    return row["updatedAt"] if row else 0
 
 
 def now_ms():
@@ -104,6 +119,7 @@ def public_user(row, with_code=False):
         "promptCount": row["promptCount"],
         "level": level,
         "title": title,
+        "avatarVer": avatar_ver(row["userId"]),
     }
     if with_code:
         out["friendCode"] = row["friendCode"]
@@ -141,6 +157,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_bytes(self, status, payload, mime):
+        self.send_response(status)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(payload)))
+        # 头像 URL 带 v=updatedAt 版本号,变更即换 URL,这里可以长缓存。
+        self.send_header("Cache-Control", "max-age=3600")
+        self.end_headers()
+        self.wfile.write(payload)
 
     def _error(self, status, message):
         self._send(status, {"error": message})
@@ -182,6 +207,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if route == "/social/me":
             return self._send(200, public_user(user, with_code=True))
+        if route == "/social/avatar":
+            return self._avatar(user)
         if route == "/social/friends":
             return self._friends(user)
         if route == "/social/conversations":
@@ -206,6 +233,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._stats(user, body)
         if route == "/social/me/nickname":
             return self._rename(user, body)
+        if route == "/social/me/avatar":
+            return self._avatar_upload(user, body)
         if route == "/social/friends/add":
             return self._friend_add(user, body)
         if route == "/social/friends/remove":
@@ -276,6 +305,48 @@ class Handler(BaseHTTPRequestHandler):
                 (nickname, user["userId"]),
             )
         self._send(200, {"nickname": nickname})
+
+    # ---- avatars ------------------------------------------------------------
+
+    def _avatar(self, user):
+        target = self._query("userId")
+        with _db_lock:
+            row = _db.execute(
+                "SELECT mime, data FROM avatars WHERE userId = ?", (target,)
+            ).fetchone()
+        if row is None:
+            return self._error(404, "没有头像")
+        self._send_bytes(200, row["data"], row["mime"])
+
+    def _avatar_upload(self, user, body):
+        data = body.get("data")
+        if not data:
+            # 空 data = 恢复默认字母头像。
+            with _db_lock, _db:
+                _db.execute(
+                    "DELETE FROM avatars WHERE userId = ?", (user["userId"],)
+                )
+            return self._send(200, {"avatarVer": 0})
+        mime = str(body.get("mime") or "image/jpeg")
+        if mime not in ("image/jpeg", "image/png", "image/webp"):
+            return self._error(400, "只支持 jpeg/png/webp")
+        try:
+            blob = base64.b64decode(data, validate=True)
+        except (ValueError, TypeError):
+            return self._error(400, "头像数据不是合法 base64")
+        if len(blob) > 400 * 1024:
+            return self._error(400, "头像不能超过 400KB")
+        stamp = now_ms()
+        with _db_lock, _db:
+            _db.execute(
+                "INSERT INTO avatars(userId, mime, data, updatedAt)"
+                " VALUES(?,?,?,?)"
+                " ON CONFLICT(userId) DO UPDATE SET"
+                " mime = excluded.mime, data = excluded.data,"
+                " updatedAt = excluded.updatedAt",
+                (user["userId"], mime, blob, stamp),
+            )
+        self._send(200, {"avatarVer": stamp})
 
     # ---- friends ----------------------------------------------------------
 
@@ -424,6 +495,7 @@ class Handler(BaseHTTPRequestHandler):
             seen[peer] = {
                 "userId": peer,
                 "nickname": r["peerName"],
+                "avatarVer": avatar_ver(peer),
                 "lastText": r["text"][:80],
                 "lastTime": r["time"],
                 "unread": unread.get(peer, 0),
@@ -452,6 +524,7 @@ class Handler(BaseHTTPRequestHandler):
             "id": row["id"],
             "userId": row["userId"],
             "nickname": row["nickname"],
+            "avatarVer": avatar_ver(row["userId"]),
             "kind": row["kind"],
             "text": row["text"],
             "levelInfo": level_info,
