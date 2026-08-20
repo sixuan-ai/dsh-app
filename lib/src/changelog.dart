@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.1';
+const kAppVersion = '1.6.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.2',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.improvement, '头像裁剪页显示当前缩放比例,新增一键复位按钮'),
+      ChangelogChange(
+          ChangelogChangeType.fix, '裁剪页初始缩放与拖动的自动化测试覆盖'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.1',
     date: '2026-08-20',

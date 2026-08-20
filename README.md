@@ -2,6 +2,22 @@
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(DSH)的 Flutter 手机客户端,通过 DSH Web 服务器的 HTTP + WebSocket API 连接,复刻网页版核心功能:在手机上发起会话、看流式输出、处理审批与提问、切换模型与推理强度。
 
+## Hermes Agent 品牌视觉
+
+<p align="center">
+  <img src="assets/branding/hermes-agent-icon-512.png" width="128" alt="Hermes Agent 应用图标">
+</p>
+
+### 应用市场封面
+
+![Hermes Agent 应用市场封面：把智能体装进口袋](assets/store/hermes-agent-cover-01.png)
+
+![Hermes Agent 应用市场封面：从指令到完成](assets/store/hermes-agent-cover-02.png)
+
+![Hermes Agent 应用市场封面：关键步骤由你掌控](assets/store/hermes-agent-cover-03.png)
+
+> 同目录另提供 Google Play `1024 × 500` 特性图：`assets/store/hermes-agent-google-play-feature.png`。
+
 ## 功能
 
 - 内置默认服务器地址,启动自动连接,只需输入用户名/密码(凭据本机保存)

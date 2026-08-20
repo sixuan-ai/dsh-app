@@ -1362,6 +1362,8 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     });
   }
 
+  void _reset() => setState(_initTransform);
+
   Future<void> _confirm() async {
     final image = _image;
     if (image == null || _exporting) return;
@@ -1404,6 +1406,11 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
         backgroundColor: Colors.black,
         title: const Text('调整头像'),
         actions: [
+          IconButton(
+            tooltip: '复位',
+            icon: const Icon(Icons.refresh),
+            onPressed: _reset,
+          ),
           TextButton(
             onPressed: _exporting ? null : _confirm,
             child: _exporting
@@ -1437,6 +1444,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                           });
                         }
                         return Container(
+                          key: const Key('avatar-crop-viewport'),
                           width: side,
                           height: side,
                           decoration: BoxDecoration(
@@ -1445,6 +1453,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                           ),
                           child: ClipRect(
                             child: GestureDetector(
+                              onScaleStart: (_) {},
                               onScaleUpdate: _onScaleUpdate,
                               child: Stack(
                                 children: [
@@ -1471,11 +1480,13 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('拖动和双指缩放,把要显示的部分放进方框',
-                      style: TextStyle(
-                          color: Colors.white54, fontSize: 13)),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    '缩放 ${(_scale / _coverScale * 100).round()}% · 拖动/双指缩放调整',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 13),
+                  ),
                 ),
               ],
             ),
