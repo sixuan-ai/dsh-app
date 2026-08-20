@@ -180,7 +180,6 @@ class _BrandMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: kBrandGradient,
         borderRadius: BorderRadius.circular(size * 0.28),
         boxShadow: [
           BoxShadow(
@@ -190,7 +189,20 @@ class _BrandMark extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(Icons.auto_awesome, color: Colors.white, size: size * 0.5),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.28),
+        child: Image.asset(
+          'assets/branding/hermes-agent-icon-512.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(
+            decoration: const BoxDecoration(gradient: kBrandGradient),
+            child: Icon(Icons.auto_awesome,
+                color: Colors.white, size: size * 0.5),
+          ),
+        ),
+      ),
     );
   }
 }

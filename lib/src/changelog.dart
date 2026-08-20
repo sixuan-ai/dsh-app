@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.2';
+const kAppVersion = '1.6.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.3',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.improvement, '全新应用图标(Hermes),Android 与 iOS 同步更新,应用内 Logo 同步替换'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.2',
     date: '2026-08-20',
