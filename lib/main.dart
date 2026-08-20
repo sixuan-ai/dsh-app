@@ -442,6 +442,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String? _modelsLoadedFor;
   bool _updateChecked = false;
 
+  /// Newer release known to the server; drives the green dot on the
+  /// 检查更新 drawer entry. Set by the launch check and the periodic timer.
+  UpdateInfo? _availableUpdate;
+
+  /// versionCode already auto-prompted this run; 稍后 then stays quiet
+  /// (the green dot remains) until the next launch.
+  int _updateDialogShownFor = -1;
+  Timer? _updateTimer;
+
   /// Update deferred while the user grants install-unknown-apps in settings;
   /// resumed lifecycle restarts it automatically.
   ({UpdateChecker checker, UpdateInfo info})? _pendingUpdate;
@@ -456,10 +465,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _maybeShowWhatsNew();
       _checkForUpdate();
     });
+    // Silent re-check every 30 minutes; a find raises the green dot.
+    _updateTimer = Timer.periodic(
+        const Duration(minutes: 30), (_) => _checkForUpdate());
   }
 
   @override
   void dispose() {
+    _updateTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -539,7 +552,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (manual) _toast('已是最新版本 (v${package.version})');
       return;
     }
-    _showUpdateDialog(checker, info);
+    setState(() => _availableUpdate = info);
+    // Auto-checks prompt once per version per run; manual always prompts.
+    if (manual || _updateDialogShownFor != info.versionCode) {
+      _updateDialogShownFor = info.versionCode;
+      _showUpdateDialog(checker, info);
+    }
   }
 
   void _toast(String message) {
@@ -810,6 +828,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onLogout: _logout,
             onNewSession: _showNewSessionSheet,
             onCheckUpdate: () => _checkForUpdate(manual: true),
+            updateAvailable: _availableUpdate != null,
           ),
           appBar: AppBar(
             title: Row(
@@ -949,6 +968,7 @@ class SessionDrawer extends StatefulWidget {
     required this.onLogout,
     required this.onNewSession,
     required this.onCheckUpdate,
+    required this.updateAvailable,
   });
 
   final AppState state;
@@ -959,6 +979,9 @@ class SessionDrawer extends StatefulWidget {
 
   /// Runs a manual update check (HomePage owns the context).
   final VoidCallback onCheckUpdate;
+
+  /// A newer release exists; shows a green dot on 检查更新.
+  final bool updateAvailable;
 
   @override
   State<SessionDrawer> createState() => _SessionDrawerState();
@@ -1083,7 +1106,21 @@ class _SessionDrawerState extends State<SessionDrawer> {
             if (defaultTargetPlatform == TargetPlatform.android)
               ListTile(
                 leading: const Icon(Icons.system_update_alt, size: 20),
-                title: const Text('检查更新', style: TextStyle(fontSize: 14)),
+                title: Row(
+                  children: [
+                    const Text('检查更新', style: TextStyle(fontSize: 14)),
+                    if (widget.updateAvailable)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(left: 6),
+                        decoration: const BoxDecoration(
+                          color: Colors.greenAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   widget.onCheckUpdate();

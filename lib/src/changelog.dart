@@ -25,10 +25,22 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.4.0';
+const kAppVersion = '1.4.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.4.1',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '每 30 分钟自动静默检查更新,有新版时抽屉"检查更新"旁显示绿点'),
+      ChangelogChange(
+          ChangelogChangeType.improvement, '同一版本每次运行只自动弹一次更新提示,点"稍后"后不再打扰'),
+      ChangelogChange(
+          ChangelogChangeType.improvement, '更新包改为 arm64 单架构,下载体积从 55MB 降到 19MB'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.4.0',
     date: '2026-08-20',
