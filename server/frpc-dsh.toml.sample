@@ -1,0 +1,17 @@
+# dsh 电脑上的 frpc 配置样例 —— /etc/frp/frpc.toml
+# 把 dsh 电脑上的 auth 代理(127.0.0.1:3081)穿透到公网服务器的 9980 端口。
+
+serverAddr = "你的公网服务器IP"
+serverPort = 7000
+auth.token = "与服务器 frps.toml 一致的 token"
+
+[[proxies]]
+name = "dsh-web"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 3081          # dsh-auth-proxy.js 的 LISTEN_PORT
+remotePort = 9980         # 公网服务器 nginx upstream 指向的端口
+
+# 隧道内是 Basic 凭证明文,加密必须开
+transport.useEncryption = true
+transport.useCompression = true
