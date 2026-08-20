@@ -2537,6 +2537,7 @@ class Composer extends StatefulWidget {
 
 class _ComposerState extends State<Composer> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -2547,7 +2548,28 @@ class _ComposerState extends State<Composer> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _openCommands() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _CommandsSheet(
+        onRun: (command) {
+          Navigator.of(sheetContext).pop();
+          widget.state.sendPrompt('/$command');
+        },
+        onInsert: (command) {
+          Navigator.of(sheetContext).pop();
+          _controller.text = '/$command ';
+          _controller.selection = TextSelection.collapsed(
+              offset: _controller.text.length);
+          _focusNode.requestFocus();
+        },
+      ),
+    );
   }
 
   void _send() {
@@ -2578,13 +2600,23 @@ class _ComposerState extends State<Composer> {
               ),
             ],
           ),
-          padding: const EdgeInsets.only(left: 18, right: 6, top: 5, bottom: 5),
+          padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: IconButton(
+                  tooltip: '快捷命令',
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: Colors.white54,
+                  onPressed: enabled ? _openCommands : null,
+                ),
+              ),
               Expanded(
                 child: TextField(
                   controller: _controller,
+                  focusNode: _focusNode,
                   enabled: enabled,
                   minLines: 1,
                   maxLines: 6,
@@ -3633,6 +3665,108 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
             child: const Text('关闭'),
           ),
       ],
+    );
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Slash commands
+// ---------------------------------------------------------------------------
+
+/// One slash command offered by the composer sheet.
+class _SlashCommand {
+  const _SlashCommand(this.name, this.icon, this.description,
+      {this.hasInput = false});
+
+  final String name;
+  final IconData icon;
+  final String description;
+
+  /// Commands with input insert the prefix instead of sending directly.
+  final bool hasInput;
+}
+
+const _slashCommands = [
+  _SlashCommand('compact', Icons.compress, '压缩较早的对话历史,释放上下文空间'),
+  _SlashCommand('plan', Icons.map_outlined, '进入或退出计划模式'),
+  _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标',
+      hasInput: true),
+  _SlashCommand('feedback', Icons.rate_review_outlined, '记录对本会话的反馈',
+      hasInput: true),
+];
+
+/// Quick-command sheet opened from the composer's + button.
+class _CommandsSheet extends StatelessWidget {
+  const _CommandsSheet({required this.onRun, required this.onInsert});
+
+  /// Sends `/<name>` immediately.
+  final ValueChanged<String> onRun;
+
+  /// Inserts `/<name> ` into the composer for argument entry.
+  final ValueChanged<String> onInsert;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('快捷命令',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('以 / 开头的消息会被服务器作为命令执行,不会发送给模型',
+                style: TextStyle(fontSize: 12, color: Colors.white38)),
+            const SizedBox(height: 12),
+            for (final command in _slashCommands)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Material(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        gradient: kBrandGradient,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(command.icon,
+                          size: 18, color: Colors.white),
+                    ),
+                    title: Text('/${command.name}',
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                    subtitle: Text(command.description,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white54)),
+                    trailing: Icon(
+                      command.hasInput
+                          ? Icons.edit_outlined
+                          : Icons.play_arrow_rounded,
+                      size: 18,
+                      color: Colors.white38,
+                    ),
+                    onTap: () => command.hasInput
+                        ? onInsert(command.name)
+                        : onRun(command.name),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

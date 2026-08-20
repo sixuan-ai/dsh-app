@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.7.1';
+const kAppVersion = '1.7.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.7.2',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '输入框新增 + 快捷命令面板:/compact、/plan 一键执行,/goal、/feedback 快捷输入'),
+      ChangelogChange(
+          ChangelogChangeType.improvement, '命令执行结果直接显示在对话里,命令气泡不再卡在发送中状态'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.7.1',
     date: '2026-08-20',

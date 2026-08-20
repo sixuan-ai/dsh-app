@@ -580,16 +580,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     final timeZone = await _ianaTimeZone();
     try {
-      await api.call('session.prompt', {
+      final value = await api.call('session.prompt', {
         'sessionId': sessionId,
         'mode': 'queue',
         'content': [
           {'type': 'text', 'text': text},
         ],
         'clientTimeZone': ?timeZone,
-      }, rpcId: rpcId);
-      // The durable user/message event replaces the provisional echo.
-      _pendingPrompts[rpcId] = provisional;
+      }, rpcId: rpcId) as Map<String, dynamic>;
+      if (value['command'] != null) {
+        // Slash commands execute server-side and never log a user/message,
+        // so the provisional bubble finalizes immediately.
+        provisional.provisional = false;
+      } else {
+        // The durable user/message event replaces the provisional echo.
+        _pendingPrompts[rpcId] = provisional;
+      }
       unawaited(_bumpPromptCount());
     } catch (error) {
       items.remove(provisional);
@@ -952,6 +958,16 @@ class AppState extends ChangeNotifier {
               id: 'turnerr-$seq',
               text: '本轮失败: ${failure?['message'] ?? '未知错误'}',
               isError: true));
+        }
+      case 'command/done':
+        // Slash command outcome: show the handler's result text as a notice.
+        final text = data['text'] as String? ?? '';
+        if (text.isNotEmpty) {
+          target.add(ChatItem.notice(
+            id: 'cmd-$seq',
+            text: text,
+            isError: data['kind'] == 'error',
+          ));
         }
       case 'todo/write':
         if (into == null) {
