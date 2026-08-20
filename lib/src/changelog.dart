@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.5.2';
+const kAppVersion = '1.5.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.5.3',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '头像裁剪:选图后可拖动、双指缩放选择显示区域,确认后导出上传'),
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复版本比较失真:分包 APK 的 versionCode 带架构偏移,发布脚本改为从 APK 读取真实值'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.5.2',
     date: '2026-08-20',

@@ -4,8 +4,10 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img_lib;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -697,20 +699,25 @@ class _FriendsTabState extends State<FriendsTab>
       if (action == 'pick') {
         final picked = await ImagePicker().pickImage(
           source: ImageSource.gallery,
-          maxWidth: 448,
-          maxHeight: 448,
-          imageQuality: 80,
+          maxWidth: 1600,
+          imageQuality: 90,
         );
         if (picked == null) return;
         final bytes = await picked.readAsBytes();
-        if (bytes.length > 400 * 1024) {
+        if (!mounted) return;
+        final cropped = await Navigator.of(context).push<Uint8List>(
+          MaterialPageRoute(
+              builder: (_) => AvatarCropPage(bytes: bytes)),
+        );
+        if (cropped == null) return;
+        if (cropped.length > 400 * 1024) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('图片过大,请换一张')));
           }
           return;
         }
-        await widget.api.uploadAvatar(base64Encode(bytes), 'image/jpeg');
+        await widget.api.uploadAvatar(base64Encode(cropped), 'image/jpeg');
       } else {
         await widget.api.clearAvatar();
       }
@@ -1270,6 +1277,190 @@ class _FriendChatPageState extends State<FriendChatPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Avatar crop
+// ---------------------------------------------------------------------------
+
+/// Square crop page for avatar picks: pan + pinch to choose the visible
+/// region, exported as a 448×448 JPEG. Pure Dart (image package), so the
+/// crop behavior is identical on Android and iOS.
+class AvatarCropPage extends StatefulWidget {
+  const AvatarCropPage({super.key, required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  State<AvatarCropPage> createState() => _AvatarCropPageState();
+}
+
+class _AvatarCropPageState extends State<AvatarCropPage> {
+  final TransformationController _controller = TransformationController();
+  img_lib.Image? _image;
+  Uint8List? _displayBytes;
+  double _viewport = 0;
+  double _coverScale = 1;
+  bool _exporting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final decoded = img_lib.decodeImage(widget.bytes);
+    if (decoded != null) {
+      // Bake EXIF orientation so display and export see the same pixels.
+      _image = img_lib.bakeOrientation(decoded);
+      _displayBytes =
+          Uint8List.fromList(img_lib.encodeJpg(_image!, quality: 92));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _initTransform() {
+    final image = _image!;
+    _coverScale = math.max(
+        _viewport / image.width, _viewport / image.height);
+    _controller.value = Matrix4.identity()
+      ..setTranslationRaw(
+        (_viewport - image.width * _coverScale) / 2,
+        (_viewport - image.height * _coverScale) / 2,
+        0,
+      )
+      ..scaleByDouble(_coverScale, _coverScale, 1.0, 1.0);
+  }
+
+  /// Keeps the image covering the whole square: no empty edges allowed.
+  void _clampTransform() {
+    final image = _image;
+    if (image == null || _viewport <= 0) return;
+    final m = _controller.value;
+    final scale = m.getMaxScaleOnAxis();
+    final minTx = math.min(0.0, _viewport - image.width * scale);
+    final minTy = math.min(0.0, _viewport - image.height * scale);
+    final tx = m.storage[12].clamp(minTx, 0.0);
+    final ty = m.storage[13].clamp(minTy, 0.0);
+    if (tx != m.storage[12] || ty != m.storage[13]) {
+      final fixed = m.clone();
+      fixed.storage[12] = tx;
+      fixed.storage[13] = ty;
+      _controller.value = fixed;
+    }
+  }
+
+  Future<void> _confirm() async {
+    final image = _image;
+    if (image == null || _exporting) return;
+    setState(() => _exporting = true);
+    final scale = _controller.value.getMaxScaleOnAxis();
+    final tx = _controller.value.storage[12];
+    final ty = _controller.value.storage[13];
+    final left =
+        (-tx / scale).clamp(0.0, image.width.toDouble() - 1);
+    final top = (-ty / scale).clamp(0.0, image.height.toDouble() - 1);
+    final side = math.min(
+      _viewport / scale,
+      math.min(image.width - left, image.height - top),
+    );
+    final cropped = img_lib.copyCrop(
+      image,
+      x: left.round(),
+      y: top.round(),
+      width: side.round(),
+      height: side.round(),
+    );
+    final resized = img_lib.copyResize(
+      cropped,
+      width: 448,
+      height: 448,
+      interpolation: img_lib.Interpolation.cubic,
+    );
+    final jpg = img_lib.encodeJpg(resized, quality: 85);
+    if (!mounted) return;
+    Navigator.of(context).pop(Uint8List.fromList(jpg));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final display = _displayBytes;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text('调整头像'),
+        actions: [
+          TextButton(
+            onPressed: _exporting ? null : _confirm,
+            child: _exporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('确定',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+      body: display == null
+          ? const Center(child: Text('图片无法解析'))
+          : Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final side = math.min(
+                            constraints.maxWidth, constraints.maxHeight);
+                        if (_viewport != side) {
+                          _viewport = side;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted && _controller.value.isIdentity()) {
+                              setState(_initTransform);
+                            }
+                          });
+                        }
+                        return Container(
+                          width: side,
+                          height: side,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.white54, width: 1.5),
+                          ),
+                          child: ClipRect(
+                            child: InteractiveViewer(
+                              transformationController: _controller,
+                              constrained: false,
+                              minScale: _coverScale,
+                              maxScale: _coverScale * 5,
+                              onInteractionUpdate: (_) => _clampTransform(),
+                              onInteractionEnd: (_) => _clampTransform(),
+                              child: Image.memory(
+                                display,
+                                width: _image!.width.toDouble(),
+                                height: _image!.height.toDouble(),
+                                fit: BoxFit.fill,
+                                gaplessPlayback: true,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('拖动和双指缩放,把要显示的部分放进方框',
+                      style: TextStyle(color: Colors.white54, fontSize: 13)),
+                ),
+              ],
+            ),
     );
   }
 }
