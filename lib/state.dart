@@ -624,6 +624,35 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Live slash-command catalog of the selected session (commands/list).
+  Future<List<Map<String, dynamic>>> listCommands() async {
+    final api = _api;
+    final sessionId = selectedSessionId;
+    if (api == null || sessionId == null) return const [];
+    final value = await api.call('commands/list', {
+      'args': {'agentId': sessionId},
+    }) as List;
+    return value.map((c) => (c as Map).cast<String, dynamic>()).toList();
+  }
+
+  /// Executes a slash command through the host command registry; the line is
+  /// never sent to the model. Returns the handler's result text (null when
+  /// the name does not resolve); throws on handler errors.
+  Future<String?> executeCommand(String line) async {
+    final api = _api;
+    final sessionId = selectedSessionId;
+    if (api == null || sessionId == null) return null;
+    final value = await api.call('commands/execute', {
+      'args': {'agentId': sessionId, 'line': line, 'images': <String>[]},
+    }) as Map<String, dynamic>?;
+    if (value == null) return null; // unresolved name/syntax
+    final result = (value['result'] as Map?)?.cast<String, dynamic>();
+    if (result?['kind'] == 'error') {
+      throw DshError('command-error', result?['text'] as String? ?? '命令执行失败');
+    }
+    return result?['text'] as String?;
+  }
+
   /// Cancels the selected session's active turn.
   Future<void> cancelTurn() async {
     final api = _api;

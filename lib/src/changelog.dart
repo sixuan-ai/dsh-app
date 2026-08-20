@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.7.2';
+const kAppVersion = '1.7.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.7.3',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复快捷命令不生效:改为走服务器命令通道(commands/execute)执行,与网页版点选一致;命令目录实时从服务器拉取'),
+      ChangelogChange(
+          ChangelogChangeType.feature, '输入框直接输入 / 开头的消息也会按命令执行'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.7.2',
     date: '2026-08-20',

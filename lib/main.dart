@@ -2557,9 +2557,10 @@ class _ComposerState extends State<Composer> {
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => _CommandsSheet(
+        state: widget.state,
         onRun: (command) {
           Navigator.of(sheetContext).pop();
-          widget.state.sendPrompt('/$command');
+          _runCommand('/$command');
         },
         onInsert: (command) {
           Navigator.of(sheetContext).pop();
@@ -2575,8 +2576,29 @@ class _ComposerState extends State<Composer> {
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    widget.state.sendPrompt(text);
     _controller.clear();
+    if (text.startsWith('/')) {
+      _runCommand(text);
+      return;
+    }
+    widget.state.sendPrompt(text);
+  }
+
+  Future<void> _runCommand(String line) async {
+    try {
+      final result = await widget.state.executeCommand(line);
+      if (!mounted) return;
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('未知命令,点 + 查看可用命令')));
+      }
+      // 成功时 command/done 事件会把结果文本带进对话。
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$error')));
+      }
+    }
   }
 
   @override
@@ -3696,15 +3718,64 @@ const _slashCommands = [
       hasInput: true),
 ];
 
-/// Quick-command sheet opened from the composer's + button.
-class _CommandsSheet extends StatelessWidget {
-  const _CommandsSheet({required this.onRun, required this.onInsert});
+/// Quick-command sheet opened from the composer's + button. The catalog
+/// loads live from the host (commands/list); the built-in list is the
+/// offline fallback.
+class _CommandsSheet extends StatefulWidget {
+  const _CommandsSheet({
+    required this.state,
+    required this.onRun,
+    required this.onInsert,
+  });
 
-  /// Sends `/<name>` immediately.
+  final AppState state;
+
+  /// Executes `/<name>` immediately.
   final ValueChanged<String> onRun;
 
   /// Inserts `/<name> ` into the composer for argument entry.
   final ValueChanged<String> onInsert;
+
+  @override
+  State<_CommandsSheet> createState() => _CommandsSheetState();
+}
+
+class _CommandsSheetState extends State<_CommandsSheet> {
+  List<_SlashCommand> _commands = _slashCommands;
+
+  static const _icons = <String, IconData>{
+    'compact': Icons.compress,
+    'plan': Icons.map_outlined,
+    'goal': Icons.flag_outlined,
+    'feedback': Icons.rate_review_outlined,
+    'export': Icons.download_outlined,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final catalog = await widget.state.listCommands();
+      if (!mounted || catalog.isEmpty) return;
+      setState(() {
+        _commands = [
+          for (final entry in catalog)
+            _SlashCommand(
+              entry['name'] as String? ?? '',
+              _icons[entry['name']] ?? Icons.terminal,
+              entry['description'] as String? ?? '',
+              hasInput: entry['input'] != null,
+            ),
+        ];
+      });
+    } catch (_) {
+      // Keep the built-in fallback list.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3721,10 +3792,10 @@ class _CommandsSheet extends StatelessWidget {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text('以 / 开头的消息会被服务器作为命令执行,不会发送给模型',
+            const Text('以 / 开头的消息会作为命令执行,不会发送给模型',
                 style: TextStyle(fontSize: 12, color: Colors.white38)),
             const SizedBox(height: 12),
-            for (final command in _slashCommands)
+            for (final command in _commands)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Material(
@@ -3759,8 +3830,8 @@ class _CommandsSheet extends StatelessWidget {
                       color: Colors.white38,
                     ),
                     onTap: () => command.hasInput
-                        ? onInsert(command.name)
-                        : onRun(command.name),
+                        ? widget.onInsert(command.name)
+                        : widget.onRun(command.name),
                   ),
                 ),
               ),
