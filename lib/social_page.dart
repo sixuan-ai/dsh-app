@@ -1296,13 +1296,17 @@ class AvatarCropPage extends StatefulWidget {
   @override
   State<AvatarCropPage> createState() => _AvatarCropPageState();
 }
-
 class _AvatarCropPageState extends State<AvatarCropPage> {
-  final TransformationController _controller = TransformationController();
   img_lib.Image? _image;
   Uint8List? _displayBytes;
   double _viewport = 0;
   double _coverScale = 1;
+
+  /// The single source of truth for the transform: the image renders at
+  /// natural size scaled by [_scale] and shifted by [_offset] (viewport
+  /// pixels). The export crops exactly the inverse mapping.
+  double _scale = 1;
+  Offset _offset = Offset.zero;
   bool _exporting = false;
 
   @override
@@ -1317,55 +1321,59 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   void _initTransform() {
     final image = _image!;
-    _coverScale = math.max(
-        _viewport / image.width, _viewport / image.height);
-    _controller.value = Matrix4.identity()
-      ..setTranslationRaw(
-        (_viewport - image.width * _coverScale) / 2,
-        (_viewport - image.height * _coverScale) / 2,
-        0,
-      )
-      ..scaleByDouble(_coverScale, _coverScale, 1.0, 1.0);
+    _coverScale =
+        math.max(_viewport / image.width, _viewport / image.height);
+    _scale = _coverScale;
+    _offset = Offset(
+      (_viewport - image.width * _scale) / 2,
+      (_viewport - image.height * _scale) / 2,
+    );
   }
 
-  /// Keeps the image covering the whole square: no empty edges allowed.
-  void _clampTransform() {
+  /// The image must always cover the whole square: no empty edges.
+  void _clamp() {
+    final image = _image!;
+    final minDx = math.min(0.0, _viewport - image.width * _scale);
+    final minDy = math.min(0.0, _viewport - image.height * _scale);
+    _offset = Offset(
+      _offset.dx.clamp(minDx, 0.0),
+      _offset.dy.clamp(minDy, 0.0),
+    );
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
     final image = _image;
-    if (image == null || _viewport <= 0) return;
-    final m = _controller.value;
-    final scale = m.getMaxScaleOnAxis();
-    final minTx = math.min(0.0, _viewport - image.width * scale);
-    final minTy = math.min(0.0, _viewport - image.height * scale);
-    final tx = m.storage[12].clamp(minTx, 0.0);
-    final ty = m.storage[13].clamp(minTy, 0.0);
-    if (tx != m.storage[12] || ty != m.storage[13]) {
-      final fixed = m.clone();
-      fixed.storage[12] = tx;
-      fixed.storage[13] = ty;
-      _controller.value = fixed;
-    }
+    if (image == null) return;
+    setState(() {
+      if (details.scale != 1.0) {
+        // Pinch: zoom about the focal point so it stays under the fingers.
+        final newScale =
+            (_scale * details.scale).clamp(_coverScale, _coverScale * 5);
+        final ratio = newScale / _scale;
+        final focal = details.localFocalPoint;
+        _offset = focal - (focal - _offset) * ratio;
+        _scale = newScale;
+      } else {
+        _offset += details.focalPointDelta;
+      }
+      _clamp();
+    });
   }
 
   Future<void> _confirm() async {
     final image = _image;
     if (image == null || _exporting) return;
     setState(() => _exporting = true);
-    final scale = _controller.value.getMaxScaleOnAxis();
-    final tx = _controller.value.storage[12];
-    final ty = _controller.value.storage[13];
+    // Render maps child pixel p to viewport v = p * scale + offset, so the
+    // visible square [0, viewport] is the inverse region below.
     final left =
-        (-tx / scale).clamp(0.0, image.width.toDouble() - 1);
-    final top = (-ty / scale).clamp(0.0, image.height.toDouble() - 1);
+        (-_offset.dx / _scale).clamp(0.0, image.width.toDouble() - 1);
+    final top =
+        (-_offset.dy / _scale).clamp(0.0, image.height.toDouble() - 1);
     final side = math.min(
-      _viewport / scale,
+      _viewport / _scale,
       math.min(image.width - left, image.height - top),
     );
     final cropped = img_lib.copyCrop(
@@ -1389,6 +1397,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
   @override
   Widget build(BuildContext context) {
     final display = _displayBytes;
+    final image = _image;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -1403,11 +1412,12 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('确定',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
-      body: display == null
+      body: display == null || image == null
           ? const Center(child: Text('图片无法解析'))
           : Column(
               children: [
@@ -1415,12 +1425,13 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                   child: Center(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final side = math.min(
-                            constraints.maxWidth, constraints.maxHeight);
+                        final side = math.min(constraints.maxWidth,
+                            constraints.maxHeight);
                         if (_viewport != side) {
                           _viewport = side;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted && _controller.value.isIdentity()) {
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) {
+                            if (mounted && _scale == 1) {
                               setState(_initTransform);
                             }
                           });
@@ -1433,19 +1444,25 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                                 color: Colors.white54, width: 1.5),
                           ),
                           child: ClipRect(
-                            child: InteractiveViewer(
-                              transformationController: _controller,
-                              constrained: false,
-                              minScale: _coverScale,
-                              maxScale: _coverScale * 5,
-                              onInteractionUpdate: (_) => _clampTransform(),
-                              onInteractionEnd: (_) => _clampTransform(),
-                              child: Image.memory(
-                                display,
-                                width: _image!.width.toDouble(),
-                                height: _image!.height.toDouble(),
-                                fit: BoxFit.fill,
-                                gaplessPlayback: true,
+                            child: GestureDetector(
+                              onScaleUpdate: _onScaleUpdate,
+                              child: Stack(
+                                children: [
+                                  Transform(
+                                    transform: Matrix4.identity()
+                                      ..setTranslationRaw(_offset.dx,
+                                          _offset.dy, 0)
+                                      ..scaleByDouble(
+                                          _scale, _scale, 1.0, 1.0),
+                                    child: Image.memory(
+                                      display,
+                                      width: image.width.toDouble(),
+                                      height: image.height.toDouble(),
+                                      fit: BoxFit.fill,
+                                      gaplessPlayback: true,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -1457,7 +1474,8 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                 const Padding(
                   padding: EdgeInsets.all(20),
                   child: Text('拖动和双指缩放,把要显示的部分放进方框',
-                      style: TextStyle(color: Colors.white54, fontSize: 13)),
+                      style: TextStyle(
+                          color: Colors.white54, fontSize: 13)),
                 ),
               ],
             ),

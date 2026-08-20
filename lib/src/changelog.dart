@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.0';
+const kAppVersion = '1.6.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.1',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复头像裁剪导出区域与预览不一致:改为完全自控的手势变换,导出与渲染严格同一映射'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.0',
     date: '2026-08-20',
