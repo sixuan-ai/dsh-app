@@ -117,6 +117,12 @@ dart run tool/smoke.dart https://dsh.example.com 用户名 密码
 # 检查 host.describe / session.list / session.history / 两条 WS 下行流 / 建会话-发问-取消全链路
 ```
 
+## 产品官网
+
+`server/site/` 是一个零依赖单页官网,部署在公网服务器 `https://你的域名/app/`(nginx 配置见 sample):品牌介绍、功能矩阵、手机界面示意,以及**公开 APK 下载**。
+
+下载链路:`/app/dl/dsh-app-latest.apk` 与 `/app/dl/version.json` 由 `tool/publish.sh` 在每次发版时同步刷新(它们存放在 `/var/www/dsh-releases-public`,与带认证的 OTA 目录分离;公开文件不含任何凭据)。部署:`scp server/site/* 服务器:/var/www/dsh-site/`。
+
 ## 社交服务(好友 / 社区 / 私聊)
 
 社区功能由 `server/social-server.py` 提供 —— 零依赖 Python 脚本(标准库 + sqlite3),部署在公网服务器上,由 nginx 在 `/social/` 下反代并复用同一份 Basic 认证:
@@ -222,6 +228,8 @@ lib/
   src/updater.dart     应用内更新:清单拉取、版本比较、带进度的 APK 下载、sha256 校验、安装通道
 server/
   dsh-auth-proxy.js    认证代理:Basic 认证 + 登录页 + Host 改写 + 防爆破(零依赖 Node 脚本)
+  social-server.py     社交后端:好友/动态/私聊/头像(零依赖 Python + sqlite3)
+  site/                产品官网静态文件(部署到 /var/www/dsh-site,经 /app/ 公开)
   frpc-dsh.toml.sample dsh 电脑上的 frpc 配置样例
   nginx-dsh.conf.sample 公网服务器 nginx 配置样例
 tool/smoke.dart        协议冒烟测试

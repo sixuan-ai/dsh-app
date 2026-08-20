@@ -13,6 +13,7 @@ set -euo pipefail
 
 SERVER="${SERVER:-root@47.239.235.154}"
 REMOTE_DIR="/var/www/dsh-releases"
+PUBLIC_DIR="/var/www/dsh-releases-public"
 BASE_URL="${BASE_URL:-https://dsh.ainotex.com/releases}"
 NOTES="${NOTES:-详见应用内更新日志}"
 
@@ -66,8 +67,15 @@ EOF
 
 SSH_OPTS="-o PubkeyAuthentication=no -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1"
 echo "==> 上传到 ${SERVER}:${REMOTE_DIR}"
-sshpass -p "$SERVER_PASSWORD" ssh $SSH_OPTS "$SERVER" "mkdir -p $REMOTE_DIR"
+sshpass -p "$SERVER_PASSWORD" ssh $SSH_OPTS "$SERVER" "mkdir -p $REMOTE_DIR $PUBLIC_DIR"
 sshpass -p "$SERVER_PASSWORD" scp $SSH_OPTS "$TMP/$APK_NAME" "$TMP/latest.json" "$SERVER:$REMOTE_DIR/"
+
+# 官网公开下载:latest APK + version.json(无认证,/APK 本身不含密钥)
+cp "$APK" "$TMP/dsh-app-latest.apk"
+cat > "$TMP/version.json" <<EOF
+{"version": "${VERSION}", "versionCode": ${CODE}, "size": ${SIZE}, "sha256": "${SHA256}", "date": "$(date +%F)"}
+EOF
+sshpass -p "$SERVER_PASSWORD" scp $SSH_OPTS "$TMP/dsh-app-latest.apk" "$TMP/version.json" "$SERVER:$PUBLIC_DIR/"
 
 echo "==> 完成: ${BASE_URL}/latest.json"
 cat "$TMP/latest.json"
