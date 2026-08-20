@@ -15,6 +15,7 @@
 - 本地 SQLite 缓存:聊天记录与会话列表冷启动秒开,弱网先显后刷新
 - 等级系统:按对话次数升级,抽屉显示等级徽章与进度,升级有庆祝提示
 - 内置更新日志:抽屉入口 + 版本更新后自动弹"新功能"提示
+- **社区**:发布动态、点赞、一键分享等级卡片;**好友**:8 位好友码互加、等级排行榜、私聊(未读角标)
 - **应用内更新(OTA)**:启动自动检查 + 抽屉手动检查,发现新版本后带进度下载并调起系统安装器覆盖安装
 - 断线自动重连(3 秒退避,重连后刷新会话与历史)
 
@@ -99,6 +100,27 @@ dsh --profile web --host 192.168.1.5 --port 3080 --trusted-host 192.168.1.5
 dart run tool/smoke.dart https://dsh.example.com 用户名 密码
 # 检查 host.describe / session.list / session.history / 两条 WS 下行流 / 建会话-发问-取消全链路
 ```
+
+## 社交服务(好友 / 社区 / 私聊)
+
+社区功能由 `server/social-server.py` 提供 —— 零依赖 Python 脚本(标准库 + sqlite3),部署在公网服务器上,由 nginx 在 `/social/` 下反代并复用同一份 Basic 认证:
+
+```sh
+# 公网服务器上:
+mkdir -p /opt/dsh-social && cp server/social-server.py /opt/dsh-social/
+# systemd 常驻:
+#   ExecStart=/usr/bin/python3 /opt/dsh-social/social-server.py(监听 127.0.0.1:9981)
+# nginx 443 server 块加(server/nginx-dsh.conf.sample 已含):
+#   location /social/ { proxy_pass http://127.0.0.1:9981; auth_basic ...; }
+```
+
+设计要点:
+
+- 外层 Basic 认证(nginx)挡陌生人;应用内身份是注册时签发的 `x-social-token`,手机本机保存
+- 好友码是注册时分配的 8 位数字,互加即成为好友(无需确认流程,小圈子够用)
+- 等级以客户端上报的 promptCount 为准,服务端用与 App 相同的阈值表折算称号;排名只认服务端最后上报值
+- 私聊是轮询模式(聊天页 4 秒、会话列表 10 秒),未读数由服务端按"已读水位"计算
+- 数据在 `/opt/dsh-social/social.db`,备份这一一个文件即可
 
 ## 应用内更新(OTA)
 

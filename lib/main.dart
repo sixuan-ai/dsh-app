@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
 import 'src/updater.dart';
+import 'social_page.dart';
 import 'state.dart';
 
 /// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
@@ -1064,6 +1065,20 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
             ),
             const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.groups_outlined, size: 20),
+              title: const Text('社区', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => CommunityPage(
+                    state: state,
+                    socialBaseUrl:
+                        '${state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl}/social',
+                  ),
+                ));
+              },
+            ),
             // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
             if (defaultTargetPlatform == TargetPlatform.android)
               ListTile(

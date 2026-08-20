@@ -25,10 +25,22 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.3.1';
+const kAppVersion = '1.4.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.4.0',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '社区功能:发布动态、点赞、一键分享自己的等级卡片'),
+      ChangelogChange(
+          ChangelogChangeType.feature, '好友功能:8 位好友码互相添加、好友等级排行榜、私聊(未读角标)'),
+      ChangelogChange(
+          ChangelogChangeType.feature, '个人昵称设置与修改,首次进入社区自动分配好友码'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.3.1',
     date: '2026-08-20',
