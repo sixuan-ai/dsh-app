@@ -125,5 +125,15 @@ class UpdateChecker {
     return _channel.invokeMethod<void>('installApk', {'path': apk.path});
   }
 
+  /// Whether the user already granted install-unknown-apps to this app.
+  Future<bool> canInstall() async {
+    return await _channel.invokeMethod<bool>('canInstallApk') ?? false;
+  }
+
+  /// Opens the system settings page granting install-unknown-apps.
+  Future<void> requestInstallPermission() {
+    return _channel.invokeMethod<void>('requestInstallPermission');
+  }
+
   static const _channel = MethodChannel('dev.dsh.dsh_mobile/installer');
 }

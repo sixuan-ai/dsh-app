@@ -435,21 +435,83 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final Set<String> _shownApprovals = {};
   final Set<String> _shownQuestions = {};
   String? _modelsLoadedFor;
   bool _updateChecked = false;
+
+  /// Update deferred while the user grants install-unknown-apps in settings;
+  /// resumed lifecycle restarts it automatically.
+  ({UpdateChecker checker, UpdateInfo info})? _pendingUpdate;
 
   AppState get state => widget.state;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowWhatsNew();
       _checkForUpdate();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) {
+      final pending = _pendingUpdate;
+      if (pending != null) {
+        _pendingUpdate = null;
+        _startUpdate(pending.checker, pending.info);
+      }
+    }
+  }
+
+  /// Starts the update flow: guides the one-time install-unknown-apps grant
+  /// first when needed, then opens the download dialog.
+  Future<void> _startUpdate(UpdateChecker checker, UpdateInfo info) async {
+    if (!await checker.canInstall()) {
+      if (!mounted) return;
+      _pendingUpdate = (checker: checker, info: info);
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('需要安装权限'),
+          content: const Text(
+              '首次使用应用内更新,需要允许本应用"安装未知来源应用"。\n\n去设置打开后返回,会自动继续下载。'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _pendingUpdate = null;
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                checker.requestInstallPermission();
+              },
+              child: const Text('去设置'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _UpdateDownloadDialog(checker: checker, info: info),
+    );
   }
 
   /// Polls the release manifest once per home-page lifetime; [manual] checks
@@ -528,12 +590,7 @@ class _HomePageState extends State<HomePage> {
           FilledButton.icon(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              showDialog<void>(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) =>
-                    _UpdateDownloadDialog(checker: checker, info: info),
-              );
+              _startUpdate(checker, info);
             },
             icon: const Icon(Icons.download, size: 18),
             label: const Text('立即更新'),
