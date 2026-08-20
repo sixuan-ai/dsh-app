@@ -14,6 +14,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
+import 'src/notifications.dart';
+import 'src/social.dart';
 import 'src/updater.dart';
 import 'social_page.dart';
 import 'state.dart';
@@ -37,7 +39,11 @@ const _kBg = Color(0xFF0E1220);
 const _kCard = Color(0xFF171D2E);
 const _kCode = Color(0xFF11182B);
 
-void main() => runApp(const DshApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  unawaited(NotificationService.instance.init());
+  runApp(const DshApp());
+}
 
 ThemeData _buildTheme() {
   final scheme = ColorScheme.fromSeed(
@@ -451,6 +457,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _updateDialogShownFor = -1;
   Timer? _updateTimer;
 
+  /// Social message poller state; watermarks persist per peer so a message
+  /// notifies once across restarts.
+  Timer? _socialTimer;
+  bool _socialFirstPoll = true;
+
   /// Update deferred while the user grants install-unknown-apps in settings;
   /// resumed lifecycle restarts it automatically.
   ({UpdateChecker checker, UpdateInfo info})? _pendingUpdate;
@@ -468,13 +479,61 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Silent re-check every 30 minutes; a find raises the green dot.
     _updateTimer = Timer.periodic(
         const Duration(minutes: 30), (_) => _checkForUpdate());
+    // Private-message notifications: first poll primes watermarks silently.
+    _socialTimer = Timer.periodic(
+        const Duration(seconds: 60), (_) => _pollSocial());
+    Timer(const Duration(seconds: 8), _pollSocial);
   }
 
   @override
   void dispose() {
     _updateTimer?.cancel();
+    _socialTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Polls social conversations and raises a system notification for new
+  /// incoming messages. The first poll after launch only primes watermarks.
+  Future<void> _pollSocial() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('socialToken');
+      if (token == null) return;
+      final base =
+          state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl;
+      final api = SocialApi(
+        baseUrl: '$base/social',
+        basicUser: state.authUsername,
+        basicPass: state.authPassword,
+        token: token,
+      );
+      final conversations = await api.conversations();
+      final raw = prefs.getString('msgWatermarks');
+      final watermarks = <String, int>{
+        if (raw != null)
+          for (final entry in (jsonDecode(raw) as Map).entries)
+            entry.key: (entry.value as num).toInt(),
+      };
+      var changed = false;
+      for (final c in conversations) {
+        final seen = watermarks[c.userId] ?? 0;
+        if (c.lastTime > seen) {
+          if (!_socialFirstPoll && c.unread > 0) {
+            unawaited(NotificationService.instance
+                .showMessage(c.userId, c.nickname, c.lastText));
+          }
+          watermarks[c.userId] = c.lastTime;
+          changed = true;
+        }
+      }
+      _socialFirstPoll = false;
+      if (changed) {
+        await prefs.setString('msgWatermarks', jsonEncode(watermarks));
+      }
+    } catch (_) {
+      // Poll again next tick.
+    }
   }
 
   @override
@@ -641,6 +700,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _maybeShowInteractions() {
     for (final approval in state.approvals) {
       if (_shownApprovals.add(approval.approvalId)) {
+        unawaited(
+            NotificationService.instance.showApproval(approval.toolName));
         final target = approval;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showApproval(target);
@@ -650,6 +711,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
     for (final question in state.questions) {
       if (_shownQuestions.add(question.rpcId)) {
+        unawaited(NotificationService.instance.showQuestion());
         final target = question;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showQuestion(target);

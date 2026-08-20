@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.5.3';
+const kAppVersion = '1.6.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.6.0',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '系统通知:好友私聊新消息自动弹通知(每分钟检查,按好友去重),审批请求与助手提问也会发通知'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.5.3',
     date: '2026-08-20',
