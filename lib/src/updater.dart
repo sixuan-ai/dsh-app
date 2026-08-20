@@ -42,6 +42,16 @@ class UpdateInfo {
   final String? sha256;
 }
 
+/// Manifest fetch outcome: exactly one of [info] / [error] is set.
+class UpdateCheck {
+  UpdateCheck({this.info, this.error});
+
+  final UpdateInfo? info;
+
+  /// User-facing failure reason (HTTP status, network error, bad shape).
+  final String? error;
+}
+
 /// Manifest fetch + APK download against a releases endpoint.
 class UpdateChecker {
   UpdateChecker({this.username, this.password});
@@ -61,19 +71,31 @@ class UpdateChecker {
     };
   }
 
-  /// Fetches and parses the manifest; null on any network/shape failure.
-  Future<UpdateInfo?> fetchManifest(String manifestUrl) async {
+  /// Fetches and parses the manifest; failures report a concrete reason.
+  Future<UpdateCheck> check(String manifestUrl) async {
+    http.Response response;
     try {
-      final response = await http
+      response = await http
           .get(Uri.parse(manifestUrl), headers: _headers)
           .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return null;
-      final info =
-          UpdateInfo.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-      if (info.versionCode <= 0 || info.url.isEmpty) return null;
-      return info;
+    } catch (error) {
+      final text = error.toString();
+      return UpdateCheck(
+          error:
+              '网络错误 (${text.length > 60 ? '${text.substring(0, 60)}…' : text})');
+    }
+    if (response.statusCode != 200) {
+      return UpdateCheck(error: 'HTTP ${response.statusCode}');
+    }
+    try {
+      final info = UpdateInfo.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>);
+      if (info.versionCode <= 0 || info.url.isEmpty) {
+        return UpdateCheck(error: '清单缺少 versionCode/url');
+      }
+      return UpdateCheck(info: info);
     } catch (_) {
-      return null;
+      return UpdateCheck(error: '清单不是合法 JSON');
     }
   }
 

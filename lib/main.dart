@@ -441,7 +441,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final Set<String> _shownApprovals = {};
   final Set<String> _shownQuestions = {};
   String? _modelsLoadedFor;
-  bool _updateChecked = false;
 
   /// Newer release known to the server; drives the green dot on the
   /// 检查更新 drawer entry. Set by the launch check and the periodic timer.
@@ -534,23 +533,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// distribution must go through the App Store / TestFlight (guideline 2.5.2).
   Future<void> _checkForUpdate({bool manual = false}) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
-    if (!manual) {
-      if (_updateChecked) return;
-      _updateChecked = true;
-    }
     final checker = UpdateChecker(
         username: state.authUsername, password: state.authPassword);
-    final info = await checker.fetchManifest(kUpdateManifestUrl);
+    final result = await checker.check(kUpdateManifestUrl);
     if (!mounted) return;
+    final info = result.info;
     if (info == null) {
-      if (manual) _toast('检查更新失败,请稍后重试');
+      if (manual) _toast('检查更新失败: ${result.error}');
       return;
     }
     final package = await PackageInfo.fromPlatform();
     final currentCode = int.tryParse(package.buildNumber) ?? 0;
     if (!mounted) return;
     if (info.versionCode <= currentCode) {
-      if (manual) _toast('已是最新版本 (v${package.version})');
+      if (manual) {
+        _toast('已是最新: 本机 v${package.version}+${package.buildNumber} · '
+            '服务器 v${info.version}+${info.versionCode}');
+      }
       return;
     }
     setState(() => _availableUpdate = info);

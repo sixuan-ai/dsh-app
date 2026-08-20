@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.5.1';
+const kAppVersion = '1.5.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.5.2',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.fix, '修复定时检查更新永远不生效:30 分钟周期任务被一次性开关拦截,App 常驻后台时永远检测不到新版本'),
+      ChangelogChange(
+          ChangelogChangeType.improvement, '手动检查更新显示具体失败原因和本机/服务器版本号'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.5.1',
     date: '2026-08-20',
