@@ -607,6 +607,7 @@ class FriendsTab extends StatefulWidget {
 class _FriendsTabState extends State<FriendsTab>
     with AutomaticKeepAliveClientMixin {
   List<SocialUser> _friends = [];
+  List<FriendRequest> _requests = [];
   bool _loading = true;
 
   @override
@@ -621,13 +622,35 @@ class _FriendsTabState extends State<FriendsTab>
   Future<void> _refresh() async {
     try {
       final page = await widget.api.friends();
+      final requests = await widget.api.friendRequests();
       if (!mounted) return;
       setState(() {
         _friends = page.items;
+        _requests = requests;
         _loading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _answer(FriendRequest request, bool accept) async {
+    try {
+      if (accept) {
+        final friend = await widget.api.acceptFriend(request.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('已添加好友: ${friend.nickname}')));
+        }
+      } else {
+        await widget.api.rejectFriend(request.id);
+      }
+      await _refresh();
+    } on SocialError catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -661,10 +684,12 @@ class _FriendsTabState extends State<FriendsTab>
     );
     if (code == null || code.length != 8) return;
     try {
-      final friend = await widget.api.addFriend(code);
+      final (pending, friend) = await widget.api.requestFriend(code);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已添加好友: ${friend.nickname}')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(pending
+              ? '已发送好友申请,等待对方通过'
+              : '已添加好友: ${friend?.nickname ?? ''}')));
       _refresh();
     } on SocialError catch (error) {
       if (!mounted) return;
@@ -892,6 +917,23 @@ class _FriendsTabState extends State<FriendsTab>
               label: const Text('输入好友码添加好友'),
             ),
           ),
+          if (_requests.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Icon(Icons.person_add_alt,
+                    size: 16, color: Colors.orangeAccent),
+                const SizedBox(width: 6),
+                Text('好友申请(${_requests.length})',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            for (final request in _requests) _requestTile(request),
+          ],
           const SizedBox(height: 14),
           const Row(
             children: [
@@ -915,6 +957,54 @@ class _FriendsTabState extends State<FriendsTab>
             for (var i = 0; i < ranked.length; i++)
               _rankTile(ranked[i], i + 1, ranked[i].userId == me.userId,
                   ranked.first.promptCount),
+        ],
+      ),
+    );
+  }
+
+  Widget _requestTile(FriendRequest request) {
+    final from = request.from;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orangeAccent.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          _Avatar(
+            name: from.nickname,
+            size: 32,
+            imageUrl: from.avatarVer > 0
+                ? widget.api.avatarUrl(from.userId, from.avatarVer)
+                : null,
+            headers: widget.api.imageHeaders,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(from.nickname,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Lv.${from.level} · ${from.title} · ${_ago(request.time)}',
+                    style: const TextStyle(
+                        fontSize: 11.5, color: Colors.white54)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => _answer(request, false),
+            child:
+                const Text('拒绝', style: TextStyle(color: Colors.white38)),
+          ),
+          FilledButton(
+            onPressed: () => _answer(request, true),
+            child: const Text('接受'),
+          ),
         ],
       ),
     );

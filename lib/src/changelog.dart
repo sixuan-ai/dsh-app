@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.6.5';
+const kAppVersion = '1.7.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.7.0',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(
+          ChangelogChangeType.feature, '好友申请-确认流程:输好友码改为发送申请,对方接受后才成为好友;好友页可处理申请(接受/拒绝),新申请有系统通知'),
+      ChangelogChange(
+          ChangelogChangeType.improvement, '对方已向你发过申请时,你再发申请会自动互相通过'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.6.5',
     date: '2026-08-20',

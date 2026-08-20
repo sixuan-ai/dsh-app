@@ -80,4 +80,9 @@ class NotificationService {
   Future<void> showQuestion() {
     return _show(2001, _agentChannel, '助手提问', '有问题等待你回答');
   }
+
+  /// A new incoming friend request.
+  Future<void> showFriendRequest(String nickname) {
+    return _show(2002, _agentChannel, '好友申请', '$nickname 请求添加你为好友');
+  }
 }

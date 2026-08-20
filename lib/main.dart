@@ -539,9 +539,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           changed = true;
         }
       }
+      final firstPoll = _socialFirstPoll;
       _socialFirstPoll = false;
       if (changed) {
         await prefs.setString('msgWatermarks', jsonEncode(watermarks));
+      }
+      // Friend requests: notify once per request id.
+      final requests = await api.friendRequests();
+      final seenRaw = prefs.getString('friendReqSeen') ?? '[]';
+      final seen = <int>{
+        for (final id in (jsonDecode(seenRaw) as List)) (id as num).toInt(),
+      };
+      final fresh = requests.where((r) => !seen.contains(r.id)).toList();
+      if (fresh.isNotEmpty) {
+        if (!firstPoll) {
+          for (final request in fresh) {
+            unawaited(NotificationService.instance
+                .showFriendRequest(request.from.nickname));
+          }
+        }
+        seen.addAll(fresh.map((r) => r.id));
+        await prefs.setString('friendReqSeen', jsonEncode(seen.toList()));
       }
     } catch (_) {
       // Poll again next tick.

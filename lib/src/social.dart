@@ -147,6 +147,23 @@ class Post {
   final int avatarVer;
 }
 
+/// One pending incoming friend request.
+class FriendRequest {
+  FriendRequest({required this.id, required this.from, required this.time});
+
+  factory FriendRequest.fromJson(Map<String, dynamic> json) =>
+      FriendRequest(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        from: SocialUser.fromJson(
+            (json['from'] as Map).cast<String, dynamic>()),
+        time: (json['time'] as num?)?.toInt() ?? 0,
+      );
+
+  final int id;
+  final SocialUser from;
+  final int time;
+}
+
 /// Friends endpoint result: own profile plus the ranking rows.
 class FriendsPage {
   FriendsPage({required this.me, required this.items});
@@ -239,9 +256,35 @@ class SocialApi {
   /// Headers (Basic + token) for Image.network avatar loads.
   Map<String, String> get imageHeaders => _headers;
 
-  Future<SocialUser> addFriend(String friendCode) async => SocialUser.fromJson(
-      (await _request('POST', '/friends/add', {'friendCode': friendCode}))['friend']
+  /// Sends a friend request by 8-digit code. Returns (pending, friend):
+  /// pending=false means a reverse request existed and you are now friends.
+  Future<(bool, SocialUser?)> requestFriend(String friendCode) async {
+    final json =
+        await _request('POST', '/friends/request', {'friendCode': friendCode});
+    final friend = json['friend'] as Map?;
+    return (
+      json['pending'] == true,
+      friend == null
+          ? null
+          : SocialUser.fromJson(friend.cast<String, dynamic>()),
+    );
+  }
+
+  /// Pending incoming requests, newest first.
+  Future<List<FriendRequest>> friendRequests() async {
+    final json = await _request('GET', '/friends/requests');
+    return [
+      for (final item in (json['items'] as List? ?? const []))
+        FriendRequest.fromJson((item as Map).cast<String, dynamic>()),
+    ];
+  }
+
+  Future<SocialUser> acceptFriend(int id) async => SocialUser.fromJson(
+      (await _request('POST', '/friends/accept', {'id': id}))['friend']
           as Map<String, dynamic>);
+
+  Future<void> rejectFriend(int id) =>
+      _request('POST', '/friends/reject', {'id': id});
 
   Future<void> removeFriend(String userId) =>
       _request('POST', '/friends/remove', {'userId': userId});

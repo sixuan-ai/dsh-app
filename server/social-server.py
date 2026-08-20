@@ -81,6 +81,14 @@ def init_db():
                 userId TEXT NOT NULL,
                 PRIMARY KEY(postId, userId)
             );
+            CREATE TABLE IF NOT EXISTS friend_requests(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fromId TEXT NOT NULL,
+                toId TEXT NOT NULL,
+                createdAt INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_friendreq_to
+                ON friend_requests(toId);
             CREATE TABLE IF NOT EXISTS avatars(
                 userId TEXT PRIMARY KEY,
                 mime TEXT NOT NULL,
@@ -212,6 +220,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._avatar(user)
         if route == "/social/friends":
             return self._friends(user)
+        if route == "/social/friends/requests":
+            return self._friend_requests(user)
         if route == "/social/conversations":
             return self._conversations(user)
         if route == "/social/messages":
@@ -237,7 +247,14 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/social/me/avatar":
             return self._avatar_upload(user, body)
         if route == "/social/friends/add":
-            return self._friend_add(user, body)
+            # 旧客户端兼容:同样转入申请流程。
+            return self._friend_request(user, body)
+        if route == "/social/friends/request":
+            return self._friend_request(user, body)
+        if route == "/social/friends/accept":
+            return self._friend_accept(user, body)
+        if route == "/social/friends/reject":
+            return self._friend_reject(user, body)
         if route == "/social/friends/remove":
             return self._friend_remove(user, body)
         if route == "/social/messages":
@@ -351,33 +368,113 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- friends ----------------------------------------------------------
 
-    def _friend_add(self, user, body):
+    def _friend_request(self, user, body):
         code = str(body.get("friendCode") or "").strip()
         if not re.fullmatch(r"\d{8}", code):
             return self._error(400, "好友码是 8 位数字")
         with _db_lock:
-            friend = _db.execute(
+            target = _db.execute(
                 "SELECT * FROM users WHERE friendCode = ?", (code,)
             ).fetchone()
-        if friend is None:
+        if target is None:
             return self._error(404, "没有这个好友码")
-        if friend["userId"] == user["userId"]:
+        if target["userId"] == user["userId"]:
             return self._error(400, "不能添加自己")
         with _db_lock, _db:
             existing = _db.execute(
                 "SELECT 1 FROM friends WHERE userId = ? AND friendId = ?",
-                (user["userId"], friend["userId"]),
+                (user["userId"], target["userId"]),
             ).fetchone()
             if existing:
                 return self._error(400, "已经是好友了")
+            # 对方此前向我发过申请:互相有意,直接成为好友。
+            reverse = _db.execute(
+                "SELECT id FROM friend_requests WHERE fromId = ? AND toId = ?",
+                (target["userId"], user["userId"]),
+            ).fetchone()
+            if reverse:
+                stamp = now_ms()
+                _db.execute(
+                    "INSERT OR IGNORE INTO friends(userId, friendId,"
+                    " createdAt) VALUES(?,?,?),(?,?,?)",
+                    (user["userId"], target["userId"], stamp,
+                     target["userId"], user["userId"], stamp),
+                )
+                _db.execute(
+                    "DELETE FROM friend_requests WHERE id = ?",
+                    (reverse["id"],),
+                )
+                return self._send(200, {
+                    "pending": False,
+                    "friend": public_user(target),
+                })
+            dup = _db.execute(
+                "SELECT 1 FROM friend_requests WHERE fromId = ? AND toId = ?",
+                (user["userId"], target["userId"]),
+            ).fetchone()
+            if not dup:
+                _db.execute(
+                    "INSERT INTO friend_requests(fromId, toId, createdAt)"
+                    " VALUES(?,?,?)",
+                    (user["userId"], target["userId"], now_ms()),
+                )
+        self._send(200, {"pending": True})
+
+    def _friend_requests(self, user):
+        with _db_lock:
+            rows = _db.execute(
+                "SELECT r.id AS rid, r.createdAt AS rtime, u.*"
+                " FROM friend_requests r JOIN users u ON u.userId = r.fromId"
+                " WHERE r.toId = ? ORDER BY r.id DESC LIMIT 50",
+                (user["userId"],),
+            ).fetchall()
+        self._send(200, {"items": [
+            {
+                "id": r["rid"],
+                "time": r["rtime"],
+                "from": public_user(r),
+            }
+            for r in rows
+        ]})
+
+    def _friend_accept(self, user, body):
+        try:
+            req_id = int(body.get("id") or 0)
+        except (TypeError, ValueError):
+            return self._error(400, "id 不合法")
+        with _db_lock, _db:
+            req = _db.execute(
+                "SELECT * FROM friend_requests WHERE id = ? AND toId = ?",
+                (req_id, user["userId"]),
+            ).fetchone()
+            if req is None:
+                return self._error(404, "申请不存在或已处理")
             stamp = now_ms()
             _db.execute(
-                "INSERT INTO friends(userId, friendId, createdAt)"
+                "INSERT OR IGNORE INTO friends(userId, friendId, createdAt)"
                 " VALUES(?,?,?),(?,?,?)",
-                (user["userId"], friend["userId"], stamp,
-                 friend["userId"], user["userId"], stamp),
+                (user["userId"], req["fromId"], stamp,
+                 req["fromId"], user["userId"], stamp),
             )
+            _db.execute(
+                "DELETE FROM friend_requests WHERE id = ?", (req_id,)
+            )
+            friend = _db.execute(
+                "SELECT * FROM users WHERE userId = ?", (req["fromId"],)
+            ).fetchone()
         self._send(200, {"friend": public_user(friend)})
+
+    def _friend_reject(self, user, body):
+        try:
+            req_id = int(body.get("id") or 0)
+        except (TypeError, ValueError):
+            return self._error(400, "id 不合法")
+        with _db_lock, _db:
+            _db.execute(
+                "DELETE FROM friend_requests WHERE id = ? AND toId = ?",
+                (req_id, user["userId"]),
+            )
+        self._send(200, {"ok": True})
 
     def _friend_remove(self, user, body):
         friend_id = str(body.get("userId") or "")
