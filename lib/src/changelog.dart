@@ -25,10 +25,22 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.7.4';
+const kAppVersion = '1.8.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.8.0',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '四套主题:暗夜蓝 / 纯净白 / 护眼绿 / 樱花粉 — 抽屉"主题"里实时预览、一键切换、自动保存'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '界面产品级打磨:顶栏显示当前模型和生成状态,欢迎页带快捷建议(点一下直接开聊),气泡/输入栏/卡片的圆角阴影体系统一'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '登录页、社区页、弹窗、菜单全部跟随主题换肤'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.7.4',
     date: '2026-08-20',

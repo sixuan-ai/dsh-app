@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/changelog.dart';
 import 'src/notifications.dart';
 import 'src/social.dart';
+import 'src/theme.dart';
 import 'src/updater.dart';
 import 'social_page.dart';
 import 'state.dart';
@@ -28,59 +30,10 @@ const kDefaultServerUrl = 'https://dsh.ainotex.com';
 /// download tests; production uses the public domain.
 const kUpdateManifestUrl = 'https://dsh.ainotex.com/releases/latest.json';
 
-/// Brand accent gradient used for bubbles, buttons, and the logo.
-const kBrandGradient = LinearGradient(
-  colors: [Color(0xFF4D6BFE), Color(0xFF7C5CFF)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
-
-const _kBg = Color(0xFF0E1220);
-const _kCard = Color(0xFF171D2E);
-const _kCode = Color(0xFF11182B);
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(NotificationService.instance.init());
   runApp(const DshApp());
-}
-
-ThemeData _buildTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF4D6BFE),
-    brightness: Brightness.dark,
-  ).copyWith(surface: _kBg);
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: _kBg,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: _kBg,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: false,
-    ),
-    cardTheme: CardThemeData(
-      color: _kCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: _kCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Color(0xFF141A2B),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-    ),
-    drawerTheme: const DrawerThemeData(backgroundColor: _kBg),
-    dividerTheme: const DividerThemeData(color: Colors.white12, thickness: 0.5),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
 }
 
 class DshApp extends StatefulWidget {
@@ -92,14 +45,19 @@ class DshApp extends StatefulWidget {
 
 class _DshAppState extends State<DshApp> {
   final AppState appState = AppState();
+  final ThemeController theme = ThemeController();
   bool _restored = false;
   bool _hasCreds = false;
 
   @override
   void initState() {
     super.initState();
+    theme.addListener(_onThemeChanged);
+    unawaited(theme.load());
     _restore();
   }
+
+  void _onThemeChanged() => setState(() {});
 
   Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -114,21 +72,28 @@ class _DshAppState extends State<DshApp> {
 
   @override
   void dispose() {
+    theme.removeListener(_onThemeChanged);
+    theme.dispose();
     appState.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Publish the active palette before the tree reads it; a theme change
+    // rebuilds from this root, so every P read observes the new palette.
+    P = theme.palette;
     return MaterialApp(
       title: 'xHarmess',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
+      theme: buildAppTheme(P),
       home: AnimatedBuilder(
         animation: appState,
         builder: (context, _) {
           if (!_restored) return const _Splash(label: '正在启动…');
-          if (appState.connected) return HomePage(state: appState);
+          if (appState.connected) {
+            return HomePage(state: appState, theme: theme);
+          }
           if (_hasCreds && appState.connecting) {
             return const _Splash(label: '正在连接服务器…');
           }
@@ -154,7 +119,7 @@ class _Splash extends StatelessWidget {
           children: [
             const _BrandMark(size: 76),
             const SizedBox(height: 20),
-            Text(label, style: const TextStyle(color: Colors.white54)),
+            Text(label, style: TextStyle(color: P.textSecondary)),
             const SizedBox(height: 16),
             const SizedBox(
               width: 22,
@@ -183,7 +148,7 @@ class _BrandMark extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4D6BFE).withValues(alpha: 0.45),
+            color: P.accent.withValues(alpha: 0.45),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -197,9 +162,9 @@ class _BrandMark extends StatelessWidget {
           height: size,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => Container(
-            decoration: const BoxDecoration(gradient: kBrandGradient),
+            decoration: BoxDecoration(gradient: P.brandGradient),
             child: Icon(Icons.auto_awesome,
-                color: Colors.white, size: size * 0.5),
+                color: P.onAccent, size: size * 0.5),
           ),
         ),
       ),
@@ -258,9 +223,11 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     final host = Uri.parse(kDefaultServerUrl).host;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0E1220), Color(0xFF131A33), Color(0xFF1B1440)],
+            colors: P.isDark
+                ? [P.bg, Color.lerp(P.bg, P.accent, 0.12)!, Color.lerp(P.bg, P.accent2, 0.16)!]
+                : [P.bg, Color.lerp(P.bg, P.accent, 0.06)!, Color.lerp(P.bg, P.accent2, 0.09)!],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -288,15 +255,17 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               ),
                         ),
                         const SizedBox(height: 8),
-                        const Text('连接到你的 DeepSeek Harness',
-                            style: TextStyle(color: Colors.white54)),
+                        Text('连接到你的 DeepSeek Harness',
+                            style: TextStyle(color: P.textSecondary)),
                         const SizedBox(height: 32),
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
+                            color: P.card,
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(
+                                color: P.isDark ? P.fillLight : P.divider),
+                            boxShadow: P.cardShadow,
                           ),
                           child: Column(
                             children: [
@@ -319,22 +288,22 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.12),
+                                    color: P.danger.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: Colors.red.withValues(alpha: 0.4)),
+                                        color: P.danger.withValues(alpha: 0.4)),
                                   ),
                                   child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Icon(Icons.error_outline,
-                                          color: Colors.redAccent, size: 18),
+                                      Icon(Icons.error_outline,
+                                          color: P.danger, size: 18),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           '连接失败: $error',
-                                          style: const TextStyle(
-                                              color: Colors.redAccent, fontSize: 12.5),
+                                          style: TextStyle(
+                                              color: P.danger, fontSize: 12.5),
                                         ),
                                       ),
                                     ],
@@ -354,12 +323,12 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.dns_outlined,
-                                size: 13, color: Colors.white30),
+                            Icon(Icons.dns_outlined,
+                                size: 13, color: P.textTertiary),
                             const SizedBox(width: 6),
                             Text(host,
-                                style: const TextStyle(
-                                    color: Colors.white30, fontSize: 12)),
+                                style: TextStyle(
+                                    color: P.textTertiary, fontSize: 12)),
                           ],
                         ),
                       ],
@@ -379,18 +348,18 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
       labelText: label,
       prefixIcon: Icon(icon, size: 20),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
+      fillColor: P.fillSubtle,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: BorderSide(color: P.fillLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: BorderSide(color: P.fillLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF4D6BFE), width: 1.5),
+        borderSide: BorderSide(color: P.accent, width: 1.5),
       ),
     );
   }
@@ -412,8 +381,8 @@ class _GradientButton extends StatelessWidget {
       height: 50,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: enabled ? kBrandGradient : null,
-          color: enabled ? null : Colors.white.withValues(alpha: 0.08),
+          gradient: enabled ? P.brandGradient : null,
+          color: enabled ? null : P.fillLight,
           borderRadius: BorderRadius.circular(14),
         ),
         child: ElevatedButton(
@@ -422,16 +391,16 @@ class _GradientButton extends StatelessWidget {
             backgroundColor: Colors.transparent,
             disabledBackgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            foregroundColor: Colors.white,
+            foregroundColor: P.onAccent,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
+                      strokeWidth: 2.5, color: P.onAccent),
                 )
               : Text(label,
                   style: const TextStyle(
@@ -447,9 +416,10 @@ class _GradientButton extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.state});
+  const HomePage({super.key, required this.state, required this.theme});
 
   final AppState state;
+  final ThemeController theme;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -660,9 +630,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.system_update_alt, color: Colors.greenAccent),
+            Icon(Icons.system_update_alt, color: P.success),
             SizedBox(width: 10),
             Text('发现新版本'),
           ],
@@ -678,15 +648,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(_fmtBytes(info.size!),
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.white38)),
+                    style: TextStyle(
+                        fontSize: 12, color: P.textTertiary)),
               ),
             if (info.notes != null && info.notes!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(info.notes!,
-                    style: const TextStyle(
-                        fontSize: 13, height: 1.5, color: Colors.white70)),
+                    style: TextStyle(
+                        fontSize: 13, height: 1.5, color: P.textSecondary)),
               ),
           ],
         ),
@@ -770,7 +740,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: P.fillLight,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(approval.toolName,
@@ -779,7 +749,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             if (approval.reason != null && approval.reason!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(approval.reason!,
-                  style: const TextStyle(color: Colors.white70, height: 1.4)),
+                  style: TextStyle(color: P.textSecondary, height: 1.4)),
             ],
           ],
         ),
@@ -880,6 +850,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  /// Empty-state suggestion chip: opens a default-workspace session and sends
+  /// the suggested prompt right away.
+  Future<void> _sendSuggestion(String text) async {
+    await state.createSession();
+    await state.sendPrompt(text);
+  }
+
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authUser');
@@ -914,43 +891,47 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final title = row?.title?.isNotEmpty == true
             ? row!.title!
             : (sessionId == null ? 'xHarmess' : '新会话');
+        final subtitleParts = <String>[
+          ?state.models?.label,
+          if (state.selectedRunning) '正在生成…',
+        ];
         return Scaffold(
           drawer: SessionDrawer(
             state: state,
+            theme: widget.theme,
             onLogout: _logout,
             onNewSession: _showNewSessionSheet,
             onCheckUpdate: () => _checkForUpdate(manual: true),
             updateAvailable: _availableUpdate != null,
           ),
           appBar: AppBar(
-            title: Row(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(title, overflow: TextOverflow.ellipsis),
+                Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w600),
                 ),
-                if (state.selectedRunning) ...[
-                  const SizedBox(width: 10),
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                if (subtitleParts.isNotEmpty)
+                  Text(
+                    subtitleParts.join(' · '),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11.5, color: P.textTertiary),
                   ),
-                ],
               ],
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(0.5),
+              child: Divider(height: 0.5, color: P.divider),
             ),
             actions: [
               if (sessionId != null)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 132),
-                  child: TextButton.icon(
-                    onPressed: state.loadingModels ? null : _showModelPicker,
-                    icon: const Icon(Icons.smart_toy_outlined, size: 18),
-                    label: Text(
-                      state.models?.label ?? '模型',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5),
-                    ),
-                  ),
+                IconButton(
+                  tooltip: '切换模型',
+                  onPressed: state.loadingModels ? null : _showModelPicker,
+                  icon: const Icon(Icons.smart_toy_outlined, size: 21),
                 ),
               IconButton(
                 tooltip: '新建会话',
@@ -1003,7 +984,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               StatsBar(state: state),
               Expanded(
                 child: sessionId == null
-                    ? _EmptyState(onNewSession: _showNewSessionSheet)
+                    ? _EmptyState(
+                        onNewSession: _showNewSessionSheet,
+                        onSuggestion: _sendSuggestion,
+                      )
                     : ChatList(state: state),
               ),
               Composer(state: state),
@@ -1015,35 +999,85 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 }
 
-/// Placeholder shown when no session is selected.
+/// Branded welcome shown when no session is selected, with quick-start
+/// suggestion chips that open a session and send the prompt in one tap.
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onNewSession});
+  const _EmptyState({required this.onNewSession, required this.onSuggestion});
 
   final VoidCallback onNewSession;
+
+  /// Sends a suggestion as a fresh session's first prompt.
+  final ValueChanged<String> onSuggestion;
+
+  static const _suggestions = [
+    (Icons.code, '帮我 review 一段代码'),
+    (Icons.edit_note, '帮我写一份工作周报'),
+    (Icons.lightbulb_outline, '给我三个副业点子'),
+    (Icons.travel_explore, '规划一个周末短途旅行'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const _BrandMark(size: 72),
-          const SizedBox(height: 20),
-          Text('开始一个新的对话',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          const Text('在下方输入消息,或从左上角菜单选择历史会话',
-              style: TextStyle(color: Colors.white54, fontSize: 13)),
-          const SizedBox(height: 24),
-          FilledButton.tonalIcon(
-            onPressed: onNewSession,
-            icon: const Icon(Icons.add),
-            label: const Text('新建会话'),
-          ),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _BrandMark(size: 76),
+            const SizedBox(height: 22),
+            Text('开始一个新的对话',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text('在下方输入消息,或从左上角菜单选择历史会话',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: P.textSecondary, fontSize: 13)),
+            const SizedBox(height: 22),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final (icon, label) in _suggestions)
+                  Material(
+                    color: P.card,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => onSuggestion(label),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: P.divider),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, size: 15, color: P.accentLight),
+                            const SizedBox(width: 6),
+                            Text(label,
+                                style: TextStyle(
+                                    color: P.textSecondary, fontSize: 12.5)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 26),
+            FilledButton.tonalIcon(
+              onPressed: onNewSession,
+              icon: const Icon(Icons.add),
+              label: const Text('新建会话'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1057,6 +1091,7 @@ class SessionDrawer extends StatefulWidget {
   const SessionDrawer({
     super.key,
     required this.state,
+    required this.theme,
     required this.onLogout,
     required this.onNewSession,
     required this.onCheckUpdate,
@@ -1064,6 +1099,7 @@ class SessionDrawer extends StatefulWidget {
   });
 
   final AppState state;
+  final ThemeController theme;
   final VoidCallback onLogout;
 
   /// Opens the new-session directory picker (HomePage owns the context).
@@ -1148,20 +1184,20 @@ class _SessionDrawerState extends State<SessionDrawer> {
               margin: const EdgeInsets.all(12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: kBrandGradient,
+                gradient: P.brandGradient,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _profileHeader(),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                      Icon(Icons.auto_awesome, color: P.onAccent, size: 22),
                       SizedBox(width: 8),
                       Text('xHarmess',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: P.onAccent,
                               fontSize: 17,
                               fontWeight: FontWeight.bold)),
                     ],
@@ -1169,20 +1205,24 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(Icons.dns_outlined,
-                          size: 12, color: Colors.white70),
+                      Icon(Icons.dns_outlined,
+                          size: 12,
+                          color: P.onAccent.withValues(alpha: 0.8)),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(host,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 12)),
+                            style: TextStyle(
+                                color: P.onAccent.withValues(alpha: 0.8),
+                                fontSize: 12)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text('${state.sessions.length} 个会话',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      style: TextStyle(
+                          color: P.onAccent.withValues(alpha: 0.8),
+                          fontSize: 12)),
                   const SizedBox(height: 10),
                   _LevelBadge(level: state.userLevel),
                 ],
@@ -1211,6 +1251,25 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.palette_outlined, size: 20),
+              title: const Text('主题', style: TextStyle(fontSize: 14)),
+              trailing: Text(
+                kAppThemes
+                    .firstWhere((s) => s.id == widget.theme.themeId,
+                        orElse: () => kAppThemes.first)
+                    .name,
+                style: TextStyle(color: P.textTertiary, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                showModalBottomSheet<void>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) => _ThemeSheet(theme: widget.theme),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.groups_outlined, size: 20),
               title: const Text('社区', style: TextStyle(fontSize: 14)),
               onTap: _openCommunity,
@@ -1227,8 +1286,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
                         width: 8,
                         height: 8,
                         margin: const EdgeInsets.only(left: 6),
-                        decoration: const BoxDecoration(
-                          color: Colors.greenAccent,
+                        decoration: BoxDecoration(
+                          color: P.success,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1310,18 +1369,20 @@ class _SessionDrawerState extends State<SessionDrawer> {
                 children: [
                   Text(nickname,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: P.onAccent,
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold)),
                   Text(
                       'Lv.${profile['level']} · ${profile['title']}',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11)),
+                      style: TextStyle(
+                          color: P.onAccent.withValues(alpha: 0.8),
+                          fontSize: 11)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+            Icon(Icons.chevron_right,
+                color: P.onAccent.withValues(alpha: 0.8), size: 18),
           ],
         ),
       ),
@@ -1339,8 +1400,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
       alignment: Alignment.center,
       child: Text(
         nickname.isEmpty ? '?' : nickname.characters.first,
-        style: const TextStyle(
-            color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+        style: TextStyle(
+            color: P.onAccent, fontSize: 17, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -1391,13 +1452,13 @@ class _SessionDrawerState extends State<SessionDrawer> {
                     ? Icons.keyboard_arrow_right
                     : Icons.keyboard_arrow_down,
                 size: 16,
-                color: const Color(0xFF8FA6FF),
+                color: P.accentLight,
               ),
               const SizedBox(width: 2),
               Icon(
                 cwd.isEmpty ? Icons.inbox_outlined : Icons.folder_outlined,
                 size: 14,
-                color: const Color(0xFF8FA6FF),
+                color: P.accentLight,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -1406,17 +1467,17 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   child: Text(
                     name,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       letterSpacing: 0.4,
-                      color: Color(0xFF8FA6FF),
+                      color: P.accentLight,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
               Text('$count',
-                  style: const TextStyle(fontSize: 11, color: Colors.white30)),
+                  style: TextStyle(fontSize: 11, color: P.textTertiary)),
             ],
           ),
         ),
@@ -1442,7 +1503,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: row.running ? Colors.greenAccent : Colors.white24,
+              color: row.running ? P.success : P.textTertiary,
             ),
           ),
           title: Text(
@@ -1454,11 +1515,193 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ),
           ),
           subtitle: Text(_timeAgo(row.updatedAt),
-              style: const TextStyle(fontSize: 11.5, color: Colors.white38)),
+              style: TextStyle(fontSize: 11.5, color: P.textTertiary)),
           onTap: () {
             Navigator.of(context).pop();
             state.openSession(row.sessionId);
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Theme picker sheet: live-preview cards for each built-in theme. Selection
+/// applies instantly (the app root listens to the controller) and persists.
+class _ThemeSheet extends StatelessWidget {
+  const _ThemeSheet({required this.theme});
+
+  final ThemeController theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: theme,
+      builder: (context, _) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('选择主题',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text('立即生效,自动保存',
+                    style:
+                        TextStyle(color: P.textTertiary, fontSize: 12.5)),
+                const SizedBox(height: 16),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.55,
+                  children: [
+                    for (final spec in kAppThemes)
+                      _ThemeCard(
+                        spec: spec,
+                        selected: spec.id == theme.themeId,
+                        onTap: () => theme.select(spec.id),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One theme preview card in the picker: a miniature mock of the chat page
+/// rendered in that theme's own palette.
+class _ThemeCard extends StatelessWidget {
+  const _ThemeCard({
+    required this.spec,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppThemeSpec spec;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = spec.palette;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: palette.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? palette.accent : P.divider,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // mini app bar
+                  Row(
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          gradient: palette.brandGradient,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 42,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: palette.text,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // mini assistant line
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: palette.card,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: palette.divider, width: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // mini user bubble
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      width: 56,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        gradient: palette.brandGradient,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          spec.name,
+                          style: TextStyle(
+                            color: palette.text,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        spec.subtitle,
+                        style: TextStyle(
+                            color: palette.textTertiary, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    gradient: palette.brandGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check,
+                      size: 12, color: palette.onAccent),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1492,15 +1735,16 @@ class _LevelBadge extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   'Lv.${level.level} · ${level.title}',
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: P.onAccent,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 Text('${level.count} 次对话',
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 11)),
+                    style: TextStyle(
+                        color: P.onAccent.withValues(alpha: 0.8),
+                        fontSize: 11)),
               ],
             ),
             const SizedBox(height: 6),
@@ -1509,7 +1753,7 @@ class _LevelBadge extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: level.progress,
                 minHeight: 5,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: P.fillMedium,
                 valueColor: const AlwaysStoppedAnimation(Colors.amber),
               ),
             ),
@@ -1520,7 +1764,7 @@ class _LevelBadge extends StatelessWidget {
                 level.next == null
                     ? '已达最高等级'
                     : '再对话 ${level.remaining} 次升至 Lv.${level.level + 1}',
-                style: const TextStyle(color: Colors.white60, fontSize: 10.5),
+                style: TextStyle(color: P.textSecondary, fontSize: 10.5),
               ),
             ),
           ],
@@ -1547,9 +1791,9 @@ class _LevelBadge extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '每发送一条消息计 1 次对话,累计达到阈值即可升级。计数保存在本机。',
-                  style: TextStyle(fontSize: 12.5, color: Colors.white54),
+                  style: TextStyle(fontSize: 12.5, color: P.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 for (var i = 0; i < levelThresholds.length; i++)
@@ -1564,7 +1808,7 @@ class _LevelBadge extends StatelessWidget {
                           size: 14,
                           color: i + 1 <= level.level
                               ? Colors.amber
-                              : Colors.white24,
+                              : P.textTertiary,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -1574,7 +1818,7 @@ class _LevelBadge extends StatelessWidget {
                               fontSize: 13,
                               color: i + 1 == level.level
                                   ? Colors.amber
-                                  : Colors.white70,
+                                  : P.textSecondary,
                               fontWeight: i + 1 == level.level
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -1582,8 +1826,8 @@ class _LevelBadge extends StatelessWidget {
                           ),
                         ),
                         Text('≥ ${levelThresholds[i]} 次',
-                            style: const TextStyle(
-                                fontSize: 11.5, color: Colors.white38)),
+                            style: TextStyle(
+                                fontSize: 11.5, color: P.textTertiary)),
                       ],
                     ),
                   ),
@@ -1666,8 +1910,8 @@ class _ChatListState extends State<ChatList> {
       if (state.loadingHistory) {
         return const Center(child: CircularProgressIndicator());
       }
-      return const Center(
-        child: Text('发送消息开始对话', style: TextStyle(color: Colors.white38)),
+      return Center(
+        child: Text('发送消息开始对话', style: TextStyle(color: P.textTertiary)),
       );
     }
     final extra = state.hasMoreHistory ? 1 : 0;
@@ -1738,7 +1982,7 @@ class _UserBubble extends StatelessWidget {
           margin: const EdgeInsets.only(left: 56, right: 12, top: 5, bottom: 5),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           decoration: BoxDecoration(
-            gradient: kBrandGradient,
+            gradient: P.brandGradient,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -1747,7 +1991,7 @@ class _UserBubble extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4D6BFE).withValues(alpha: 0.3),
+                color: P.accent.withValues(alpha: 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -1758,7 +2002,7 @@ class _UserBubble extends StatelessWidget {
             child: SelectableText(
               item.text,
               style: TextStyle(
-                color: Colors.white,
+                color: P.onAccent,
                 fontSize: 15.5,
                 height: 1.45,
                 // Slash-command echoes render monospace, mirroring the web's
@@ -1820,11 +2064,11 @@ class _AssistantMessage extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              gradient: kBrandGradient,
+              gradient: P.brandGradient,
               borderRadius: BorderRadius.circular(9),
             ),
             child:
-                const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                Icon(Icons.auto_awesome, color: P.onAccent, size: 16),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1855,33 +2099,33 @@ MarkdownStyleSheet _markdownStyle(BuildContext context) {
     listBullet: base,
     strong: base.copyWith(fontWeight: FontWeight.bold),
     em: base.copyWith(fontStyle: FontStyle.italic),
-    a: base.copyWith(color: const Color(0xFF8FA6FF)),
+    a: base.copyWith(color: P.accentLight),
     code: TextStyle(
       fontFamily: 'monospace',
       fontSize: 13.5,
-      color: const Color(0xFFA8C7FA),
-      backgroundColor: _kCode,
+      color: P.accentLight,
+      backgroundColor: P.code,
     ),
     codeblockDecoration: BoxDecoration(
-      color: _kCode,
+      color: P.code,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      border: Border.all(color: P.fillLight),
     ),
     codeblockPadding: const EdgeInsets.all(12),
-    blockquote: base.copyWith(color: Colors.white60),
+    blockquote: base.copyWith(color: P.textSecondary),
     blockquoteDecoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.04),
+      color: P.fillSubtle,
       borderRadius: BorderRadius.circular(8),
-      border: const Border(
-        left: BorderSide(color: Color(0xFF4D6BFE), width: 3),
+      border: Border(
+        left: BorderSide(color: P.accent, width: 3),
       ),
     ),
     blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    tableBorder: TableBorder.all(color: Colors.white24, width: 0.5),
+    tableBorder: TableBorder.all(color: P.textTertiary, width: 0.5),
     tableHead: base.copyWith(fontWeight: FontWeight.bold),
     tableBody: base.copyWith(fontSize: 14),
     horizontalRuleDecoration: BoxDecoration(
-      border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+      border: Border(top: BorderSide(color: P.fillMedium)),
     ),
   );
 }
@@ -2000,10 +2244,10 @@ class _ReasoningCardState extends State<_ReasoningCard> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Text(
                 widget.text,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     height: 1.5,
-                    color: Colors.white54,
+                    color: P.textSecondary,
                     fontStyle: FontStyle.italic),
               ),
             ),
@@ -2060,8 +2304,8 @@ class _ToolCardState extends State<ToolCard> {
 
   Color get _statusColor {
     if (!widget.item.completed) return Colors.amber;
-    if (widget.item.resultIsError) return Colors.redAccent;
-    return Colors.greenAccent;
+    if (widget.item.resultIsError) return P.danger;
+    return P.success;
   }
 
   String get _statusLabel {
@@ -2099,9 +2343,9 @@ class _ToolCardState extends State<ToolCard> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: P.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: P.fillLight),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -2121,7 +2365,7 @@ class _ToolCardState extends State<ToolCard> {
                             horizontal: 12, vertical: 9),
                         child: Row(
                           children: [
-                            Icon(_icon, size: 16, color: Colors.white54),
+                            Icon(_icon, size: 16, color: P.textSecondary),
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
@@ -2149,7 +2393,7 @@ class _ToolCardState extends State<ToolCard> {
                                   ? Icons.expand_less
                                   : Icons.expand_more,
                               size: 18,
-                              color: Colors.white38,
+                              color: P.textTertiary,
                             ),
                           ],
                         ),
@@ -2174,7 +2418,7 @@ class _ToolCardState extends State<ToolCard> {
                               ),
                             ],
                             if (!item.completed)
-                              const Row(
+                              Row(
                                 children: [
                                   SizedBox(
                                     width: 12,
@@ -2186,7 +2430,7 @@ class _ToolCardState extends State<ToolCard> {
                                   Text('等待结果…',
                                       style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.white38)),
+                                          color: P.textTertiary)),
                                 ],
                               ),
                           ],
@@ -2211,18 +2455,18 @@ class _ToolCardState extends State<ToolCard> {
             style: TextStyle(
                 fontSize: 10.5,
                 letterSpacing: 1,
-                color: isError ? Colors.redAccent : Colors.white38)),
+                color: isError ? P.danger : P.textTertiary)),
         const SizedBox(height: 4),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: _kCode,
+            color: P.code,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isError
-                  ? Colors.red.withValues(alpha: 0.35)
-                  : Colors.white.withValues(alpha: 0.06),
+                  ? P.danger.withValues(alpha: 0.35)
+                  : P.fillLight,
             ),
           ),
           child: SelectableText(
@@ -2231,7 +2475,7 @@ class _ToolCardState extends State<ToolCard> {
               fontFamily: 'monospace',
               fontSize: 12,
               height: 1.45,
-              color: isError ? Colors.redAccent.withValues(alpha: 0.9) : Colors.white70,
+              color: isError ? P.danger.withValues(alpha: 0.9) : P.textSecondary,
             ),
           ),
         ),
@@ -2254,40 +2498,40 @@ class _NoticeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = item.isError
-        ? Colors.redAccent
+        ? P.danger
         : item.pending
-            ? const Color(0xFF8FA7FF)
-            : Colors.white38;
+            ? P.accentLight
+            : P.textTertiary;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: item.isError
-            ? Colors.red.withValues(alpha: 0.08)
+            ? P.danger.withValues(alpha: 0.08)
             : item.pending
-                ? const Color(0xFF4D6BFE).withValues(alpha: 0.08)
-                : Colors.white.withValues(alpha: 0.03),
+                ? P.accent.withValues(alpha: 0.08)
+                : P.fillSubtle,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: item.isError
-              ? Colors.red.withValues(alpha: 0.3)
+              ? P.danger.withValues(alpha: 0.3)
               : item.pending
-                  ? const Color(0xFF4D6BFE).withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.06),
+                  ? P.accent.withValues(alpha: 0.3)
+                  : P.fillLight,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (item.pending)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 1),
               child: SizedBox(
                 width: 13,
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Color(0xFF8FA7FF)),
+                  valueColor: AlwaysStoppedAnimation(P.accentLight),
                 ),
               ),
             )
@@ -2388,9 +2632,9 @@ class _QuestionDialogState extends State<QuestionDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.quiz_outlined, color: Color(0xFF8FA6FF)),
+          Icon(Icons.quiz_outlined, color: P.accentLight),
           SizedBox(width: 10),
           Text('请回答'),
         ],
@@ -2434,10 +2678,10 @@ class _QuestionDialogState extends State<QuestionDialog> {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(header,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11.5,
                     letterSpacing: 0.6,
-                    color: Color(0xFF8FA6FF))),
+                    color: P.accentLight)),
           ),
         Text(question,
             style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4)),
@@ -2445,14 +2689,14 @@ class _QuestionDialogState extends State<QuestionDialog> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(detail,
-                style: const TextStyle(
-                    fontSize: 12.5, color: Colors.white54, height: 1.45)),
+                style: TextStyle(
+                    fontSize: 12.5, color: P.textSecondary, height: 1.45)),
           ),
         if (multi)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text('可多选',
-                style: TextStyle(fontSize: 11, color: Colors.white38)),
+                style: TextStyle(fontSize: 11, color: P.textTertiary)),
           ),
         const SizedBox(height: 10),
         for (final option in options)
@@ -2467,19 +2711,19 @@ class _QuestionDialogState extends State<QuestionDialog> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: options.isEmpty ? '输入回答' : '其他(可选)',
-              hintStyle: const TextStyle(fontSize: 13, color: Colors.white30),
+              hintStyle: TextStyle(fontSize: 13, color: P.textTertiary),
               isDense: true,
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
+              fillColor: P.fillSubtle,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    BorderSide(color: P.fillLight),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    BorderSide(color: P.fillLight),
               ),
             ),
             style: const TextStyle(fontSize: 13.5),
@@ -2505,12 +2749,12 @@ class _QuestionDialogState extends State<QuestionDialog> {
           decoration: BoxDecoration(
             color: selected
                 ? primary.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.04),
+                : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
                   ? primary.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.12),
+                  : P.fillMedium,
             ),
           ),
           child: Row(
@@ -2524,7 +2768,7 @@ class _QuestionDialogState extends State<QuestionDialog> {
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off),
                 size: 20,
-                color: selected ? primary : Colors.white38,
+                color: selected ? primary : P.textTertiary,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2536,8 +2780,8 @@ class _QuestionDialogState extends State<QuestionDialog> {
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(description,
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.white38)),
+                            style: TextStyle(
+                                fontSize: 12, color: P.textTertiary)),
                       ),
                   ],
                 ),
@@ -2605,6 +2849,7 @@ class _ComposerState extends State<Composer> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
+    HapticFeedback.lightImpact();
     if (text.startsWith('/')) {
       // Slash commands render their own echo + progress + result in chat.
       widget.state.runCommand(text);
@@ -2623,16 +2868,11 @@ class _ComposerState extends State<Composer> {
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
         child: Container(
           decoration: BoxDecoration(
-            color: _kCard,
+            color: P.card,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, -2),
-              ),
-            ],
+            border: Border.all(
+                color: P.isDark ? P.fillMedium : P.divider),
+            boxShadow: P.cardShadow,
           ),
           padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
           child: Row(
@@ -2643,7 +2883,7 @@ class _ComposerState extends State<Composer> {
                 child: IconButton(
                   tooltip: '快捷命令',
                   icon: const Icon(Icons.add_circle_outline),
-                  color: Colors.white54,
+                  color: P.textSecondary,
                   onPressed: enabled ? _openCommands : null,
                 ),
               ),
@@ -2658,7 +2898,7 @@ class _ComposerState extends State<Composer> {
                   style: const TextStyle(fontSize: 15.5),
                   decoration: InputDecoration(
                     hintText: enabled ? '发消息给 DSH…' : '先选择或新建一个会话',
-                    hintStyle: const TextStyle(color: Colors.white30),
+                    hintStyle: TextStyle(color: P.textTertiary),
                     border: InputBorder.none,
                   ),
                 ),
@@ -2668,15 +2908,15 @@ class _ComposerState extends State<Composer> {
                   padding: const EdgeInsets.only(right: 6, bottom: 2),
                   child: Ink(
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.16),
+                      color: P.danger.withValues(alpha: 0.16),
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.5)),
+                          color: P.danger.withValues(alpha: 0.5)),
                     ),
                     child: IconButton(
                       tooltip: '停止生成',
-                      icon: const Icon(Icons.stop_rounded,
-                          color: Colors.redAccent),
+                      icon: Icon(Icons.stop_rounded,
+                          color: P.danger),
                       onPressed: () => widget.state.cancelTurn(),
                     ),
                   ),
@@ -2685,17 +2925,16 @@ class _ComposerState extends State<Composer> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Ink(
                   decoration: BoxDecoration(
-                    gradient: canSend ? kBrandGradient : null,
-                    color: canSend
-                        ? null
-                        : Colors.white.withValues(alpha: 0.07),
+                    gradient: canSend ? P.brandGradient : null,
+                    color: canSend ? null : P.fillLight,
                     shape: BoxShape.circle,
+                    boxShadow: canSend ? [P.brandGlow] : null,
                   ),
                   child: IconButton(
                     tooltip: '发送',
                     icon: Icon(
                       Icons.arrow_upward_rounded,
-                      color: canSend ? Colors.white : Colors.white24,
+                      color: canSend ? P.onAccent : P.textTertiary,
                     ),
                     onPressed: canSend ? _send : null,
                   ),
@@ -2782,7 +3021,7 @@ class StatsBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          bottom: BorderSide(color: P.fillLight),
         ),
       ),
       child: SizedBox(
@@ -2810,17 +3049,17 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: P.fillSubtle,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+        border: Border.all(color: P.fillMedium),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: const Color(0xFF8FA6FF)),
+          Icon(icon, size: 13, color: P.accentLight),
           const SizedBox(width: 5),
           Text(label,
-              style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
+              style: TextStyle(fontSize: 11.5, color: P.textSecondary)),
         ],
       ),
     );
@@ -2839,10 +3078,10 @@ class _ContextChip extends StatelessWidget {
     final ratio = (used / total).clamp(0.0, 1.0);
     final pct = ratio * 100;
     final color = pct >= 85
-        ? Colors.redAccent
+        ? P.danger
         : pct >= 70
             ? Colors.amber
-            : Colors.greenAccent;
+            : P.success;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -2865,7 +3104,7 @@ class _ContextChip extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: ratio.toDouble(),
                 minHeight: 5,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                backgroundColor: P.fillLight,
                 valueColor: AlwaysStoppedAnimation(color),
               ),
             ),
@@ -2954,7 +3193,7 @@ class ModelPickerSheet extends StatelessWidget {
     } catch (error) {
       messenger.showSnackBar(SnackBar(
         content: Text('切换失败: $error'),
-        backgroundColor: Colors.red.shade900,
+        backgroundColor: P.danger,
         duration: const Duration(seconds: 4),
       ));
     }
@@ -2994,8 +3233,8 @@ class ModelPickerSheet extends StatelessWidget {
                     if (models.current['model'] != null)
                       Text(
                         '当前: ${models.label}',
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white38),
+                        style: TextStyle(
+                            fontSize: 12, color: P.textTertiary),
                       ),
                   ],
                 ),
@@ -3006,10 +3245,10 @@ class ModelPickerSheet extends StatelessWidget {
                     child: Text(
                       (group['name'] as String? ?? group['id'] as String? ?? '')
                           .toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11.5,
                           letterSpacing: 1.1,
-                          color: Color(0xFF8FA6FF),
+                          color: P.accentLight,
                           fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -3040,7 +3279,7 @@ class ModelPickerSheet extends StatelessWidget {
       child: Material(
         color: current
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-            : Colors.white.withValues(alpha: 0.04),
+            : P.fillSubtle,
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
           shape:
@@ -3053,14 +3292,14 @@ class ModelPickerSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(id,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 11.5,
-                      color: Colors.white38)),
+                      color: P.textTertiary)),
               if (description != null && description.isNotEmpty)
                 Text(description,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.white38)),
+                    style: TextStyle(
+                        fontSize: 12, color: P.textTertiary)),
               if (current &&
                   (state.models?.current['reasoningEffort'] as String? ?? '')
                       .isNotEmpty)
@@ -3070,7 +3309,7 @@ class ModelPickerSheet extends StatelessWidget {
                     icon: Icons.tune,
                     label:
                         '推理强度 ${state.models!.current['reasoningEffort']}',
-                    color: const Color(0xFF8FA6FF),
+                    color: P.accentLight,
                   ),
                 ),
             ],
@@ -3079,7 +3318,7 @@ class ModelPickerSheet extends StatelessWidget {
               ? Icon(Icons.check_circle,
                   color: Theme.of(context).colorScheme.primary, size: 20)
               : hasEfforts
-                  ? const Icon(Icons.tune, size: 18, color: Colors.white38)
+                  ? Icon(Icons.tune, size: 18, color: P.textTertiary)
                   : null,
           onTap: () => _pick(context, provider, model),
         ),
@@ -3097,12 +3336,12 @@ class ModelPickerSheet extends StatelessWidget {
         ChangelogChangeType type) =>
     switch (type) {
       ChangelogChangeType.feature => (
-          color: Colors.greenAccent,
+          color: P.success,
           icon: Icons.auto_awesome,
           label: '新功能',
         ),
       ChangelogChangeType.improvement => (
-          color: const Color(0xFF8FA6FF),
+          color: P.accentLight,
           icon: Icons.trending_up,
           label: '优化',
         ),
@@ -3148,8 +3387,8 @@ class _ChangelogChangeRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(change.text,
-                style: const TextStyle(
-                    fontSize: 13, height: 1.45, color: Colors.white70)),
+                style: TextStyle(
+                    fontSize: 13, height: 1.45, color: P.textSecondary)),
           ),
         ],
       ),
@@ -3173,10 +3412,10 @@ class ChangelogPage extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 14),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _kCard,
+                color: P.card,
                 borderRadius: BorderRadius.circular(16),
                 border:
-                    Border.all(color: Colors.white.withValues(alpha: 0.07)),
+                    Border.all(color: P.fillLight),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3192,18 +3431,18 @@ class ChangelogPage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            gradient: kBrandGradient,
+                            gradient: P.brandGradient,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('当前',
+                          child: Text('当前',
                               style: TextStyle(
-                                  fontSize: 10, color: Colors.white)),
+                                  fontSize: 10, color: P.onAccent)),
                         ),
                       ],
                       const Spacer(),
                       Text(release.date,
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.white38)),
+                          style: TextStyle(
+                              fontSize: 12, color: P.textTertiary)),
                     ],
                   ),
                   const Divider(height: 18),
@@ -3228,7 +3467,7 @@ class WhatsNewDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.new_releases_outlined, color: Color(0xFF8FA6FF)),
+          Icon(Icons.new_releases_outlined, color: P.accentLight),
           const SizedBox(width: 10),
           Expanded(
             child: Text('v${release.version} 更新内容',
@@ -3368,13 +3607,13 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                   _defaultTile(),
                   if (!_useDefault) ...[
                     const SizedBox(height: 8),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(left: 4, bottom: 6),
                       child: Text('选择工作区目录',
                           style: TextStyle(
                               fontSize: 11.5,
                               letterSpacing: 0.6,
-                              color: Color(0xFF8FA6FF))),
+                              color: P.accentLight)),
                     ),
                     if (state.loadingWorkspaces)
                       const Padding(
@@ -3386,19 +3625,19 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                         _workspaceTile(workspace),
                       _customTile(),
                       if (state.workspaces.isEmpty && !_customMode)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.all(8),
                           child: Text('没有已注册的工作区,可使用自定义路径',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.white38)),
+                                  fontSize: 12, color: P.textTertiary)),
                         ),
                     ],
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Text('创建失败: $_error',
-                        style: const TextStyle(
-                            fontSize: 12.5, color: Colors.redAccent)),
+                        style: TextStyle(
+                            fontSize: 12.5, color: P.danger)),
                   ],
                   const SizedBox(height: 16),
                   _GradientButton(
@@ -3425,12 +3664,12 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
         decoration: BoxDecoration(
           color: _useDefault
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.04),
+              : P.fillSubtle,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _useDefault
                 ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
-                : Colors.white.withValues(alpha: 0.1),
+                : P.fillLight,
           ),
         ),
         child: Row(
@@ -3440,16 +3679,16 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
               size: 20,
               color: _useDefault
                   ? Theme.of(context).colorScheme.primary
-                  : Colors.white38,
+                  : P.textTertiary,
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('在默认工作区创建', style: TextStyle(fontSize: 14)),
                   Text('使用服务器的默认目录',
-                      style: TextStyle(fontSize: 11.5, color: Colors.white38)),
+                      style: TextStyle(fontSize: 11.5, color: P.textTertiary)),
                 ],
               ),
             ),
@@ -3479,7 +3718,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
           decoration: BoxDecoration(
             color: selected
                 ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-                : Colors.white.withValues(alpha: 0.04),
+                : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
@@ -3487,7 +3726,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                       .colorScheme
                       .primary
                       .withValues(alpha: 0.6)
-                  : Colors.white.withValues(alpha: 0.1),
+                  : P.fillLight,
             ),
           ),
           child: Row(
@@ -3499,7 +3738,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 size: 20,
                 color: selected
                     ? Theme.of(context).colorScheme.primary
-                    : Colors.white38,
+                    : P.textTertiary,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -3509,16 +3748,16 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                     Text(title, style: const TextStyle(fontSize: 14)),
                     Text(path,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 11,
-                            color: Colors.white38)),
+                            color: P.textTertiary)),
                   ],
                 ),
               ),
               Text('$sessions 个会话',
                   style:
-                      const TextStyle(fontSize: 11, color: Colors.white30)),
+                      TextStyle(fontSize: 11, color: P.textTertiary)),
             ],
           ),
         ),
@@ -3542,7 +3781,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                       .colorScheme
                       .primary
                       .withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.04),
+                  : P.fillSubtle,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _customMode
@@ -3550,7 +3789,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                         .colorScheme
                         .primary
                         .withValues(alpha: 0.6)
-                    : Colors.white.withValues(alpha: 0.1),
+                    : P.fillLight,
               ),
             ),
             child: Row(
@@ -3562,14 +3801,14 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                   size: 20,
                   color: _customMode
                       ? Theme.of(context).colorScheme.primary
-                      : Colors.white38,
+                      : P.textTertiary,
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text('自定义路径', style: TextStyle(fontSize: 14)),
                 ),
-                const Icon(Icons.edit_outlined,
-                    size: 16, color: Colors.white38),
+                Icon(Icons.edit_outlined,
+                    size: 16, color: P.textTertiary),
               ],
             ),
           ),
@@ -3583,22 +3822,22 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
               style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
               decoration: InputDecoration(
                 hintText: '/home/you/project',
-                hintStyle: const TextStyle(color: Colors.white30),
+                hintStyle: TextStyle(color: P.textTertiary),
                 helperText: '必须是服务器上已存在的目录',
                 helperStyle:
-                    const TextStyle(fontSize: 11, color: Colors.white38),
+                    TextStyle(fontSize: 11, color: P.textTertiary),
                 isDense: true,
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
+                fillColor: P.fillSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      BorderSide(color: P.fillLight),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      BorderSide(color: P.fillLight),
                 ),
               ),
             ),
@@ -3675,7 +3914,7 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
           if (_error != null)
             Text(_error!,
                 style:
-                    const TextStyle(color: Colors.redAccent, fontSize: 13))
+                    TextStyle(color: P.danger, fontSize: 13))
           else ...[
             LinearProgressIndicator(value: progress),
             const SizedBox(height: 10),
@@ -3683,12 +3922,12 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
               total != null
                   ? '${_fmtBytes(_received)} / ${_fmtBytes(total)}'
                   : '${_fmtBytes(_received)} 已下载',
-              style: const TextStyle(fontSize: 12.5, color: Colors.white54),
+              style: TextStyle(fontSize: 12.5, color: P.textSecondary),
             ),
             if (progress != null)
               Text('${(progress * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(
-                      fontSize: 12.5, color: Colors.white54)),
+                  style: TextStyle(
+                      fontSize: 12.5, color: P.textSecondary)),
           ],
         ],
       ),
@@ -3804,14 +4043,14 @@ class _CommandsSheetState extends State<_CommandsSheet> {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text('以 / 开头的消息会作为命令执行,不会发送给模型',
-                style: TextStyle(fontSize: 12, color: Colors.white38)),
+            Text('以 / 开头的消息会作为命令执行,不会发送给模型',
+                style: TextStyle(fontSize: 12, color: P.textTertiary)),
             const SizedBox(height: 12),
             for (final command in _commands)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Material(
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: P.fillSubtle,
                   borderRadius: BorderRadius.circular(14),
                   child: ListTile(
                     shape: RoundedRectangleBorder(
@@ -3820,11 +4059,11 @@ class _CommandsSheetState extends State<_CommandsSheet> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        gradient: kBrandGradient,
+                        gradient: P.brandGradient,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(command.icon,
-                          size: 18, color: Colors.white),
+                          size: 18, color: P.onAccent),
                     ),
                     title: Text('/${command.name}',
                         style: const TextStyle(
@@ -3832,14 +4071,14 @@ class _CommandsSheetState extends State<_CommandsSheet> {
                             fontSize: 14,
                             fontWeight: FontWeight.w600)),
                     subtitle: Text(command.description,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white54)),
+                        style: TextStyle(
+                            fontSize: 12, color: P.textSecondary)),
                     trailing: Icon(
                       command.hasInput
                           ? Icons.edit_outlined
                           : Icons.play_arrow_rounded,
                       size: 18,
-                      color: Colors.white38,
+                      color: P.textTertiary,
                     ),
                     onTap: () => command.hasInput
                         ? widget.onInsert(command.name)

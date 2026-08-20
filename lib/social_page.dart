@@ -14,13 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/social.dart';
+import 'src/theme.dart';
 import 'state.dart';
-
-const _kBrandGradient = LinearGradient(
-  colors: [Color(0xFF4D6BFE), Color(0xFF7C5CFF)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
 
 String _ago(int millis) {
   if (millis <= 0) return '';
@@ -200,8 +195,8 @@ class _CommunityPageState extends State<CommunityPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('设置你的昵称,系统会为你分配一个 8 位好友码,朋友凭它添加你。',
-                style: TextStyle(fontSize: 13, color: Colors.white54)),
+            Text('设置你的昵称,系统会为你分配一个 8 位好友码,朋友凭它添加你。',
+                style: TextStyle(fontSize: 13, color: P.textSecondary)),
             const SizedBox(height: 14),
             TextField(
               controller: controller,
@@ -235,7 +230,7 @@ class _CommunityPageState extends State<CommunityPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('加载失败: $_bootError',
-                          style: const TextStyle(color: Colors.redAccent)),
+                          style: TextStyle(color: P.danger)),
                       const SizedBox(height: 12),
                       FilledButton(
                           onPressed: _bootstrap, child: const Text('重试')),
@@ -372,9 +367,9 @@ class _FeedTabState extends State<FeedTab>
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF171D2E),
+            color: P.card,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: P.fillLight),
           ),
           child: Column(
             children: [
@@ -382,9 +377,9 @@ class _FeedTabState extends State<FeedTab>
                 controller: _composer,
                 minLines: 1,
                 maxLines: 4,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: '分享点什么…',
-                  hintStyle: TextStyle(color: Colors.white30),
+                  hintStyle: TextStyle(color: P.textTertiary),
                   border: InputBorder.none,
                   isDense: true,
                 ),
@@ -420,12 +415,12 @@ class _FeedTabState extends State<FeedTab>
                   onRefresh: _refresh,
                   child: _posts.isEmpty
                       ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
+                          children: [
+                            const SizedBox(height: 120),
                             Center(
                                 child: Text('还没有动态,来发第一条吧',
                                     style:
-                                        TextStyle(color: Colors.white38))),
+                                        TextStyle(color: P.textTertiary))),
                           ],
                         )
                       : ListView.builder(
@@ -485,9 +480,9 @@ class _PostCardState extends State<_PostCard> {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF171D2E),
+        color: P.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: P.fillLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,15 +505,15 @@ class _PostCardState extends State<_PostCard> {
                         style:
                             const TextStyle(fontWeight: FontWeight.w600)),
                     Text(_ago(post.time),
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.white38)),
+                        style: TextStyle(
+                            fontSize: 11, color: P.textTertiary)),
                   ],
                 ),
               ),
               if (post.mine)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      size: 18, color: Colors.white30),
+                  icon: Icon(Icons.delete_outline,
+                      size: 18, color: P.textTertiary),
                   onPressed: () async {
                     await widget.api.deletePost(post.id);
                     widget.onDeleted();
@@ -532,7 +527,7 @@ class _PostCardState extends State<_PostCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                gradient: _kBrandGradient,
+                gradient: P.brandGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -546,14 +541,14 @@ class _PostCardState extends State<_PostCard> {
                       children: [
                         Text(
                           'Lv.${levelInfo['level']} · ${levelInfo['title']}',
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: P.onAccent,
                               fontSize: 16,
                               fontWeight: FontWeight.bold),
                         ),
                         Text('累计 ${levelInfo['count']} 次对话',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 11.5)),
+                            style: TextStyle(
+                                color: P.onAccent.withValues(alpha: 0.7), fontSize: 11.5)),
                       ],
                     ),
                   ),
@@ -571,12 +566,12 @@ class _PostCardState extends State<_PostCard> {
                 icon: Icon(
                   post.liked ? Icons.favorite : Icons.favorite_border,
                   size: 18,
-                  color: post.liked ? Colors.redAccent : Colors.white38,
+                  color: post.liked ? P.danger : P.textTertiary,
                 ),
               ),
               Text('${post.likes}',
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.white54)),
+                  style: TextStyle(
+                      fontSize: 12, color: P.textSecondary)),
             ],
           ),
         ],
@@ -806,7 +801,7 @@ class _FriendsTabState extends State<FriendsTab>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: _kBrandGradient,
+              gradient: P.brandGradient,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -835,8 +830,8 @@ class _FriendsTabState extends State<FriendsTab>
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.photo_camera,
-                                  size: 11, color: Colors.white),
+                              child: Icon(Icons.photo_camera,
+                                  size: 11, color: P.onAccent),
                             ),
                           ),
                         ],
@@ -848,20 +843,20 @@ class _FriendsTabState extends State<FriendsTab>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(me.nickname,
-                              style: const TextStyle(
-                                  color: Colors.white,
+                              style: TextStyle(
+                                  color: P.onAccent,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold)),
                           Text('Lv.${me.level} · ${me.title}',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 12)),
+                              style: TextStyle(
+                                  color: P.onAccent.withValues(alpha: 0.7), fontSize: 12)),
                         ],
                       ),
                     ),
                     IconButton(
                       tooltip: '修改昵称',
-                      icon: const Icon(Icons.edit_outlined,
-                          color: Colors.white70, size: 18),
+                      icon: Icon(Icons.edit_outlined,
+                          color: P.onAccent.withValues(alpha: 0.7), size: 18),
                       onPressed: _rename,
                     ),
                   ],
@@ -887,24 +882,24 @@ class _FriendsTabState extends State<FriendsTab>
                           code.length == 8
                               ? '${code.substring(0, 4)} ${code.substring(4)}'
                               : code,
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: P.onAccent,
                               fontSize: 24,
                               letterSpacing: 4,
                               fontFamily: 'monospace',
                               fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(width: 10),
-                        const Icon(Icons.copy,
-                            size: 16, color: Colors.white70),
+                        Icon(Icons.copy,
+                            size: 16, color: P.onAccent.withValues(alpha: 0.7)),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text('这是我的好友码,点按复制',
+                Text('这是我的好友码,点按复制',
                     style:
-                        TextStyle(color: Colors.white60, fontSize: 11)),
+                        TextStyle(color: P.onAccent.withValues(alpha: 0.6), fontSize: 11)),
               ],
             ),
           ),
@@ -991,15 +986,15 @@ class _FriendsTabState extends State<FriendsTab>
                 Text(from.nickname,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 Text('Lv.${from.level} · ${from.title} · ${_ago(request.time)}',
-                    style: const TextStyle(
-                        fontSize: 11.5, color: Colors.white54)),
+                    style: TextStyle(
+                        fontSize: 11.5, color: P.textSecondary)),
               ],
             ),
           ),
           TextButton(
             onPressed: () => _answer(request, false),
             child:
-                const Text('拒绝', style: TextStyle(color: Colors.white38)),
+                Text('拒绝', style: TextStyle(color: P.textTertiary)),
           ),
           FilledButton(
             onPressed: () => _answer(request, true),
@@ -1015,7 +1010,7 @@ class _FriendsTabState extends State<FriendsTab>
       1 => const Color(0xFFFFD54F),
       2 => const Color(0xFFB0BEC5),
       3 => const Color(0xFFFFAB91),
-      _ => Colors.white24,
+      _ => P.textTertiary,
     };
     final ratio = topCount > 0 ? user.promptCount / topCount : 0.0;
     return Container(
@@ -1024,12 +1019,12 @@ class _FriendsTabState extends State<FriendsTab>
       decoration: BoxDecoration(
         color: isMe
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.04),
+            : P.fillSubtle,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isMe
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.07),
+              : P.fillLight,
         ),
       ),
       child: Column(
@@ -1042,7 +1037,7 @@ class _FriendsTabState extends State<FriendsTab>
                     ? Icon(Icons.emoji_events, size: 20, color: medal)
                     : Text('$rank',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38)),
+                        style: TextStyle(color: P.textTertiary)),
               ),
               _Avatar(
                 name: user.nickname,
@@ -1061,14 +1056,14 @@ class _FriendsTabState extends State<FriendsTab>
                         style:
                             const TextStyle(fontWeight: FontWeight.w600)),
                     Text('Lv.${user.level} · ${user.title}',
-                        style: const TextStyle(
-                            fontSize: 11.5, color: Colors.white54)),
+                        style: TextStyle(
+                            fontSize: 11.5, color: P.textSecondary)),
                   ],
                 ),
               ),
               Text('${user.promptCount} 次',
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.white38)),
+                  style: TextStyle(
+                      fontSize: 12, color: P.textTertiary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1077,9 +1072,9 @@ class _FriendsTabState extends State<FriendsTab>
             child: LinearProgressIndicator(
               value: ratio.clamp(0.02, 1.0),
               minHeight: 4,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: P.fillLight,
               valueColor: AlwaysStoppedAnimation(
-                  isMe ? const Color(0xFF4D6BFE) : Colors.white24),
+                  isMe ? P.accent : P.textTertiary),
             ),
           ),
         ],
@@ -1142,9 +1137,9 @@ class _MessagesTabState extends State<MessagesTab>
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_items.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('还没有私聊,先去好友页添加好友吧',
-            style: TextStyle(color: Colors.white38)),
+            style: TextStyle(color: P.textTertiary)),
       );
     }
     return RefreshIndicator(
@@ -1171,20 +1166,20 @@ class _MessagesTabState extends State<MessagesTab>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(_ago(c.lastTime),
-                    style: const TextStyle(
-                        fontSize: 11, color: Colors.white38)),
+                    style: TextStyle(
+                        fontSize: 11, color: P.textTertiary)),
                 if (c.unread > 0)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent,
+                      color: P.danger,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Text('${c.unread}',
-                        style: const TextStyle(
-                            fontSize: 10, color: Colors.white)),
+                        style: TextStyle(
+                            fontSize: 10, color: P.onAccent)),
                   ),
               ],
             ),
@@ -1285,9 +1280,9 @@ class _FriendChatPageState extends State<FriendChatPage> {
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text('打个招呼吧',
-                        style: TextStyle(color: Colors.white38)))
+                        style: TextStyle(color: P.textTertiary)))
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.all(12),
@@ -1307,10 +1302,10 @@ class _FriendChatPageState extends State<FriendChatPage> {
                               maxWidth:
                                   MediaQuery.of(context).size.width * 0.75),
                           decoration: BoxDecoration(
-                            gradient: mine ? _kBrandGradient : null,
+                            gradient: mine ? P.brandGradient : null,
                             color: mine
                                 ? null
-                                : Colors.white.withValues(alpha: 0.07),
+                                : P.fillLight,
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),
@@ -1339,11 +1334,11 @@ class _FriendChatPageState extends State<FriendChatPage> {
                       decoration: InputDecoration(
                         hintText: '发消息…',
                         hintStyle:
-                            const TextStyle(color: Colors.white30),
+                            TextStyle(color: P.textTertiary),
                         isDense: true,
                         filled: true,
                         fillColor:
-                            Colors.white.withValues(alpha: 0.05),
+                            P.fillSubtle,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(22),
                           borderSide: BorderSide.none,
@@ -1353,12 +1348,12 @@ class _FriendChatPageState extends State<FriendChatPage> {
                   ),
                   const SizedBox(width: 8),
                   Ink(
-                    decoration: const BoxDecoration(
-                        gradient: _kBrandGradient,
+                    decoration: BoxDecoration(
+                        gradient: P.brandGradient,
                         shape: BoxShape.circle),
                     child: IconButton(
-                      icon: const Icon(Icons.send_rounded,
-                          color: Colors.white, size: 20),
+                      icon: Icon(Icons.send_rounded,
+                          color: P.onAccent, size: 20),
                       onPressed: _sending ? null : _send,
                     ),
                   ),
