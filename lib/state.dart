@@ -75,6 +75,10 @@ class ChatItem {
   // notice
   bool isError = false;
 
+  /// A notice still awaiting its outcome (slash-command status rows): the UI
+  /// renders a spinner until the paired command/done settles it.
+  bool pending = false;
+
   // tool
   String callId = '';
   String name = '';
@@ -524,6 +528,7 @@ class AppState extends ChangeNotifier {
       }
       if (older) {
         items.insertAll(0, folded);
+        _settleOrphanedCommands();
       } else {
         items
           ..clear()
@@ -561,6 +566,30 @@ class AppState extends ChangeNotifier {
   }
 
   int _oldestSeq = 0;
+
+  /// After older pages prepend, a paged-in command/run whose command/done
+  /// already folded below would spin forever: copy the settled row into the
+  /// pending status and drop the standalone duplicate.
+  void _settleOrphanedCommands() {
+    for (final item in items) {
+      if (!item.pending || !item.id.startsWith('cmdrun-')) continue;
+      final doneId = 'cmddone-${item.id.substring(7)}';
+      ChatItem? done;
+      for (final candidate in items) {
+        if (candidate.id == doneId) {
+          done = candidate;
+          break;
+        }
+      }
+      if (done != null) {
+        item
+          ..text = done.text
+          ..isError = done.isError
+          ..pending = false;
+        items.remove(done);
+      }
+    }
+  }
 
   void _rebuildToolIndex() {
     _toolItems.clear();
@@ -635,22 +664,109 @@ class AppState extends ChangeNotifier {
     return value.map((c) => (c as Map).cast<String, dynamic>()).toList();
   }
 
+  /// Locally sent command rows awaiting their command/run event, keyed by the
+  /// typed line. The event adopts them by command name (recordInput:false
+  /// commands omit args from the event, so exact line matching is impossible).
+  final Map<String, ({ChatItem echo, ChatItem status})> _localCommandLines = {};
+
+  /// Adds the instant local feedback for a composer-sent command: a user-style
+  /// echo bubble plus a pending status notice. The command/run fold (or the
+  /// RPC settle path in [runCommand]) adopts both rows in place.
+  ({ChatItem echo, ChatItem status}) beginLocalCommand(String line) {
+    final rpcId = mintRpcId('cmd');
+    final echo = ChatItem.user(id: 'local-cmdin-$rpcId', text: line);
+    final status = ChatItem.notice(
+        id: 'local-cmdrun-$rpcId', text: '正在执行 $line …')
+      ..pending = true;
+    items.add(echo);
+    items.add(status);
+    _localCommandLines[line] = (echo: echo, status: status);
+    notifyListeners();
+    return (echo: echo, status: status);
+  }
+
+  ({String line, ChatItem echo, ChatItem status})? _takeLocalCommand(
+      String name) {
+    final prefix = '/$name';
+    for (final entry in _localCommandLines.entries) {
+      if (entry.key == prefix || entry.key.startsWith('$prefix ')) {
+        _localCommandLines.remove(entry.key);
+        return (
+          line: entry.key,
+          echo: entry.value.echo,
+          status: entry.value.status
+        );
+      }
+    }
+    return null;
+  }
+
+  void _replaceItem(ChatItem old, ChatItem replacement) {
+    final index = items.indexOf(old);
+    if (index >= 0) {
+      items[index] = replacement;
+    } else {
+      items.add(replacement);
+    }
+  }
+
   /// Executes a slash command through the host command registry; the line is
-  /// never sent to the model. Returns the handler's result text (null when
-  /// the name does not resolve); throws on handler errors.
-  Future<String?> executeCommand(String line) async {
+  /// never sent to the model. Feedback is instant (local echo + pending
+  /// status) and the outcome rides the command/run / command/done event pair;
+  /// when the downlink missed those events, the RPC result settles the local
+  /// rows under the official ids so a late event still updates in place.
+  Future<void> runCommand(String line) async {
     final api = _api;
     final sessionId = selectedSessionId;
-    if (api == null || sessionId == null) return null;
-    final value = await api.call('commands/execute', {
-      'args': {'agentId': sessionId, 'line': line, 'images': <String>[]},
-    }) as Map<String, dynamic>?;
-    if (value == null) return null; // unresolved name/syntax
-    final result = (value['result'] as Map?)?.cast<String, dynamic>();
-    if (result?['kind'] == 'error') {
-      throw DshError('command-error', result?['text'] as String? ?? '命令执行失败');
+    final trimmed = line.trim();
+    if (api == null || sessionId == null || trimmed.isEmpty) return;
+    final local = beginLocalCommand(trimmed);
+    try {
+      final value = await api.call('commands/execute', {
+        'args': {'agentId': sessionId, 'line': trimmed, 'images': <String>[]},
+      }) as Map<String, dynamic>?;
+      if (_localCommandLines.remove(trimmed) == null) {
+        return; // command/run adopted the rows; command/done settles them
+      }
+      if (value == null) {
+        // Admission miss logs no events: convert the local rows to the error.
+        items.remove(local.echo);
+        _replaceItem(
+            local.status,
+            ChatItem.notice(
+                id: local.status.id,
+                text: '未知命令: $trimmed · 点输入框 + 查看可用命令',
+                isError: true));
+      } else {
+        final commandId = value['commandId'] as String? ?? '';
+        final result = (value['result'] as Map?)?.cast<String, dynamic>();
+        final isError = result?['kind'] == 'error';
+        final text = result?['text'] as String? ?? '';
+        _replaceItem(local.echo,
+            ChatItem.user(id: 'cmdin-$commandId', text: trimmed));
+        _replaceItem(
+            local.status,
+            ChatItem.notice(
+                id: 'cmdrun-$commandId',
+                text: text.isNotEmpty
+                    ? text
+                    : (isError ? '命令执行失败' : '执行完成'),
+                isError: isError));
+      }
+    } catch (error) {
+      if (_localCommandLines.remove(trimmed) != null) {
+        items.remove(local.echo);
+        _replaceItem(
+            local.status,
+            ChatItem.notice(
+                id: local.status.id,
+                text: '命令发送失败: $error',
+                isError: true));
+      }
+      // Rows already adopted: the command reached the host, so the failure is
+      // the connection dropping mid-flight; the connection UI reports that.
     }
-    return result?['text'] as String?;
+    notifyListeners();
   }
 
   /// Cancels the selected session's active turn.
@@ -988,14 +1104,60 @@ class AppState extends ChangeNotifier {
               text: '本轮失败: ${failure?['message'] ?? '未知错误'}',
               isError: true));
         }
+      case 'command/run':
+        // A resolved slash command entered its handler: echo the line as a
+        // user-style bubble plus a pending status notice, paired with the
+        // command/done row by commandId.
+        final commandId = data['commandId'] as String? ?? '';
+        final name = data['name'] as String? ?? '';
+        if (commandId.isEmpty || name.isEmpty) break;
+        var represented = false;
+        for (final candidate in target) {
+          if (candidate.id == 'cmdrun-$commandId') {
+            represented = true;
+            break;
+          }
+        }
+        if (represented) break; // late duplicate after the RPC settled locally
+        final args = data['args'] as String?;
+        final line = '/$name${args ?? ''}'.trimRight();
+        final local = into == null ? _takeLocalCommand(name) : null;
+        final shown = local?.line ?? line;
+        final echo = ChatItem.user(id: 'cmdin-$commandId', text: shown);
+        final status = ChatItem.notice(
+            id: 'cmdrun-$commandId', text: '正在执行 $shown …')
+          ..pending = true;
+        if (local != null) {
+          _replaceItem(local.echo, echo);
+          _replaceItem(local.status, status);
+        } else {
+          target.add(echo);
+          target.add(status);
+        }
       case 'command/done':
-        // Slash command outcome: show the handler's result text as a notice.
+        // Slash command outcome: settle the paired pending status in place,
+        // or render a standalone result row when the run predates the window.
+        final commandId = data['commandId'] as String? ?? '';
         final text = data['text'] as String? ?? '';
-        if (text.isNotEmpty) {
+        final isError = data['kind'] == 'error';
+        ChatItem? status;
+        for (final candidate in target) {
+          if (candidate.id == 'cmdrun-$commandId') {
+            status = candidate;
+            break;
+          }
+        }
+        if (status != null) {
+          status
+            ..text =
+                text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成')
+            ..isError = isError
+            ..pending = false;
+        } else if (text.isNotEmpty) {
           target.add(ChatItem.notice(
-            id: 'cmd-$seq',
+            id: 'cmddone-$commandId',
             text: text,
-            isError: data['kind'] == 'error',
+            isError: isError,
           ));
         }
       case 'todo/write':

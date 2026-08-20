@@ -25,10 +25,22 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.7.3';
+const kAppVersion = '1.7.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.7.4',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '快捷命令即时反馈:发送后立刻显示命令气泡和"正在执行"进度条,完成后原地更新为结果,压缩等长任务不再"消失"'),
+      ChangelogChange(ChangelogChangeType.feature,
+          '网页端执行的命令也会实时显示在 App 对话里(进度和结果同步)'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '命令冲突等错误(如"当前正在进行压缩任务")持久显示在对话中,不再一闪而过'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.7.3',
     date: '2026-08-20',

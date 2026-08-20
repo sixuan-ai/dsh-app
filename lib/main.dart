@@ -1757,8 +1757,15 @@ class _UserBubble extends StatelessWidget {
             opacity: item.provisional ? 0.65 : 1,
             child: SelectableText(
               item.text,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 15.5, height: 1.45),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15.5,
+                height: 1.45,
+                // Slash-command echoes render monospace, mirroring the web's
+                // command-input bubble.
+                fontFamily:
+                    item.text.startsWith('/') ? 'monospace' : null,
+              ),
             ),
           ),
         ),
@@ -2246,29 +2253,50 @@ class _NoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isError ? Colors.redAccent : Colors.white38;
+    final color = item.isError
+        ? Colors.redAccent
+        : item.pending
+            ? const Color(0xFF8FA7FF)
+            : Colors.white38;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: item.isError
             ? Colors.red.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.03),
+            : item.pending
+                ? const Color(0xFF4D6BFE).withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: item.isError
               ? Colors.red.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.06),
+              : item.pending
+                  ? const Color(0xFF4D6BFE).withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.06),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            item.isError ? Icons.error_outline : Icons.checklist_rtl,
-            size: 14,
-            color: color,
-          ),
+          if (item.pending)
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Color(0xFF8FA7FF)),
+                ),
+              ),
+            )
+          else
+            Icon(
+              item.isError ? Icons.error_outline : Icons.checklist_rtl,
+              size: 14,
+              color: color,
+            ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -2560,7 +2588,7 @@ class _ComposerState extends State<Composer> {
         state: widget.state,
         onRun: (command) {
           Navigator.of(sheetContext).pop();
-          _runCommand('/$command');
+          widget.state.runCommand('/$command');
         },
         onInsert: (command) {
           Navigator.of(sheetContext).pop();
@@ -2578,27 +2606,11 @@ class _ComposerState extends State<Composer> {
     if (text.isEmpty) return;
     _controller.clear();
     if (text.startsWith('/')) {
-      _runCommand(text);
+      // Slash commands render their own echo + progress + result in chat.
+      widget.state.runCommand(text);
       return;
     }
     widget.state.sendPrompt(text);
-  }
-
-  Future<void> _runCommand(String line) async {
-    try {
-      final result = await widget.state.executeCommand(line);
-      if (!mounted) return;
-      if (result == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('未知命令,点 + 查看可用命令')));
-      }
-      // 成功时 command/done 事件会把结果文本带进对话。
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$error')));
-      }
-    }
   }
 
   @override
