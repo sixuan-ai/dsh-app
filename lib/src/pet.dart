@@ -73,43 +73,44 @@ class PetSpecies {
       stages[petStageIndexForTokens(tokens)];
 }
 
-/// Adoptable species. The 'spirit' chain is the original v1.10.5 chain, so
-/// pets adopted before species existed keep their exact faces.
+/// Adoptable species, named in the 宝可梦/洛克王国 evolution-family style.
+/// The 'spirit' chain keeps the v1.10.5 emoji sequence, so pets adopted
+/// before species existed keep their exact faces (only names change).
 const kPetSpecies = [
-  PetSpecies(id: 'spirit', name: '灵宠', stages: [
-    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '幼崽', minLevel: 3, base: '🐥'),
-    PetStage(name: '小猫', minLevel: 6, base: '🐱'),
-    PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
-    PetStage(name: '神兽', minLevel: 15, base: '🐉'),
+  PetSpecies(id: 'spirit', name: '哈灵', stages: [
+    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '小哈仔', minLevel: 3, base: '🐥'),
+    PetStage(name: '哈灵猫', minLevel: 6, base: '🐱'),
+    PetStage(name: '威哈虎', minLevel: 10, base: '🐯'),
+    PetStage(name: '哈灵龙皇', minLevel: 15, base: '🐉'),
   ]),
-  PetSpecies(id: 'cat', name: '灵猫', stages: [
-    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '幼猫', minLevel: 3, base: '🐱'),
-    PetStage(name: '灵猫', minLevel: 6, base: '🐈'),
-    PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
-    PetStage(name: '狮王', minLevel: 15, base: '🦁'),
+  PetSpecies(id: 'cat', name: '雷光猫', stages: [
+    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '闪电喵', minLevel: 3, base: '🐱'),
+    PetStage(name: '疾电猫', minLevel: 6, base: '🐈'),
+    PetStage(name: '雷纹虎', minLevel: 10, base: '🐯'),
+    PetStage(name: '雷霆狮皇', minLevel: 15, base: '🦁'),
   ]),
-  PetSpecies(id: 'dog', name: '神犬', stages: [
-    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '幼犬', minLevel: 3, base: '🐶'),
-    PetStage(name: '忠犬', minLevel: 6, base: '🐕'),
-    PetStage(name: '孤狼', minLevel: 10, base: '🐺'),
-    PetStage(name: '九尾', minLevel: 15, base: '🦊'),
+  PetSpecies(id: 'dog', name: '苍月狼', stages: [
+    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '小苍犬', minLevel: 3, base: '🐶'),
+    PetStage(name: '苍月犬', minLevel: 6, base: '🐕'),
+    PetStage(name: '啸月狼', minLevel: 10, base: '🐺'),
+    PetStage(name: '九尾天狐', minLevel: 15, base: '🦊'),
   ]),
-  PetSpecies(id: 'dragon', name: '神龙', stages: [
-    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '幼蜥', minLevel: 3, base: '🦎'),
-    PetStage(name: '巨鳄', minLevel: 6, base: '🐊'),
-    PetStage(name: '飞龙', minLevel: 10, base: '🐲'),
-    PetStage(name: '神龙', minLevel: 15, base: '🐉'),
+  PetSpecies(id: 'dragon', name: '焚天炎龙', stages: [
+    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '小火蜥', minLevel: 3, base: '🦎'),
+    PetStage(name: '熔岩鳄', minLevel: 6, base: '🐊'),
+    PetStage(name: '烈焰飞龙', minLevel: 10, base: '🐲'),
+    PetStage(name: '焚天炎龙', minLevel: 15, base: '🐉'),
   ]),
-  PetSpecies(id: 'phoenix', name: '凤凰', stages: [
-    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '雏鸟', minLevel: 3, base: '🐣'),
-    PetStage(name: '小鸟', minLevel: 6, base: '🐥'),
-    PetStage(name: '雄鹰', minLevel: 10, base: '🦅'),
-    PetStage(name: '凤凰', minLevel: 15, base: '🦚'),
+  PetSpecies(id: 'phoenix', name: '九天凤凰', stages: [
+    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '绒绒雏', minLevel: 3, base: '🐣'),
+    PetStage(name: '云雀仔', minLevel: 6, base: '🐥'),
+    PetStage(name: '疾风鹰', minLevel: 10, base: '🦅'),
+    PetStage(name: '九天凤凰', minLevel: 15, base: '🦚'),
   ]),
 ];
 

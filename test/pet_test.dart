@@ -85,13 +85,13 @@ void main() {
 
     test('evolution stages map to level bands', () {
       final spirit = petSpeciesById('spirit');
-      expect(spirit.stageForTokens(0).name, '蛋蛋'); // Lv.1
-      expect(spirit.stageForTokens(2 * kPetTokensPerLevel).name, '幼崽'); // Lv.3
-      expect(spirit.stageForTokens(5 * kPetTokensPerLevel).name, '小猫'); // Lv.6
-      expect(spirit.stageForTokens(9 * kPetTokensPerLevel).name, '猛虎'); // Lv.10
-      expect(spirit.stageForTokens(14 * kPetTokensPerLevel).name, '神兽'); // Lv.15
+      expect(spirit.stageForTokens(0).name, '灵蛋'); // Lv.1
+      expect(spirit.stageForTokens(2 * kPetTokensPerLevel).name, '小哈仔'); // Lv.3
+      expect(spirit.stageForTokens(5 * kPetTokensPerLevel).name, '哈灵猫'); // Lv.6
+      expect(spirit.stageForTokens(9 * kPetTokensPerLevel).name, '威哈虎'); // Lv.10
+      expect(spirit.stageForTokens(14 * kPetTokensPerLevel).name, '哈灵龙皇'); // Lv.15
       // Just below a boundary still belongs to the previous form.
-      expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '幼崽');
+      expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '小哈仔');
       expect(petStageIndexForTokens(14 * kPetTokensPerLevel),
           kPetStageMinLevels.length - 1);
     });
@@ -109,7 +109,7 @@ void main() {
       // Unknown/old ids fall back to the original chain.
       expect(petSpeciesById(null).id, 'spirit');
       expect(petSpeciesById('dinosaur').id, 'spirit');
-      expect(petSpeciesById('dog').stages.last.name, '九尾');
+      expect(petSpeciesById('dog').stages.last.name, '九尾天狐');
     });
 
     test('speciesId persists through JSON, old saves become spirit', () {

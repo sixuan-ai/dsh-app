@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.6';
+const kAppVersion = '1.10.7';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.7',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '宠物家族更名宝可梦/洛克王国风格:哈灵/雷光猫/苍月狼/焚天炎龙/九天凤凰,每个形态都有专属名字(闪电喵→疾电猫→雷纹虎→雷霆狮皇…)'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.6',
     date: '2026-08-21',

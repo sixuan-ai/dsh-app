@@ -536,7 +536,7 @@ class _AdoptViewState extends State<_AdoptView> {
               const Text('领养一颗神秘蛋',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('灵宠、灵猫、神犬、神龙、凤凰……孵化那一刻才揭晓',
+              Text('哈灵、雷光猫、苍月狼、焚天炎龙、九天凤凰……孵化那一刻才揭晓',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: P.textSecondary)),
               const SizedBox(height: 20),
