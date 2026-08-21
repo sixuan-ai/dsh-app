@@ -58,7 +58,7 @@ ssh root@47.239.235.154        # 直接通,无需密码
 | nginx | `/etc/nginx/conf.d/dsh-ainotex.conf`(主)+ `dsh-mac.conf`(mac 实例)+ `dsh-ratelimit.conf`(限流 zone) | `nginx.service` |
 | frps(8000 TCP+QUIC;9980 主 dsh 代理口;8080 vhost 供 mac 实例) | `/root/app/frpc/frps.toml` | `frps.service`(enabled, Restart=always) |
 | dsh-social(9981) | `/opt/dsh-social/social-server.py`,db `/opt/dsh-social/social.db` | `dsh-social.service`(Restart=always) |
-| dsh-directory(3085) | `/opt/dsh-directory/dsh-directory.py`,用户表 `/etc/dsh-directory/users.json` | 裸进程(未 systemd 化,见 §7 待办) |
+| dsh-directory(3085) | `/opt/dsh-directory/dsh-directory.py`,用户表 `/etc/dsh-directory/users.json` | `dsh-directory.service`(enabled, Restart=always) |
 | 官网 | `/var/www/dsh-site/` → `/app/` | 静态 |
 | OTA(认证) | `/var/www/dsh-releases/` → `/releases/`(Basic: `/etc/nginx/.htpasswd-dsh`) | 静态 |
 | OTA(公开) | `/var/www/dsh-releases-public/` → `/app/dl/` | 静态 |
@@ -183,7 +183,7 @@ ssh root@47.239.235.154 'sqlite3 /opt/dsh-social/social.db ".tables"'
 ## 7. 待办/已知项
 
 - 本机两个隧道用 sshd(22022/22023,`/etc/ssh/sshd_config_frpc*`)仍是裸进程,可照 frpc 模式 systemd 化
-- HK 的 dsh-directory(3085)也是裸进程,同样可 systemd 化
 - auth-proxy 是 Restart=on-failure(崩溃才重启),够用;想更稳可改 always
-- App 登录尚未接 directory 路由:目前硬编码主域 `dsh.ainotex.com`;接入后按用户名自动连到对应实例(注意 `/social/` 与 OTA 清单固定在主域,不要跟随实例域)
+- App 已接 directory 登录(v1.9.0):登录页用户名 → `/directory/login` 路由到对应实例,实例 URL 存 `serverUrl` 偏好,启动直连;`/social/`、OTA 清单、头像固定主域。**注意**:mac 用户在 `/social/` 会 401(htpasswd 只有 x),社交多用户化未做
+- 新增实例 = users.json 加用户 + 新 vhost + 证书 + frp 隧道;Mac 侧 dsh web 未运行时其 auth 代理会回 "upstream error"(正常,唤醒 Mac 即可)
 - iOS 端:MacBook Air 可构建,TestFlight 先行;OTA 代码路径已按平台门控到 Android

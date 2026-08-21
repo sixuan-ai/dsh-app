@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
 import 'src/notifications.dart';
+import 'src/protocol.dart';
 import 'src/social.dart';
 import 'src/theme.dart';
 import 'src/updater.dart';
@@ -65,7 +66,10 @@ class _DshAppState extends State<DshApp> {
     final pass = prefs.getString('authPass');
     if (user != null && pass != null && user.isNotEmpty) {
       _hasCreds = true;
-      unawaited(appState.connect(kDefaultServerUrl, username: user, password: pass));
+      // The instance URL was resolved through the directory at login;
+      // reconnect to it directly (no directory round-trip at boot).
+      final serverUrl = prefs.getString('serverUrl') ?? kDefaultServerUrl;
+      unawaited(appState.connect(serverUrl, username: user, password: pass));
     }
     if (mounted) setState(() => _restored = true);
   }
@@ -208,14 +212,31 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     super.dispose();
   }
 
+  String? _preError;
+
   Future<void> _connect() async {
     final user = _user.text.trim();
     final pass = _pass.text;
     if (user.isEmpty || pass.isEmpty) return;
+    setState(() => _preError = null);
+    // Resolve which instance this user belongs to through the central
+    // directory; a network-side directory failure falls back to the default
+    // server (single-instance back-compat), while a credential rejection is
+    // shown immediately without touching the instance.
+    var serverUrl = kDefaultServerUrl;
+    try {
+      serverUrl = await directoryLogin(kDefaultServerUrl, user, pass);
+    } on DshError catch (error) {
+      if (error.code == 'directory-auth') {
+        setState(() => _preError = '用户名或密码错误');
+        return;
+      }
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('authUser', user);
     await prefs.setString('authPass', pass);
-    await widget.state.connect(kDefaultServerUrl, username: user, password: pass);
+    await prefs.setString('serverUrl', serverUrl);
+    await widget.state.connect(serverUrl, username: user, password: pass);
   }
 
   @override
@@ -241,7 +262,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                 child: AnimatedBuilder(
                   animation: widget.state,
                   builder: (context, _) {
-                    final error = widget.state.connectionError;
+                    final error = _preError ?? widget.state.connectionError;
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -301,7 +322,9 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          '连接失败: $error',
+                                          _preError != null
+                                              ? _preError!
+                                              : '连接失败: $error',
                                           style: TextStyle(
                                               color: P.danger, fontSize: 12.5),
                                         ),
@@ -326,7 +349,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                             Icon(Icons.dns_outlined,
                                 size: 13, color: P.textTertiary),
                             const SizedBox(width: 6),
-                            Text(host,
+                            Text('$host · 自动匹配你的实例',
                                 style: TextStyle(
                                     color: P.textTertiary, fontSize: 12)),
                           ],
@@ -482,10 +505,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('socialToken');
       if (token == null) return;
-      final base =
-          state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl;
+      // The social backend is centralized on the main domain regardless of
+      // which dsh instance the login resolved to.
       final api = SocialApi(
-        baseUrl: '$base/social',
+        baseUrl: '$kDefaultServerUrl/social',
         basicUser: state.authUsername,
         basicPass: state.authPassword,
         token: token,
@@ -861,6 +884,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authUser');
     await prefs.remove('authPass');
+    await prefs.remove('serverUrl');
     state.disconnect();
   }
 
@@ -1149,8 +1173,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => CommunityPage(
         state: state,
-        socialBaseUrl:
-            '${state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl}/social',
+        // Social backend is centralized on the main domain for all instances.
+        socialBaseUrl: '$kDefaultServerUrl/social',
       ),
     ));
   }
@@ -1327,8 +1351,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
   Widget _profileHeader() {
     final profile = _profile;
     if (profile == null) return const SizedBox.shrink();
-    final base =
-        state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl;
+    // Avatar URLs live on the centralized social backend (main domain).
+    const base = kDefaultServerUrl;
     final userId = profile['userId'] as String? ?? '';
     final nickname = profile['nickname'] as String? ?? '';
     final ver = (profile['avatarVer'] as num?)?.toInt() ?? 0;

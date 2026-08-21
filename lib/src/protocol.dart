@@ -37,6 +37,40 @@ class ServerFrame {
   String get type => payload['type'] as String? ?? '';
 }
 
+/// Resolves a username to its dsh instance via the central directory service
+/// (`POST {base}/directory/login`). Returns the instance base URL
+/// (`https://<subdomain>`). Throws [DshError] with code `directory-auth` when
+/// the directory rejects the credentials, and `directory-unavailable` when
+/// the directory itself cannot be reached or answers unexpectedly — callers
+/// typically fall back to a default server for the latter.
+Future<String> directoryLogin(
+    String base, String username, String password) async {
+  final client = http.Client();
+  try {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final response = await client.post(
+      Uri.parse('$root/directory/login'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && body['ok'] == true) {
+      final server = body['server'] as String? ?? '';
+      if (server.isNotEmpty) return 'https://$server';
+    }
+    if (response.statusCode == 401) {
+      throw DshError('directory-auth', '用户名或密码错误');
+    }
+    throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
+  } on DshError {
+    rethrow;
+  } catch (error) {
+    throw DshError('directory-unavailable', '$error');
+  } finally {
+    client.close();
+  }
+}
+
 /// Connection to one DSH web server (the same origin the web GUI uses).
 class DshApi {
   DshApi(String baseUrl, {String? username, String? password})

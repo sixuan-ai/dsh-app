@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.8.2';
+const kAppVersion = '1.9.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.9.0',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '多实例登录:登录时按用户名自动连接到你的 dsh 实例(本机/Mac),无需关心域名'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '登录后记住所属实例,启动直连不再绕路;社交与更新仍走主域,不受实例切换影响'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.8.2',
     date: '2026-08-21',
