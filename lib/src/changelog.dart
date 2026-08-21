@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.8.0';
+const kAppVersion = '1.8.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.8.1',
+    date: '2026-08-20',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '消息时间分隔条:间隔超过 5 分钟自动显示时间(QQ 同款)'),
+      ChangelogChange(ChangelogChangeType.feature,
+          '回到底部悬浮按钮:翻看历史时新消息不再抢滚动,按钮带新消息小圆点'),
+      ChangelogChange(ChangelogChangeType.feature,
+          '长按自己的气泡弹出"复制";AI 回复下方新增一键复制按钮'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '新消息入场动画(淡入上移)、下拉加载更早消息、聊天滚动条、更多触感反馈'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.8.0',
     date: '2026-08-20',

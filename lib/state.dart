@@ -1000,6 +1000,11 @@ class AppState extends ChangeNotifier {
     if (into == null && seq <= _lastLiveSeq && _lastLiveSeq >= 0) return; // duplicate after reconnect
     if (into == null) _lastLiveSeq = seq;
 
+    // Items appended by this fold inherit the event timestamp (drives the
+    // QQ-style time dividers in the chat list).
+    final targetBefore = target.length;
+    final eventTime = (event['time'] as num?)?.toInt();
+
     switch (type) {
       case 'user/message':
         final source = (data['source'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -1016,7 +1021,8 @@ class AppState extends ChangeNotifier {
           if (provisional != null && into == null) {
             provisional
               ..text = text
-              ..provisional = false;
+              ..provisional = false
+              ..time ??= eventTime;
             return;
           }
           target.add(ChatItem.user(id: 'u-$seq', text: text));
@@ -1177,6 +1183,11 @@ class AppState extends ChangeNotifier {
         }
       default:
         break;
+    }
+    if (eventTime != null) {
+      for (var i = targetBefore; i < target.length; i++) {
+        target[i].time ??= eventTime;
+      }
     }
     if (into == null) _scheduleSave();
   }

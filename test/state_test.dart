@@ -128,6 +128,24 @@ void main() {
       }));
       expect(app.items, hasLength(1));
     });
+
+    test('folded items inherit the event timestamp', () {
+      final app = AppState();
+      app.foldForTest({
+        'seq': 1,
+        'time': 1756000000000,
+        'type': 'user/message',
+        'data': {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'hi'}
+          ],
+          'source': {'kind': 'user'},
+        },
+      });
+      expect(app.items.single.time, 1756000000000);
+    });
   });
 
   group('command lifecycle', () {
