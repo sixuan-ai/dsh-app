@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.9.1';
+const kAppVersion = '1.9.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.9.2',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.fix,
+          '回答提问/审批时若已失效(如 dsh 服务重启),现在会明确提示"回答未送达",不再静默吞掉'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.9.1',
     date: '2026-08-21',

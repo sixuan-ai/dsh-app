@@ -888,25 +888,40 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Answers a pending approval.
+  /// Answers a pending approval. A rejected respond (the host restarted or
+  /// the turn was cancelled meanwhile) surfaces as a chat notice instead of
+  /// vanishing silently.
   Future<void> answerApproval(PendingApproval approval, String outcome) async {
     approvals.remove(approval);
     notifyListeners();
-    await _api?.respond(approval.rpcId, {
+    final accepted = await _api?.respond(approval.rpcId, {
       'sessionId': approval.sessionId,
       'approvalId': approval.approvalId,
       'outcome': outcome,
     });
+    if (accepted == false) {
+      items.add(ChatItem.notice(
+          id: 'stale-approval-${approval.rpcId}',
+          text: '这条审批已失效(服务可能已重启或该轮已取消),无需处理'));
+      notifyListeners();
+    }
   }
 
-  /// Answers a pending question batch.
+  /// Answers a pending question batch; a rejected respond surfaces like
+  /// [answerApproval]'s stale-notice.
   Future<void> answerQuestion(PendingQuestion question, List<Map<String, dynamic>> answers) async {
     questions.remove(question);
     notifyListeners();
-    await _api?.respond(question.rpcId, {
+    final accepted = await _api?.respond(question.rpcId, {
       'sessionId': question.sessionId,
       'answer': {'answers': answers},
     });
+    if (accepted == false) {
+      items.add(ChatItem.notice(
+          id: 'stale-question-${question.rpcId}',
+          text: '这个提问已失效(服务可能已重启或该轮已取消),你的回答未送达'));
+      notifyListeners();
+    }
   }
 
   // ---- downlink frames ----
