@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.3';
+const kAppVersion = '1.10.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.4',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '启用正式发行签名(替换 debug 密钥),为后续上架应用商店做准备。注意:签名更换后旧版无法覆盖安装,需先卸载再装'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.3',
     date: '2026-08-21',
