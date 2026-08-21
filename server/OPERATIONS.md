@@ -5,16 +5,27 @@
 
 ## 1. 链路拓扑
 
+**双实例**:directory 服务按用户名路由到各自的 dsh。
+
 ```
 手机 App / 浏览器
   │  HTTPS (TLS 1.2/1.3, HSTS)
   ▼
-Cloudflare 边缘(dsh.ainotex.com, 橙云代理, SSL Full strict)
+Cloudflare 边缘(*.ainotex.com, 橙云代理, SSL Full strict)
   │  APK 下载走边缘缓存(HIT 后 ~6MB/s);API/WS 回源
   ▼
 HK 阿里云 nginx :443  (47.239.235.154)
-  │  / → frp 隧道;  /releases/ /app/ 静态;  /social/ → 127.0.0.1:9981
-  ▼
+  ├── dsh.ainotex.com     → frp TCP 9980 ──→ 本机 PD02: auth-proxy 3081 → dsh web 3080
+  ├── mac.dsh.ainotex.com → frp vhost 8080 ─→ MacBook: 自己的认证 → dsh web
+  ├── /directory/ → 127.0.0.1:3085(登录路由:用户名→子域名)
+  ├── /social/    → 127.0.0.1:9981(共享社交后端,与实例无关)
+  └── /releases/ /app/(集中 OTA 与官网,只在主域)
+```
+
+登录路由:`POST /directory/login {username,password}` → `{server: <子域名>}`;
+用户表在 HK `/etc/dsh-directory/users.json`(`x` → 主域,`mac` → mac 子域)。
+
+```
 frp 隧道(QUIC/UDP 8000, TLS + 压缩 + 心跳 15s/90s)
   ▼
 dsh 电脑(家里)
@@ -44,9 +55,10 @@ ssh root@47.239.235.154        # 直接通,无需密码
 
 | 组件 | 位置 | 托管 |
 |---|---|---|
-| nginx | `/etc/nginx/conf.d/dsh-ainotex.conf`(主)+ `dsh-ratelimit.conf`(限流 zone) | `nginx.service` |
-| frps(8000 TCP+QUIC,9980 代理口) | `/root/app/frpc/frps.toml` | `frps.service`(enabled, Restart=always) |
+| nginx | `/etc/nginx/conf.d/dsh-ainotex.conf`(主)+ `dsh-mac.conf`(mac 实例)+ `dsh-ratelimit.conf`(限流 zone) | `nginx.service` |
+| frps(8000 TCP+QUIC;9980 主 dsh 代理口;8080 vhost 供 mac 实例) | `/root/app/frpc/frps.toml` | `frps.service`(enabled, Restart=always) |
 | dsh-social(9981) | `/opt/dsh-social/social-server.py`,db `/opt/dsh-social/social.db` | `dsh-social.service`(Restart=always) |
+| dsh-directory(3085) | `/opt/dsh-directory/dsh-directory.py`,用户表 `/etc/dsh-directory/users.json` | 裸进程(未 systemd 化,见 §7 待办) |
 | 官网 | `/var/www/dsh-site/` → `/app/` | 静态 |
 | OTA(认证) | `/var/www/dsh-releases/` → `/releases/`(Basic: `/etc/nginx/.htpasswd-dsh`) | 静态 |
 | OTA(公开) | `/var/www/dsh-releases-public/` → `/app/dl/` | 静态 |
@@ -171,5 +183,7 @@ ssh root@47.239.235.154 'sqlite3 /opt/dsh-social/social.db ".tables"'
 ## 7. 待办/已知项
 
 - 本机两个隧道用 sshd(22022/22023,`/etc/ssh/sshd_config_frpc*`)仍是裸进程,可照 frpc 模式 systemd 化
+- HK 的 dsh-directory(3085)也是裸进程,同样可 systemd 化
 - auth-proxy 是 Restart=on-failure(崩溃才重启),够用;想更稳可改 always
+- App 登录尚未接 directory 路由:目前硬编码主域 `dsh.ainotex.com`;接入后按用户名自动连到对应实例(注意 `/social/` 与 OTA 清单固定在主域,不要跟随实例域)
 - iOS 端:MacBook Air 可构建,TestFlight 先行;OTA 代码路径已按平台门控到 Android
