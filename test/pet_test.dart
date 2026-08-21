@@ -84,15 +84,38 @@ void main() {
     });
 
     test('evolution stages map to level bands', () {
-      expect(petStageForTokens(0).name, '蛋蛋'); // Lv.1
-      expect(petStageForTokens(2 * kPetTokensPerLevel).name, '幼崽'); // Lv.3
-      expect(petStageForTokens(5 * kPetTokensPerLevel).name, '小猫'); // Lv.6
-      expect(petStageForTokens(9 * kPetTokensPerLevel).name, '猛虎'); // Lv.10
-      expect(petStageForTokens(14 * kPetTokensPerLevel).name, '神兽'); // Lv.15
+      final spirit = petSpeciesById('spirit');
+      expect(spirit.stageForTokens(0).name, '蛋蛋'); // Lv.1
+      expect(spirit.stageForTokens(2 * kPetTokensPerLevel).name, '幼崽'); // Lv.3
+      expect(spirit.stageForTokens(5 * kPetTokensPerLevel).name, '小猫'); // Lv.6
+      expect(spirit.stageForTokens(9 * kPetTokensPerLevel).name, '猛虎'); // Lv.10
+      expect(spirit.stageForTokens(14 * kPetTokensPerLevel).name, '神兽'); // Lv.15
       // Just below a boundary still belongs to the previous form.
-      expect(petStageForTokens(5 * kPetTokensPerLevel - 1).name, '幼崽');
+      expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '幼崽');
       expect(petStageIndexForTokens(14 * kPetTokensPerLevel),
-          kPetStages.length - 1);
+          kPetStageMinLevels.length - 1);
+    });
+
+    test('species registry: five mystery-egg chains, shared thresholds', () {
+      expect(kPetSpecies.length, 5);
+      for (final species in kPetSpecies) {
+        expect(species.stages.length, kPetStageMinLevels.length);
+        for (var i = 0; i < species.stages.length; i++) {
+          expect(species.stages[i].minLevel, kPetStageMinLevels[i]);
+        }
+        // Every chain starts from the mystery egg.
+        expect(species.stages.first.base, '🥚');
+      }
+      // Unknown/old ids fall back to the original chain.
+      expect(petSpeciesById(null).id, 'spirit');
+      expect(petSpeciesById('dinosaur').id, 'spirit');
+      expect(petSpeciesById('dog').stages.last.name, '九尾');
+    });
+
+    test('speciesId persists through JSON, old saves become spirit', () {
+      final pet = Pet.newborn('小哈', 0, speciesId: 'dragon');
+      expect(Pet.fromJson(pet.toJson(), 0).speciesId, 'dragon');
+      expect(Pet.fromJson(const {'name': '豆豆'}, 0).speciesId, 'spirit');
     });
 
     test('rename trims and rejects blanks', () {

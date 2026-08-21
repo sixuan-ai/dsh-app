@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.5';
+const kAppVersion = '1.10.6';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.6',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '神秘蛋领养:随机抽取物种(灵宠/灵猫/神犬/神龙/凤凰五条进化链),孵化瞬间揭晓物种,名片显示物种标签'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.5',
     date: '2026-08-21',

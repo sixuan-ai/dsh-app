@@ -105,7 +105,9 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   }
 
   Future<void> _adopt(String name) async {
-    final pet = Pet.newborn(name, DateTime.now().millisecondsSinceEpoch);
+    // Mystery egg: the species is drawn now but only reveals at hatching.
+    final pet = Pet.newborn(name, DateTime.now().millisecondsSinceEpoch,
+        speciesId: randomPetSpeciesId());
     setState(() => _pet = pet);
     await _store.save(pet);
   }
@@ -176,7 +178,9 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
 
   Widget _buildPetView(BuildContext context, Pet pet) {
     final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
-    final stage = petStageForTokens(tokens);
+    final species = petSpeciesById(pet.speciesId);
+    final stageIndex = petStageIndexForTokens(tokens);
+    final stage = species.stages[stageIndex];
     final face = _hatchHint(tokens) ?? petFace(pet, stage);
     final days =
         (DateTime.now().millisecondsSinceEpoch - pet.bornAtMs) ~/
@@ -218,6 +222,11 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _chip('${stage.name}期'),
+                  // The species reveals itself once the egg hatches.
+                  if (stageIndex > 0) ...[
+                    const SizedBox(width: 8),
+                    _chip(species.name),
+                  ],
                   const SizedBox(width: 8),
                   _chip('相伴第 $days 天'),
                 ],
@@ -273,7 +282,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   /// into 幼崽; null for every other situation.
   String? _hatchHint(int tokens) {
     if (petStageIndexForTokens(tokens) != 0) return null;
-    if (petLevelForTokens(tokens) + 1 < kPetStages[1].minLevel) return null;
+    if (petLevelForTokens(tokens) + 1 < kPetStageMinLevels[1]) return null;
     return petLevelProgressForTokens(tokens) >= 0.75 ? '🐣' : null;
   }
 
@@ -290,20 +299,28 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     pet.stageSeen = index;
     unawaited(_store.save(pet));
     if (seen == null || seen > index) return;
-    final stage = kPetStages[index];
+    final species = petSpeciesById(pet.speciesId);
+    final stage = species.stages[index];
+    // Hatching doubles as the species reveal for the mystery egg.
+    final hatched = seen == 0 && index == 1;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('🎉 进化啦!'),
+          title: Text(hatched ? '🎉 孵化啦!' : '🎉 进化啦!'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(stage.base, style: const TextStyle(fontSize: 72)),
               const SizedBox(height: 12),
-              Text('${pet.name} 进化成了 ${stage.name}!',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                hatched
+                    ? '是一颗${species.name}蛋!${pet.name} 出生啦'
+                    : '${pet.name} 进化成了 ${stage.name}!',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
           actions: [
@@ -323,7 +340,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
     final level = petLevelForTokens(tokens);
     PetStage? nextStage;
-    for (final candidate in kPetStages) {
+    for (final candidate in petSpeciesById(pet.speciesId).stages) {
       if (candidate.minLevel > level) {
         nextStage = candidate;
         break;
@@ -514,12 +531,13 @@ class _AdoptViewState extends State<_AdoptView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🐣', style: TextStyle(fontSize: 72)),
+              const Text('🥚', style: TextStyle(fontSize: 72)),
               const SizedBox(height: 12),
-              const Text('领养一只小可爱',
+              const Text('领养一颗神秘蛋',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('它会饿、会脏、会想你,记得常来看看',
+              Text('灵宠、灵猫、神犬、神龙、凤凰……孵化那一刻才揭晓',
+                  textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: P.textSecondary)),
               const SizedBox(height: 20),
               TextField(

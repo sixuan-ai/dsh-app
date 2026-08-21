@@ -48,28 +48,95 @@ class PetStage {
   final String base;
 }
 
-/// Evolution chain, ascending by [PetStage.minLevel].
-const kPetStages = [
-  PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
-  PetStage(name: '幼崽', minLevel: 3, base: '🐥'),
-  PetStage(name: '小猫', minLevel: 6, base: '🐱'),
-  PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
-  PetStage(name: '神兽', minLevel: 15, base: '🐉'),
-];
+/// Shared level thresholds for every species' five evolution forms.
+const kPetStageMinLevels = [1, 3, 6, 10, 15];
 
-/// The evolution form for a cumulative token count.
-PetStage petStageForTokens(int tokens) {
-  final level = petLevelForTokens(tokens);
-  var stage = kPetStages.first;
-  for (final candidate in kPetStages) {
-    if (level >= candidate.minLevel) stage = candidate;
-  }
-  return stage;
+/// A pet species: five evolution forms sharing [kPetStageMinLevels].
+class PetSpecies {
+  const PetSpecies({
+    required this.id,
+    required this.name,
+    required this.stages,
+  });
+
+  /// Stable id persisted on the pet (spirit/cat/dog/dragon/phoenix).
+  final String id;
+
+  /// Species display name (灵宠/灵猫/神犬/神龙/凤凰).
+  final String name;
+
+  /// Evolution forms, ascending by [PetStage.minLevel]; length 5.
+  final List<PetStage> stages;
+
+  /// The form for a cumulative token count.
+  PetStage stageForTokens(int tokens) =>
+      stages[petStageIndexForTokens(tokens)];
 }
 
-/// Index into [kPetStages] (identity-based; used for evolution detection).
-int petStageIndexForTokens(int tokens) =>
-    kPetStages.indexOf(petStageForTokens(tokens));
+/// Adoptable species. The 'spirit' chain is the original v1.10.5 chain, so
+/// pets adopted before species existed keep their exact faces.
+const kPetSpecies = [
+  PetSpecies(id: 'spirit', name: '灵宠', stages: [
+    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '幼崽', minLevel: 3, base: '🐥'),
+    PetStage(name: '小猫', minLevel: 6, base: '🐱'),
+    PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
+    PetStage(name: '神兽', minLevel: 15, base: '🐉'),
+  ]),
+  PetSpecies(id: 'cat', name: '灵猫', stages: [
+    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '幼猫', minLevel: 3, base: '🐱'),
+    PetStage(name: '灵猫', minLevel: 6, base: '🐈'),
+    PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
+    PetStage(name: '狮王', minLevel: 15, base: '🦁'),
+  ]),
+  PetSpecies(id: 'dog', name: '神犬', stages: [
+    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '幼犬', minLevel: 3, base: '🐶'),
+    PetStage(name: '忠犬', minLevel: 6, base: '🐕'),
+    PetStage(name: '孤狼', minLevel: 10, base: '🐺'),
+    PetStage(name: '九尾', minLevel: 15, base: '🦊'),
+  ]),
+  PetSpecies(id: 'dragon', name: '神龙', stages: [
+    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '幼蜥', minLevel: 3, base: '🦎'),
+    PetStage(name: '巨鳄', minLevel: 6, base: '🐊'),
+    PetStage(name: '飞龙', minLevel: 10, base: '🐲'),
+    PetStage(name: '神龙', minLevel: 15, base: '🐉'),
+  ]),
+  PetSpecies(id: 'phoenix', name: '凤凰', stages: [
+    PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+    PetStage(name: '雏鸟', minLevel: 3, base: '🐣'),
+    PetStage(name: '小鸟', minLevel: 6, base: '🐥'),
+    PetStage(name: '雄鹰', minLevel: 10, base: '🦅'),
+    PetStage(name: '凤凰', minLevel: 15, base: '🦚'),
+  ]),
+];
+
+/// Resolves a persisted species id; unknown/old saves map to the original
+/// 'spirit' chain.
+PetSpecies petSpeciesById(String? id) {
+  for (final species in kPetSpecies) {
+    if (species.id == id) return species;
+  }
+  return kPetSpecies.first;
+}
+
+/// Random species id for a fresh adoption (mystery egg: the species only
+/// reveals itself when the egg hatches).
+String randomPetSpeciesId() =>
+    kPetSpecies[math.Random().nextInt(kPetSpecies.length)].id;
+
+/// Index into any species' stage list for a cumulative token count (all
+/// chains share [kPetStageMinLevels]).
+int petStageIndexForTokens(int tokens) {
+  final level = petLevelForTokens(tokens);
+  var index = 0;
+  for (var i = 0; i < kPetStageMinLevels.length; i++) {
+    if (level >= kPetStageMinLevels[i]) index = i;
+  }
+  return index;
+}
 
 /// Face emoji for [pet] at [stage]: the most urgent unmet need wins,
 /// otherwise the overall average decides. The cat form keeps the expressive
@@ -97,6 +164,7 @@ String petFace(Pet pet, PetStage stage) {
 class Pet {
   Pet({
     required this.name,
+    required this.speciesId,
     required this.hunger,
     required this.mood,
     required this.hygiene,
@@ -104,9 +172,13 @@ class Pet {
     required this.lastTickMs,
   });
 
-  /// A freshly adopted pet with full stats.
-  factory Pet.newborn(String name, int nowMs) => Pet(
+  /// A freshly adopted pet with full stats. [speciesId] defaults to the
+  /// original chain; the pet page passes [randomPetSpeciesId] for the
+  /// mystery-egg draw.
+  factory Pet.newborn(String name, int nowMs, {String speciesId = 'spirit'}) =>
+      Pet(
         name: name,
+        speciesId: speciesId,
         hunger: kPetStatMax,
         mood: kPetStatMax,
         hygiene: kPetStatMax,
@@ -121,6 +193,7 @@ class Pet {
         name: (json['name'] as String?)?.trim().isNotEmpty == true
             ? (json['name'] as String).trim()
             : '小哈',
+        speciesId: (json['speciesId'] as String?) ?? 'spirit',
         hunger: _clampStat((json['hunger'] as num?)?.toInt() ?? kPetStatMax),
         mood: _clampStat((json['mood'] as num?)?.toInt() ?? kPetStatMax),
         hygiene: _clampStat((json['hygiene'] as num?)?.toInt() ?? kPetStatMax),
@@ -129,13 +202,18 @@ class Pet {
       )..stageSeen = (json['stageSeen'] as num?)?.toInt();
 
   String name;
+
+  /// Species drawn at adoption; fixed for the pet's lifetime.
+  String speciesId;
+
   int hunger;
   int mood;
   int hygiene;
 
-  /// Evolution form (index into [kPetStages]) the user has already seen and
-  /// celebrated; null on old saves. The pet page advances it silently on
-  /// first load and pops a celebration when the stage crosses upward.
+  /// Evolution form index (into the species' stage list) the user has
+  /// already seen and celebrated; null on old saves. The pet page advances
+  /// it silently on first load and pops a celebration when the stage
+  /// crosses upward.
   int? stageSeen;
 
   /// Adoption time, milliseconds since epoch.
@@ -148,6 +226,7 @@ class Pet {
 
   Map<String, dynamic> toJson() => {
         'name': name,
+        'speciesId': speciesId,
         'hunger': hunger,
         'mood': mood,
         'hygiene': hygiene,
