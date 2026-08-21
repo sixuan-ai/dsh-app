@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.1';
+const kAppVersion = '1.10.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.2',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '侧边栏瘦身:主题/宠物/权限模式/更新/日志/退出收进「更多功能」九宫格,会话列表拿回全部高度;更新提示红点透传到入口上'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.1',
     date: '2026-08-21',

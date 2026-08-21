@@ -1229,6 +1229,85 @@ class _SessionDrawerState extends State<SessionDrawer> {
     await state.runCommand('/permission $preset');
   }
 
+  /// The "更多功能" grid sheet. Pages (pet/changelog) close the drawer first;
+  /// sub-sheets (theme/permissions) stay over the open drawer.
+  void _openMore() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _MoreSheet(actions: [
+        _MoreAction(
+          icon: Icons.palette_outlined,
+          label: '主题',
+          caption: kAppThemes
+              .firstWhere((s) => s.id == widget.theme.themeId,
+                  orElse: () => kAppThemes.first)
+              .name,
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            showModalBottomSheet<void>(
+              context: context,
+              showDragHandle: true,
+              builder: (_) => _ThemeSheet(theme: widget.theme),
+            );
+          },
+        ),
+        _MoreAction(
+          icon: Icons.pets,
+          label: '宠物',
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            Navigator.of(context).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => PetPage(state: state)),
+            );
+          },
+        ),
+        _MoreAction(
+          icon: Icons.shield_outlined,
+          label: '权限模式',
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            _openPermissions();
+          },
+        ),
+        // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
+        if (defaultTargetPlatform == TargetPlatform.android)
+          _MoreAction(
+            icon: Icons.system_update_alt,
+            label: '检查更新',
+            dot: widget.updateAvailable,
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              widget.onCheckUpdate();
+            },
+          ),
+        _MoreAction(
+          icon: Icons.new_releases_outlined,
+          label: '更新日志',
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            Navigator.of(context).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ChangelogPage()),
+            );
+          },
+        ),
+        _MoreAction(
+          icon: Icons.logout,
+          label: '退出登录',
+          danger: true,
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            Navigator.of(context).pop();
+            widget.onLogout();
+          },
+        ),
+      ]),
+    );
+  }
+
   Future<void> _loadCollapsed() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getStringList('collapsedWorkspaces');
@@ -1325,90 +1404,29 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ),
             const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.palette_outlined, size: 20),
-              title: const Text('主题', style: TextStyle(fontSize: 14)),
-              trailing: Text(
-                kAppThemes
-                    .firstWhere((s) => s.id == widget.theme.themeId,
-                        orElse: () => kAppThemes.first)
-                    .name,
-                style: TextStyle(color: P.textTertiary, fontSize: 12),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                showModalBottomSheet<void>(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (_) => _ThemeSheet(theme: widget.theme),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.pets, size: 20),
-              title: const Text('宠物', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                      builder: (_) => PetPage(state: state)),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.shield_outlined, size: 20),
-              title: const Text('权限模式', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                _openPermissions();
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.groups_outlined, size: 20),
               title: const Text('社区', style: TextStyle(fontSize: 14)),
               onTap: _openCommunity,
             ),
-            // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
-            if (defaultTargetPlatform == TargetPlatform.android)
-              ListTile(
-                leading: const Icon(Icons.system_update_alt, size: 20),
-                title: Row(
-                  children: [
-                    const Text('检查更新', style: TextStyle(fontSize: 14)),
-                    if (widget.updateAvailable)
-                      Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.only(left: 6),
-                        decoration: BoxDecoration(
-                          color: P.success,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  widget.onCheckUpdate();
-                },
-              ),
+            // Everything else lives in the grid sheet, so the session list
+            // keeps the full remaining height no matter how many utilities
+            // the app grows.
             ListTile(
-              leading: const Icon(Icons.new_releases_outlined, size: 20),
-              title: const Text('更新日志', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                      builder: (_) => const ChangelogPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, size: 20),
-              title: const Text('退出登录', style: TextStyle(fontSize: 14)),
-              onTap: () {
-                Navigator.of(context).pop();
-                widget.onLogout();
-              },
+              leading: const Icon(Icons.apps_rounded, size: 20),
+              title: const Text('更多功能', style: TextStyle(fontSize: 14)),
+              trailing:
+                  widget.updateAvailable &&
+                          defaultTargetPlatform == TargetPlatform.android
+                      ? Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: P.success,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
+              onTap: _openMore,
             ),
           ],
         ),
@@ -4609,6 +4627,129 @@ const _slashCommands = [
   _SlashCommand('feedback', Icons.rate_review_outlined, '记录对本会话的反馈',
       hasInput: true),
 ];
+
+/// One entry of the "更多功能" grid sheet.
+class _MoreAction {
+  const _MoreAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.caption,
+    this.dot = false,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// Small tertiary text under the label (e.g. the current theme name).
+  final String? caption;
+
+  /// Green badge dot on the icon (update available).
+  final bool dot;
+
+  /// Danger styling (logout).
+  final bool danger;
+}
+
+/// The "更多功能" bottom sheet: a 4-column icon grid holding every utility
+/// that used to be a full-height drawer tile.
+class _MoreSheet extends StatelessWidget {
+  const _MoreSheet({required this.actions});
+
+  final List<_MoreAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('更多功能',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
+              childAspectRatio: 0.92,
+              children: [
+                for (final action in actions) _MoreCell(action: action),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreCell extends StatelessWidget {
+  const _MoreCell({required this.action});
+
+  final _MoreAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = action.danger ? P.danger : P.accentLight;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: action.onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: action.danger
+                      ? P.danger.withValues(alpha: 0.1)
+                      : P.fillSubtle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(action.icon, size: 22, color: fg),
+              ),
+              if (action.dot)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: P.success,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: P.card, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(action.label,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: action.danger ? P.danger : P.textSecondary)),
+          if (action.caption != null)
+            Text(action.caption!,
+                style: TextStyle(fontSize: 10, color: P.textTertiary)),
+        ],
+      ),
+    );
+  }
+}
 
 /// Permission-mode sheet (drawer → 权限模式): one tap per preset; the pick
 /// rides the /permission command, so the chat shows the usual command card.
