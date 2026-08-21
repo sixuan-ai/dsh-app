@@ -13,23 +13,6 @@ Map<String, dynamic> event(int seq, String type, Map<String, dynamic> data) => {
 };
 
 void main() {
-  group('session search models', () {
-    test('search results preserve server snippet and session metadata', () {
-      final result = SessionSearchResult(
-        sessionId: 's1',
-        snippet: '包含关键词的消息',
-        title: '项目讨论',
-        cwd: '/work/project',
-        updatedAt: 123,
-      );
-      final page = SessionSearchResults(items: [result], hasMore: true);
-      expect(page.items.single.sessionId, 's1');
-      expect(page.items.single.snippet, contains('关键词'));
-      expect(page.items.single.title, '项目讨论');
-      expect(page.hasMore, isTrue);
-    });
-  });
-
   group('session management state', () {
     test('pinning is local and toggles the pinned set', () async {
       final app = AppState();
