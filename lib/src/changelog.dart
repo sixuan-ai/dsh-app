@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.7';
+const kAppVersion = '1.10.8';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.8',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '宠物对战:挑战野生宠物,回合制战报+血条动画,五物种循环克制;胜者从主人处赢取 0.2M tokens 成长值(输了会被扣,历史对话 tokens 不受影响)'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.7',
     date: '2026-08-21',

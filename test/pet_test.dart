@@ -3,6 +3,8 @@
 /// smoke test of the page.
 library;
 
+import 'dart:math' as math;
+
 import 'package:dsh_mobile/pet_page.dart';
 import 'package:dsh_mobile/src/pet.dart';
 import 'package:flutter/material.dart';
@@ -118,6 +120,76 @@ void main() {
       expect(Pet.fromJson(const {'name': '豆豆'}, 0).speciesId, 'spirit');
     });
 
+    test('species counter wheel is cyclic in registry order', () {
+      for (var i = 0; i < kPetSpecies.length; i++) {
+        final attacker = kPetSpecies[i].id;
+        final prey = kPetSpecies[(i + 1) % kPetSpecies.length].id;
+        expect(petSpeciesCounters(attacker, prey), isTrue,
+            reason: '$attacker counters $prey');
+        expect(petSpeciesCounters(prey, attacker), isFalse);
+      }
+      expect(petSpeciesCounters('unknown', 'spirit'), isFalse);
+    });
+
+    test('wild opponent stays near the player level with mid stats', () {
+      final rng = math.Random(7);
+      for (var i = 0; i < 20; i++) {
+        final opponent = randomWildOpponent(6, rng);
+        final level = petLevelForTokens(opponent.tokens);
+        expect(level, inInclusiveRange(5, 7));
+        expect(opponent.pet.name, startsWith('野生的'));
+        expect(opponent.pet.hunger, inInclusiveRange(40, 90));
+      }
+    });
+
+    test('battle simulation: a much stronger player wins, log is complete',
+        () {
+      final rng = math.Random(3);
+      final player = Pet.newborn('小哈', 0, speciesId: 'spirit');
+      final wild = Pet.newborn('野怪', 0, speciesId: 'dog')
+        ..hunger = 40
+        ..mood = 40
+        ..hygiene = 40;
+      final result = simulatePetBattle(
+        player: player,
+        playerTokens: 12 * kPetTokensPerLevel, // Lv.13
+        wild: wild,
+        wildTokens: 0, // Lv.1
+        random: rng,
+      );
+      expect(result.playerWon, isTrue);
+      expect(result.rounds, isNotEmpty);
+      // Rounds alternate attackers and end with someone at 0 HP.
+      for (var i = 1; i < result.rounds.length; i++) {
+        expect(result.rounds[i].attackerIsPlayer,
+            isNot(result.rounds[i - 1].attackerIsPlayer));
+      }
+      expect(result.rounds.last.wildHp, 0);
+      // spirit counters cat (next in wheel), and dog is two steps away:
+      // no counter bonus against this opponent.
+      expect(result.rounds.where((r) => r.countered), isEmpty);
+    });
+
+    test('battle simulation: counter wheel adds damage and wild can win', () {
+      final rng = math.Random(11);
+      // dragon counters phoenix; Lv.10 wild dragon vs Lv.1 player phoenix.
+      final player = Pet.newborn('小哈', 0, speciesId: 'phoenix')
+        ..hunger = 40
+        ..mood = 40
+        ..hygiene = 40;
+      final wild = Pet.newborn('野生龙', 0, speciesId: 'dragon');
+      final result = simulatePetBattle(
+        player: player,
+        playerTokens: 0,
+        wild: wild,
+        wildTokens: 9 * kPetTokensPerLevel, // Lv.10
+        random: rng,
+      );
+      expect(result.playerWon, isFalse);
+      expect(result.rounds.any((r) => r.countered && !r.attackerIsPlayer),
+          isTrue);
+      expect(result.rounds.last.playerHp, 0);
+    });
     test('rename trims and rejects blanks', () {
       final pet = Pet.newborn('小哈', 0);
       expect(pet.rename('   '), isFalse);
@@ -225,6 +297,22 @@ void main() {
       expect(await store.record('s2', 500000), 2000000);
       // A fresh instance reads the persisted map.
       expect(await PetTokenStore().total(), 2000000);
+    });
+
+    test('bonus pool joins the total and losses floor at zero', () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = PetTokenStore();
+      await store.record('s1', 1000000);
+      // Winning a battle adds the stake to the growth total.
+      expect(await store.addBonus(kPetBattleStake), 1200000);
+      expect(await PetTokenStore().total(), 1200000);
+      // Losing drains the pool but never below zero, and never touches the
+      // per-session observations.
+      expect(await store.addBonus(-kPetBattleStake), 1000000);
+      expect(await store.addBonus(-kPetBattleStake), 1000000);
+      // record() still reports the grand total including the pool.
+      await store.addBonus(kPetBattleStake);
+      expect(await store.record('s2', 500000), 1700000);
     });
   });
 

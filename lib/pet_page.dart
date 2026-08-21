@@ -3,6 +3,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -264,8 +265,36 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonal(
+            onPressed: _openBattle,
+            child: const Text('⚔️ 宠物对战 · 胜者赢取 0.2M tokens'),
+          ),
+        ),
       ],
     );
+  }
+
+  /// Opens the battle dialog against a freshly drawn wild opponent.
+  void _openBattle() {
+    final pet = _pet;
+    if (pet == null) return;
+    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
+    showDialog<void>(
+      context: context,
+      builder: (_) =>
+          _BattleDialog(pet: pet, tokens: tokens, onSettle: _settleBattle),
+    );
+  }
+
+  /// Settles the battle stake into the bonus pool and refreshes totals so
+  /// the growth card (and any level-up evolution) react immediately.
+  Future<void> _settleBattle(int delta) async {
+    final total = await _tokenStore.addBonus(delta);
+    await widget.state?.refreshPetTokens();
+    if (mounted) setState(() => _tokensTotal = total);
   }
 
   /// Small pill on the hero card (stage name / days together).
@@ -506,8 +535,7 @@ class _AdoptView extends StatefulWidget {
   State<_AdoptView> createState() => _AdoptViewState();
 }
 
-class _AdoptViewState extends State<_AdoptView> {
-  final _controller = TextEditingController(text: '小哈');
+class _AdoptViewState extends State<_AdoptView> {  final _controller = TextEditingController(text: '小哈');
 
   @override
   void dispose() {
@@ -561,6 +589,231 @@ class _AdoptViewState extends State<_AdoptView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pet battle dialog: the battle is pre-simulated via [simulatePetBattle],
+/// then the rounds are revealed one at a time over the HP bars and the log.
+/// Settling happens once per battle through [onSettle].
+class _BattleDialog extends StatefulWidget {
+  const _BattleDialog({
+    required this.pet,
+    required this.tokens,
+    required this.onSettle,
+  });
+
+  final Pet pet;
+  final int tokens;
+
+  /// Applies the stake delta (+/- [kPetBattleStake]) and refreshes totals.
+  final Future<void> Function(int delta) onSettle;
+
+  @override
+  State<_BattleDialog> createState() => _BattleDialogState();
+}
+
+class _BattleDialogState extends State<_BattleDialog> {
+  final _rng = math.Random();
+  final _logScroll = ScrollController();
+
+  late Pet _wild;
+  late int _wildTokens;
+  late PetBattleResult _result;
+  int _revealed = 0;
+  Timer? _timer;
+  bool _settled = false;
+
+  static const _roundDelay = Duration(milliseconds: 650);
+
+  @override
+  void initState() {
+    super.initState();
+    _startBattle();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _logScroll.dispose();
+    super.dispose();
+  }
+
+  void _startBattle() {
+    final opponent =
+        randomWildOpponent(petLevelForTokens(widget.tokens), _rng);
+    _wild = opponent.pet;
+    _wildTokens = opponent.tokens;
+    _result = simulatePetBattle(
+      player: widget.pet,
+      playerTokens: widget.tokens,
+      wild: _wild,
+      wildTokens: _wildTokens,
+      random: _rng,
+    );
+    _timer?.cancel();
+    setState(() {
+      _revealed = 0;
+      _settled = false;
+    });
+    _timer = Timer.periodic(_roundDelay, (_) {
+      if (!mounted) return;
+      setState(() {
+        _revealed++;
+        if (_revealed >= _result.rounds.length) {
+          _timer?.cancel();
+          unawaited(_finish());
+        }
+      });
+      if (_logScroll.hasClients) {
+        _logScroll.jumpTo(_logScroll.position.maxScrollExtent);
+      }
+    });
+  }
+
+  Future<void> _finish() async {
+    if (_settled) return;
+    _settled = true;
+    await widget
+        .onSettle(_result.playerWon ? kPetBattleStake : -kPetBattleStake);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final myStage =
+        petSpeciesById(widget.pet.speciesId).stageForTokens(widget.tokens);
+    final wildStage =
+        petSpeciesById(_wild.speciesId).stageForTokens(_wildTokens);
+    final done = _revealed >= _result.rounds.length;
+    final playerHp =
+        _revealed == 0 ? 100 : _result.rounds[_revealed - 1].playerHp;
+    final wildHp = _revealed == 0 ? 100 : _result.rounds[_revealed - 1].wildHp;
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('宠物对战',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _fighter(
+                    face: petFace(widget.pet, myStage),
+                    name: widget.pet.name,
+                    level: petLevelForTokens(widget.tokens),
+                    hp: playerHp,
+                    color: P.accentLight,
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('⚔️', style: TextStyle(fontSize: 24)),
+                ),
+                Expanded(
+                  child: _fighter(
+                    face: petFace(_wild, wildStage),
+                    name: _wild.name,
+                    level: petLevelForTokens(_wildTokens),
+                    hp: wildHp,
+                    color: P.danger,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 120,
+              child: ListView.builder(
+                controller: _logScroll,
+                itemCount: _revealed,
+                itemBuilder: (_, i) => _logLine(_result.rounds[i]),
+              ),
+            ),
+            if (done) ...[
+              const SizedBox(height: 10),
+              Text(
+                _result.playerWon
+                    ? '🎉 赢了! +0.2M tokens'
+                    : '💨 惜败… 被对方拿走了 0.2M tokens',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _result.playerWon ? P.success : P.danger,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('收工'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _startBattle,
+                    child: const Text('再来一局'),
+                  ),
+                ],
+              ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('战斗中…',
+                    style: TextStyle(fontSize: 12, color: P.textTertiary)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fighter({
+    required String face,
+    required String name,
+    required int level,
+    required int hp,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(face, style: const TextStyle(fontSize: 44)),
+        const SizedBox(height: 4),
+        Text('$name Lv.$level',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: hp / 100,
+            minHeight: 7,
+            backgroundColor: P.fillMedium,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text('$hp/100', style: TextStyle(fontSize: 10, color: P.textTertiary)),
+      ],
+    );
+  }
+
+  Widget _logLine(BattleRound round) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
+      child: Text(
+        '${round.attackerIsPlayer ? '🗡️' : '🛡️'} ${round.attackerName} 造成 '
+        '${round.damage} 点伤害${round.countered ? '(克制!)' : ''}',
+        style: TextStyle(
+          fontSize: 12,
+          color: round.attackerIsPlayer ? null : P.textSecondary,
+          fontWeight: round.countered ? FontWeight.bold : FontWeight.normal,
         ),
       ),
     );

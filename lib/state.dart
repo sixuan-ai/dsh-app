@@ -206,6 +206,16 @@ class AppState extends ChangeNotifier {
     }));
   }
 
+  /// Re-reads the pet token total after an out-of-band change (pet battle
+  /// settlement) so every listener sees the new level immediately.
+  Future<void> refreshPetTokens() async {
+    final total = await _petTokens.total();
+    if (total != petTokensTotal) {
+      petTokensTotal = total;
+      notifyListeners();
+    }
+  }
+
   /// Model catalog of the selected session, loaded on demand.
   SessionModelsData? models;
   bool loadingModels = false;

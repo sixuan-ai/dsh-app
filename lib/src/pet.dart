@@ -128,6 +128,119 @@ PetSpecies petSpeciesById(String? id) {
 String randomPetSpeciesId() =>
     kPetSpecies[math.Random().nextInt(kPetSpecies.length)].id;
 
+// ---- pet battles ----
+
+/// Tokens the battle winner takes from the player's PK bonus pool.
+const kPetBattleStake = 200000;
+
+/// One revealed attack round.
+class BattleRound {
+  const BattleRound({
+    required this.attackerName,
+    required this.attackerIsPlayer,
+    required this.damage,
+    required this.countered,
+    required this.playerHp,
+    required this.wildHp,
+  });
+
+  final String attackerName;
+  final bool attackerIsPlayer;
+  final int damage;
+
+  /// The attacker's species counters the defender's this round.
+  final bool countered;
+
+  /// HP after the hit.
+  final int playerHp;
+  final int wildHp;
+}
+
+/// Outcome of [simulatePetBattle]: the winner plus the full round list for
+/// the battle dialog to reveal one by one.
+class PetBattleResult {
+  const PetBattleResult({required this.playerWon, required this.rounds});
+
+  final bool playerWon;
+  final List<BattleRound> rounds;
+}
+
+/// Species counter wheel: every species counters the next one in
+/// [kPetSpecies] order (cyclically), landing 1.25x damage.
+bool petSpeciesCounters(String attackerId, String defenderId) {
+  final order = [for (final species in kPetSpecies) species.id];
+  final attacker = order.indexOf(attackerId);
+  final defender = order.indexOf(defenderId);
+  if (attacker < 0 || defender < 0) return false;
+  return (attacker + 1) % order.length == defender;
+}
+
+/// Generates a wild challenger: random species, level near [playerLevel],
+/// mid care stats. Returns the pet and its implied token total.
+({Pet pet, int tokens}) randomWildOpponent(int playerLevel, math.Random rng) {
+  final species = kPetSpecies[rng.nextInt(kPetSpecies.length)];
+  final level = math.max(1, playerLevel + rng.nextInt(3) - 1);
+  var stageIndex = 0;
+  for (var i = 0; i < kPetStageMinLevels.length; i++) {
+    if (level >= kPetStageMinLevels[i]) stageIndex = i;
+  }
+  final stage = species.stages[stageIndex];
+  final pet = Pet.newborn('野生的${stage.name}', 0, speciesId: species.id)
+    ..hunger = 40 + rng.nextInt(51)
+    ..mood = 40 + rng.nextInt(51)
+    ..hygiene = 40 + rng.nextInt(51);
+  return (
+    pet: pet,
+    tokens: (level - 1) * kPetTokensPerLevel + rng.nextInt(kPetTokensPerLevel),
+  );
+}
+
+/// Simulates a full battle instantly; the dialog reveals [PetBattleResult.rounds]
+/// one by one. Damage scales with level and the attacker's care stats; the
+/// counter wheel adds 1.25x. The higher level strikes first; a round-cap
+/// stalemate goes to the side with more HP left (ties to the player).
+PetBattleResult simulatePetBattle({
+  required Pet player,
+  required int playerTokens,
+  required Pet wild,
+  required int wildTokens,
+  math.Random? random,
+}) {
+  final rng = random ?? math.Random();
+  final playerLevel = petLevelForTokens(playerTokens);
+  final wildLevel = petLevelForTokens(wildTokens);
+  var playerHp = 100;
+  var wildHp = 100;
+  final rounds = <BattleRound>[];
+  var playerTurn = playerLevel >= wildLevel;
+  while (playerHp > 0 && wildHp > 0 && rounds.length < 30) {
+    final attacker = playerTurn ? player : wild;
+    final defender = playerTurn ? wild : player;
+    final level = playerTurn ? playerLevel : wildLevel;
+    final countered = petSpeciesCounters(attacker.speciesId, defender.speciesId);
+    var damage = 6 + level * 3 + rng.nextInt(7);
+    damage = (damage * (0.7 + attacker.overall / 100 * 0.6)).round();
+    if (countered) damage = (damage * 1.25).round();
+    if (playerTurn) {
+      wildHp = math.max(0, wildHp - damage);
+    } else {
+      playerHp = math.max(0, playerHp - damage);
+    }
+    rounds.add(BattleRound(
+      attackerName: attacker.name,
+      attackerIsPlayer: playerTurn,
+      damage: damage,
+      countered: countered,
+      playerHp: playerHp,
+      wildHp: wildHp,
+    ));
+    playerTurn = !playerTurn;
+  }
+  final playerWon =
+      wildHp <= 0 ? true : playerHp <= 0 ? false : playerHp >= wildHp;
+  return PetBattleResult(playerWon: playerWon, rounds: rounds);
+}
+
 /// Index into any species' stage list for a cumulative token count (all
 /// chains share [kPetStageMinLevels]).
 int petStageIndexForTokens(int tokens) {
@@ -333,10 +446,11 @@ class PetStore {
 
 /// Cumulative cache-hit input tokens per session, persisted across launches.
 /// The server's tokenUsage projection is cumulative per session, so each
-/// session contributes only its max observed value; the pet's growth total
-/// is the sum across sessions.
+/// session contributes only its max observed value. The growth total is the
+/// session sum plus the PK bonus pool (won/lost in pet battles).
 class PetTokenStore {
   static const _key = 'petTokenTotals';
+  static const _bonusKey = 'petBonusTokens';
 
   /// Reads the persisted per-session map (empty on corruption).
   Future<Map<String, int>> _read() async {
@@ -357,12 +471,28 @@ class PetTokenStore {
     }
   }
 
-  /// Global total across all recorded sessions.
+  /// PK bonus pool (>= 0): battle stakes are settled here so the historical
+  /// per-session observations stay immutable.
+  Future<int> _bonus() async =>
+      (await SharedPreferences.getInstance()).getInt(_bonusKey) ?? 0;
+
+  /// Global total: per-session sum plus the PK bonus pool.
   Future<int> total() async =>
-      (await _read()).values.fold<int>(0, (sum, v) => sum + v);
+      (await _read()).values.fold<int>(0, (sum, v) => sum + v) +
+      await _bonus();
+
+  /// Settles a battle stake: adds [delta] (negative on loss) to the bonus
+  /// pool, floored at 0 — a wild winner cannot steal more than the pool
+  /// holds. Returns the new global total.
+  Future<int> addBonus(int delta) async {
+    final prefs = await SharedPreferences.getInstance();
+    final next = math.max(0, (prefs.getInt(_bonusKey) ?? 0) + delta);
+    await prefs.setInt(_bonusKey, next);
+    return total();
+  }
 
   /// Records one session's cumulative hit-token observation (max wins) and
-  /// returns the global total.
+  /// returns the global total (including the bonus pool).
   Future<int> record(String sessionId, int tokens) async {
     final map = await _read();
     final previous = map[sessionId] ?? 0;
@@ -371,6 +501,6 @@ class PetTokenStore {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_key, jsonEncode(map));
     }
-    return map.values.fold<int>(0, (sum, v) => sum + v);
+    return total();
   }
 }
