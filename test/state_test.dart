@@ -24,6 +24,33 @@ void main() {
   });
 
   group('event fold', () {
+    test('user image references are preserved for authenticated loading', () {
+      final app = AppState();
+      app.foldForTest(
+        event(1, 'user/message', {
+          'source': {'kind': 'user'},
+          'content': [
+            {'type': 'text', 'text': '看图'},
+            {
+              'type': 'image',
+              'attachment': {
+                'attachmentId': 'img-1',
+                'mediaType': 'image/jpeg',
+                'bytes': 1234,
+                'width': 640,
+                'height': 480,
+                'name': 'photo.jpg',
+              },
+            },
+          ],
+        }),
+      );
+      expect(app.items.single.text, '看图');
+      expect(app.items.single.images, hasLength(1));
+      expect(app.items.single.images.single.attachmentId, 'img-1');
+      expect(app.items.single.images.single.width, 640);
+    });
+
     test('user message with user source renders a user bubble', () {
       final app = AppState();
       app.foldForTest(

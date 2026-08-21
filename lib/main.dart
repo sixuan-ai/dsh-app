@@ -7,10 +7,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:image/image.dart' as img;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -2388,6 +2391,7 @@ class _ChatListState extends State<ChatList> {
         final showTime = _needsTimeDivider(prev, item);
         final body = ChatItemView(
           key: ValueKey(item.id),
+          state: state,
           item: item,
           animate: itemIndex >= animateFrom,
         );
@@ -2539,8 +2543,14 @@ class _ScrollToBottomButton extends StatelessWidget {
 }
 
 class ChatItemView extends StatelessWidget {
-  const ChatItemView({super.key, required this.item, this.animate = false});
+  const ChatItemView({
+    super.key,
+    required this.state,
+    required this.item,
+    this.animate = false,
+  });
 
+  final AppState state;
   final ChatItem item;
 
   /// Fresh arrivals play a short fade-and-rise entrance; history restores
@@ -2550,7 +2560,7 @@ class ChatItemView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget body = switch (item.kind) {
-      ChatItemKind.user => _UserBubble(item: item),
+      ChatItemKind.user => _UserBubble(state: state, item: item),
       ChatItemKind.assistant => _AssistantMessage(item: item),
       ChatItemKind.tool => ToolCard(item: item),
       ChatItemKind.notice => _NoticeCard(item: item),
@@ -2574,8 +2584,9 @@ class ChatItemView extends StatelessWidget {
 
 /// Right-aligned gradient user bubble; long-press pops the copy action.
 class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.item});
+  const _UserBubble({required this.state, required this.item});
 
+  final AppState state;
   final ChatItem item;
 
   @override
@@ -2615,16 +2626,24 @@ class _UserBubble extends StatelessWidget {
             ),
             child: Opacity(
               opacity: item.provisional ? 0.65 : 1,
-              child: Text(
-                item.text,
-                style: TextStyle(
-                  color: P.onAccent,
-                  fontSize: 15.5,
-                  height: 1.45,
-                  // Slash-command echoes render monospace, mirroring the web's
-                  // command-input bubble.
-                  fontFamily: item.text.startsWith('/') ? 'monospace' : null,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (item.images.isNotEmpty)
+                    _ImageStrip(state: state, images: item.images),
+                  if (item.text.isNotEmpty)
+                    Text(
+                      item.text,
+                      style: TextStyle(
+                        color: P.onAccent,
+                        fontSize: 15.5,
+                        height: 1.45,
+                        fontFamily: item.text.startsWith('/')
+                            ? 'monospace'
+                            : null,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -3520,6 +3539,138 @@ class _QuestionDialogState extends State<QuestionDialog> {
   }
 }
 
+class _ImageStrip extends StatelessWidget {
+  const _ImageStrip({required this.state, required this.images});
+
+  final AppState state;
+  final List<ChatImage> images;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: images.isNotEmpty ? 8 : 0),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final image in images)
+            _ChatImageTile(state: state, image: image),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatImageTile extends StatefulWidget {
+  const _ChatImageTile({required this.state, required this.image});
+
+  final AppState state;
+  final ChatImage image;
+
+  @override
+  State<_ChatImageTile> createState() => _ChatImageTileState();
+}
+
+class _ChatImageTileState extends State<_ChatImageTile> {
+  bool _loading = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.image.data == null) unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    final data = await widget.state.loadAttachment(widget.image);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _failed = data == null;
+    });
+  }
+
+  Uint8List? get _bytes {
+    final data = widget.image.data;
+    if (data == null) return null;
+    try {
+      return base64Decode(data);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _bytes;
+    return GestureDetector(
+      onTap: bytes == null
+          ? _load
+          : () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    _ImagePreviewPage(bytes: bytes, name: widget.image.name),
+              ),
+            ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 156,
+          height: 156,
+          color: P.fillMedium,
+          alignment: Alignment.center,
+          child: bytes != null
+              ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+              : _loading
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image_outlined, color: P.textTertiary),
+                    const SizedBox(height: 6),
+                    Text(
+                      _failed ? '加载失败,点击重试' : '点击加载',
+                      style: TextStyle(color: P.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImagePreviewPage extends StatelessWidget {
+  const _ImagePreviewPage({required this.bytes, this.name});
+
+  final Uint8List bytes;
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(name ?? '图片预览'),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 5,
+          child: Image.memory(bytes, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Composer
 // ---------------------------------------------------------------------------
@@ -3536,6 +3687,8 @@ class Composer extends StatefulWidget {
 class _ComposerState extends State<Composer> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final List<PromptImage> _images = [];
+  bool _picking = false;
 
   @override
   void initState() {
@@ -3576,23 +3729,96 @@ class _ComposerState extends State<Composer> {
     );
   }
 
-  void _send() {
+  Future<void> _pickImage() async {
+    if (_picking || _images.length >= 4) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('拍照'),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    setState(() => _picking = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 88,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) throw StateError('无法读取图片');
+      final normalized = img.bakeOrientation(decoded);
+      final encoded = img.encodeJpg(normalized, quality: 88);
+      if (encoded.length > 8 * 1024 * 1024) {
+        throw StateError('图片超过 8 MB,请换一张');
+      }
+      if (!mounted) return;
+      setState(() {
+        _images.add(
+          PromptImage(
+            mediaType: 'image/jpeg',
+            data: base64Encode(encoded),
+            name: picked.name,
+            width: normalized.width,
+            height: normalized.height,
+          ),
+        );
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('选择图片失败: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _images.isEmpty) return;
+    final images = List<PromptImage>.of(_images);
     _controller.clear();
+    setState(() => _images.clear());
     HapticFeedback.lightImpact();
-    if (text.startsWith('/')) {
+    if (text.startsWith('/') && images.isEmpty) {
       // Slash commands render their own echo + progress + result in chat.
       widget.state.runCommand(text);
       return;
     }
-    widget.state.sendPrompt(text);
+    final sent = await widget.state.sendPrompt(text, images: images);
+    if (!sent && mounted) {
+      setState(() {
+        if (_controller.text.isEmpty) _controller.text = text;
+        _images.insertAll(0, images);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final enabled = widget.state.selectedSessionId != null;
-    final canSend = enabled && _controller.text.trim().isNotEmpty;
+    final canSend =
+        enabled && (_controller.text.trim().isNotEmpty || _images.isNotEmpty);
     return SafeArea(
       top: false,
       child: Padding(
@@ -3605,74 +3831,139 @@ class _ComposerState extends State<Composer> {
             boxShadow: P.cardShadow,
           ),
           padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: IconButton(
-                  tooltip: '快捷命令',
-                  icon: const Icon(Icons.add_circle_outline),
-                  color: P.textSecondary,
-                  onPressed: enabled ? _openCommands : null,
-                ),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  enabled: enabled,
-                  minLines: 1,
-                  maxLines: 6,
-                  textInputAction: TextInputAction.newline,
-                  style: const TextStyle(fontSize: 15.5),
-                  decoration: InputDecoration(
-                    hintText: enabled ? '发消息给 DSH…' : '先选择或新建一个会话',
-                    hintStyle: TextStyle(color: P.textTertiary),
-                    border: InputBorder.none,
+              if (_images.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    height: 76,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(left: 10, bottom: 5),
+                      itemCount: _images.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 6),
+                      itemBuilder: (_, index) {
+                        final image = _images[index];
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(
+                                base64Decode(image.data),
+                                width: 68,
+                                height: 68,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: IconButton(
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.cancel, size: 19),
+                                color: P.danger,
+                                onPressed: () =>
+                                    setState(() => _images.removeAt(index)),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              if (widget.state.selectedRunning)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6, bottom: 2),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: P.danger.withValues(alpha: 0.16),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: P.danger.withValues(alpha: 0.5),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: IconButton(
+                      tooltip: '快捷命令',
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: P.textSecondary,
+                      onPressed: enabled ? _openCommands : null,
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      enabled: enabled,
+                      minLines: 1,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.newline,
+                      style: const TextStyle(fontSize: 15.5),
+                      decoration: InputDecoration(
+                        hintText: enabled ? '发消息给 DSH…' : '先选择或新建一个会话',
+                        hintStyle: TextStyle(color: P.textTertiary),
+                        border: InputBorder.none,
                       ),
                     ),
+                  ),
+                  if (widget.state.selectedRunning)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6, bottom: 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: P.danger.withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: P.danger.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: IconButton(
+                          tooltip: '停止生成',
+                          icon: Icon(Icons.stop_rounded, color: P.danger),
+                          onPressed: () => widget.state.cancelTurn(),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
                     child: IconButton(
-                      tooltip: '停止生成',
-                      icon: Icon(Icons.stop_rounded, color: P.danger),
-                      onPressed: () => widget.state.cancelTurn(),
+                      tooltip: '添加图片',
+                      icon: _picking
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.image_outlined),
+                      color: P.textSecondary,
+                      onPressed: enabled && !_picking && _images.length < 4
+                          ? _pickImage
+                          : null,
                     ),
                   ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                // Container, not Ink: on Xiaomi HyperOS the Ink+gradient
-                // decoration silently fails to paint, leaving the white
-                // (onAccent) arrow on a white card — an invisible but still
-                // tappable send button (v1.10.0 field report).
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: canSend ? P.brandGradient : null,
-                    color: canSend ? null : P.fillLight,
-                    shape: BoxShape.circle,
-                    boxShadow: canSend ? [P.brandGlow] : null,
-                  ),
-                  child: IconButton(
-                    tooltip: '发送',
-                    icon: Icon(
-                      Icons.arrow_upward_rounded,
-                      color: canSend ? P.onAccent : P.textTertiary,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    // Container, not Ink: on Xiaomi HyperOS the Ink+gradient
+                    // decoration silently fails to paint, leaving the white
+                    // (onAccent) arrow on a white card — an invisible but still
+                    // tappable send button (v1.10.0 field report).
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: canSend ? P.brandGradient : null,
+                        color: canSend ? null : P.fillLight,
+                        shape: BoxShape.circle,
+                        boxShadow: canSend ? [P.brandGlow] : null,
+                      ),
+                      child: IconButton(
+                        tooltip: '发送',
+                        icon: Icon(
+                          Icons.arrow_upward_rounded,
+                          color: canSend ? P.onAccent : P.textTertiary,
+                        ),
+                        onPressed: canSend ? _send : null,
+                      ),
                     ),
-                    onPressed: canSend ? _send : null,
                   ),
-                ),
+                ],
               ),
             ],
           ),

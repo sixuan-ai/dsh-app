@@ -43,12 +43,51 @@ class SessionRow {
   String? title;
 }
 
+/// Image bytes submitted as part of a prompt.
+class PromptImage {
+  PromptImage({
+    required this.mediaType,
+    required this.data,
+    this.name,
+    this.width,
+    this.height,
+  });
+
+  final String mediaType;
+  final String data;
+  final String? name;
+  final int? width;
+  final int? height;
+}
+
+/// An image reference in a durable user or assistant message.
+class ChatImage {
+  ChatImage({
+    required this.attachmentId,
+    required this.mediaType,
+    this.bytes,
+    this.width,
+    this.height,
+    this.name,
+    this.data,
+  });
+
+  final String attachmentId;
+  final String mediaType;
+  final int? bytes;
+  final int? width;
+  final int? height;
+  final String? name;
+  String? data;
+}
+
 /// Renderable conversation unit produced by the event fold.
 class ChatItem {
   ChatItem.user({
     required this.id,
     required this.text,
     this.provisional = false,
+    this.images = const [],
   }) : kind = ChatItemKind.user,
        time = null;
 
@@ -79,6 +118,7 @@ class ChatItem {
   // user
   String text = '';
   bool provisional = false;
+  List<ChatImage> images = [];
 
   // assistant: ordered blocks ('text' | 'reasoning')
   List<AssistantBlock> blocks = [];
@@ -735,15 +775,33 @@ class AppState extends ChangeNotifier {
   }
 
   /// Sends a user prompt to the selected session.
-  Future<void> sendPrompt(String text) async {
+  Future<bool> sendPrompt(
+    String text, {
+    List<PromptImage> images = const [],
+  }) async {
     final api = _api;
     final sessionId = selectedSessionId;
-    if (api == null || sessionId == null || text.trim().isEmpty) return;
+    if (api == null ||
+        sessionId == null ||
+        (text.trim().isEmpty && images.isEmpty)) {
+      return false;
+    }
     final rpcId = mintRpcId('prompt');
     final provisional = ChatItem.user(
       id: 'local-$rpcId',
       text: text,
       provisional: true,
+      images: [
+        for (var index = 0; index < images.length; index++)
+          ChatImage(
+            attachmentId: 'local-$rpcId-$index',
+            mediaType: images[index].mediaType,
+            width: images[index].width,
+            height: images[index].height,
+            name: images[index].name,
+            data: images[index].data,
+          ),
+      ],
     );
     items.add(provisional);
     notifyListeners();
@@ -754,7 +812,14 @@ class AppState extends ChangeNotifier {
                 'sessionId': sessionId,
                 'mode': 'queue',
                 'content': [
-                  {'type': 'text', 'text': text},
+                  if (text.trim().isNotEmpty) {'type': 'text', 'text': text},
+                  for (final image in images)
+                    {
+                      'type': 'image',
+                      'mediaType': image.mediaType,
+                      'data': image.data,
+                      'name': ?image.name,
+                    },
                 ],
                 'clientTimeZone': ?timeZone,
               }, rpcId: rpcId)
@@ -768,12 +833,14 @@ class AppState extends ChangeNotifier {
         _pendingPrompts[rpcId] = provisional;
       }
       unawaited(_bumpPromptCount());
+      return true;
     } catch (error) {
       items.remove(provisional);
       items.add(
         ChatItem.notice(id: 'err-$rpcId', text: '发送失败: $error', isError: true),
       );
       notifyListeners();
+      return false;
     }
   }
 
@@ -781,6 +848,27 @@ class AppState extends ChangeNotifier {
 
   /// Counts one accepted prompt and records a level-up when it crosses a
   /// threshold.
+  /// Fetches durable image bytes after the server authorizes the reference.
+  Future<String?> loadAttachment(ChatImage image) async {
+    if (image.data != null) return image.data;
+    final api = _api;
+    final sessionId = selectedSessionId;
+    if (api == null || sessionId == null) return null;
+    try {
+      final value =
+          await api.call('session.attachment', {
+                'sessionId': sessionId,
+                'attachmentId': image.attachmentId,
+              })
+              as Map<String, dynamic>;
+      image.data = value['data'] as String?;
+      notifyListeners();
+      return image.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _bumpPromptCount() async {
     final before = userLevel.level;
     promptCount += 1;
@@ -1279,6 +1367,23 @@ class AppState extends ChangeNotifier {
             .where((b) => b['type'] == 'text')
             .map((b) => b['text'] as String? ?? '')
             .join('\n');
+        final images = content
+            .whereType<Map>()
+            .where((b) => b['type'] == 'image')
+            .map((b) {
+              final ref = (b['attachment'] as Map?)?.cast<String, dynamic>();
+              if (ref == null) return null;
+              return ChatImage(
+                attachmentId: ref['attachmentId'] as String,
+                mediaType: ref['mediaType'] as String,
+                bytes: (ref['bytes'] as num?)?.toInt(),
+                width: (ref['width'] as num?)?.toInt(),
+                height: (ref['height'] as num?)?.toInt(),
+                name: ref['name'] as String?,
+              );
+            })
+            .whereType<ChatImage>()
+            .toList();
         if (kind == 'user') {
           final rpcId = source['rpcId'] as String?;
           final provisional = rpcId != null
@@ -1287,11 +1392,12 @@ class AppState extends ChangeNotifier {
           if (provisional != null && into == null) {
             provisional
               ..text = text
+              ..images = images
               ..provisional = false
               ..time ??= eventTime;
             return;
           }
-          target.add(ChatItem.user(id: 'u-$seq', text: text));
+          target.add(ChatItem.user(id: 'u-$seq', text: text, images: images));
         } else if (kind == 'plugin' || kind == 'goal') {
           // Injected context stays off the chat surface, mirroring the web client.
         }
@@ -1541,6 +1647,18 @@ Map<String, dynamic> chatItemToJson(ChatItem item) {
     'id': item.id,
     'time': item.time,
     'text': cap(item.text),
+    'images': [
+      for (final image in item.images)
+        {
+          'attachmentId': image.attachmentId,
+          'mediaType': image.mediaType,
+          'bytes': image.bytes,
+          'width': image.width,
+          'height': image.height,
+          'name': image.name,
+          // Keep cache metadata small; durable bytes are fetched from host.
+        },
+    ],
     'blocks': [
       for (final block in item.blocks)
         {'type': block.type, 'text': cap(block.text)},
@@ -1567,6 +1685,17 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
       item = ChatItem.user(
         id: json['id'] as String,
         text: json['text'] as String? ?? '',
+        images: [
+          for (final raw in (json['images'] as List? ?? const []))
+            ChatImage(
+              attachmentId: (raw as Map)['attachmentId'] as String,
+              mediaType: raw['mediaType'] as String,
+              bytes: (raw['bytes'] as num?)?.toInt(),
+              width: (raw['width'] as num?)?.toInt(),
+              height: (raw['height'] as num?)?.toInt(),
+              name: raw['name'] as String?,
+            ),
+        ],
       );
     case ChatItemKind.assistant:
       item = ChatItem.assistant(

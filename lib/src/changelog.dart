@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.11';
+const kAppVersion = '1.11.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.11.0',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '图片消息:支持相册选择和拍照、最多 4 张预览与移除、自动压缩、图片加文字发送、历史图片恢复、失败重试和全屏缩放查看'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.11',
     date: '2026-08-21',
