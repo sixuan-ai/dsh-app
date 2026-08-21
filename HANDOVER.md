@@ -38,6 +38,7 @@ Flutter SDK:`/home/x/flutter/bin`(每次 `export PATH`);Android build-tools 37(a
 | directory 用户表(x/mac → 各自实例子域) | 同上 users.json |
 | auth-proxy 的 AUTH_* env | 本机 `systemctl cat dsh-web-auth.service` |
 | frp token | 本机 `/etc/frp/frpc-*.toml` 与 HK `/root/app/frpc/frps.toml` |
+| App 正式签名(v1.10.4 起) | keystore `android/app/dsh-release.jks` + 密码 `android/key.properties`(均 gitignore 不入库,**务必离线备份**;丢了永远无法同签名更新)。证书 SHA-256 `b7fa2a09…22d06d1`,MD5 `8a8a64f89ab9311f607a2b80c41fc222`(备案用) |
 
 **注意**:多份凭证曾出现在旧聊天记录,轮换清单见 OPERATIONS.md §6。
 
@@ -95,7 +96,7 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
 - **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
 
-## 7. 当前状态快照(v1.10.3)
+## 7. 当前状态快照(v1.10.4)
 
 App 功能:登录(directory 路由/实例记忆)、会话(分组/折叠/重命名/新建继承 cwd)、
 对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
@@ -123,4 +124,4 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 ## 9. 给新对话的开场白(用户可直接粘贴)
 
 > 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarmess 项目。
-> 当前版本 v1.10.3,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+> 当前版本 v1.10.4,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
