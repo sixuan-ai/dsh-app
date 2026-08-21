@@ -95,7 +95,7 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
 - **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
 
-## 7. 当前状态快照(v1.10.2)
+## 7. 当前状态快照(v1.10.3)
 
 App 功能:登录(directory 路由/实例记忆)、会话(分组/折叠/重命名/新建继承 cwd)、
 对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
@@ -105,7 +105,7 @@ App 功能:登录(directory 路由/实例记忆)、会话(分组/折叠/重命�
 抽屉权限模式入口(工作区写入/完全访问+风险确认)、抽屉底部仅社区+「更多功能」九宫格
 (主题/宠物/权限/更新/日志/退出,红点透传)、
 系统通知、OTA 自更新(美化弹窗+圆环进度+网速+重试)、更新日志、断线指数退避重连。
-审批/提问弹窗已加 PopScope:返回键不再误关,未回答会自动重弹(不再卡死对话);
+审批/提问弹窗:PopScope 防返回键误关+未回答自动重弹+他端回答后联动关闭(双端同步);
 发送/私聊圆形按钮 Ink→Container(HyperOS 渐变不绘制导致隐形,见 §4 坑)。
 
 基础设施:全部 systemd 化(HK frps/dsh-social/dsh-directory,本机 frpc×2/dsh-web-auth);
@@ -123,4 +123,4 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 ## 9. 给新对话的开场白(用户可直接粘贴)
 
 > 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarmess 项目。
-> 当前版本 v1.10.2,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+> 当前版本 v1.10.3,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
