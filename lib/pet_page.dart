@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'pet_sprite.dart';
 import 'src/pet.dart';
 import 'src/theme.dart';
 import 'state.dart';
@@ -100,15 +101,19 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     var refused = false;
     await _mutate((p) => refused = !p.play());
     if (refused && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('太饿啦,先喂点东西吧!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('太饿啦,先喂点东西吧!')));
     }
   }
 
   Future<void> _adopt(String name) async {
     // Mystery egg: the species is drawn now but only reveals at hatching.
-    final pet = Pet.newborn(name, DateTime.now().millisecondsSinceEpoch,
-        speciesId: randomPetSpeciesId());
+    final pet = Pet.newborn(
+      name,
+      DateTime.now().millisecondsSinceEpoch,
+      speciesId: randomPetSpeciesId(),
+    );
     setState(() => _pet = pet);
     await _store.save(pet);
   }
@@ -163,17 +168,17 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
           : _pet == null
-              ? _AdoptView(onAdopt: _adopt)
-              : widget.state == null
-                  ? _buildPetView(context, _pet!)
-                  // Live tokens (and thus stage/face) come from the state.
-                  : AnimatedBuilder(
-                      animation: widget.state!,
-                      builder: (context, _) {
-                        _maybeEvolve();
-                        return _buildPetView(context, _pet!);
-                      },
-                    ),
+          ? _AdoptView(onAdopt: _adopt)
+          : widget.state == null
+          ? _buildPetView(context, _pet!)
+          // Live tokens (and thus stage/face) come from the state.
+          : AnimatedBuilder(
+              animation: widget.state!,
+              builder: (context, _) {
+                _maybeEvolve();
+                return _buildPetView(context, _pet!);
+              },
+            ),
     );
   }
 
@@ -183,11 +188,10 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     final stageIndex = petStageIndexForTokens(tokens);
     final stage = species.stages[stageIndex];
     final rank = petRankForScore(pet.pkScore);
-    final face = _hatchHint(tokens) ?? petFace(pet, stage);
     final days =
         (DateTime.now().millisecondsSinceEpoch - pet.bornAtMs) ~/
-                Duration.millisecondsPerDay +
-            1;
+            Duration.millisecondsPerDay +
+        1;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -204,21 +208,35 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                 animation: Listenable.merge([_breath, _bounce]),
                 builder: (context, child) {
                   final breath = 1 + 0.04 * _breath.value;
-                  final bounce = 1 + 0.15 * (1 - _bounce.value) * _bounce.value * 4;
+                  final bounce =
+                      1 + 0.15 * (1 - _bounce.value) * _bounce.value * 4;
                   return Transform.scale(scale: breath * bounce, child: child);
                 },
-                child: Text(face, style: const TextStyle(fontSize: 96)),
+                child: PetSprite(
+                  speciesId: pet.speciesId,
+                  stageIndex: stageIndex,
+                  mood: pet.overall.round(),
+                  hatching: _isHatching(tokens),
+                  size: 180,
+                ),
               ),
               const SizedBox(height: 12),
-              Text(pet.name,
-                  style: TextStyle(
-                      color: P.onAccent,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                pet.name,
+                style: TextStyle(
+                  color: P.onAccent,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(pet.statusLine,
-                  style: TextStyle(
-                      color: P.onAccent.withValues(alpha: 0.85), fontSize: 13)),
+              Text(
+                pet.statusLine,
+                style: TextStyle(
+                  color: P.onAccent.withValues(alpha: 0.85),
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -252,11 +270,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: _ActionButton(
-                icon: '⚽',
-                label: '玩耍',
-                onTap: _play,
-              ),
+              child: _ActionButton(icon: '⚽', label: '玩耍', onTap: _play),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -299,31 +313,32 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     final pet = _pet;
     if (pet == null) return;
     pet.pkScore = math.max(
-        0, pet.pkScore + (playerWon ? kPetPkScoreWin : kPetPkScoreLose));
+      0,
+      pet.pkScore + (playerWon ? kPetPkScoreWin : kPetPkScoreLose),
+    );
     await _store.save(pet);
-    final total = await _tokenStore
-        .addBonus(playerWon ? kPetBattleStake : -kPetBattleStake);
+    final total = await _tokenStore.addBonus(
+      playerWon ? kPetBattleStake : -kPetBattleStake,
+    );
     await widget.state?.refreshPetTokens();
     if (mounted) setState(() => _tokensTotal = total);
   }
 
   /// Small pill on the hero card (stage name / days together).
   Widget _chip(String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: P.onAccent.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(text, style: TextStyle(color: P.onAccent, fontSize: 12)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: P.onAccent.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(text, style: TextStyle(color: P.onAccent, fontSize: 12)),
+  );
 
-  /// The egg cracks open (🐣) during the last quarter-level before hatching
-  /// into 幼崽; null for every other situation.
-  String? _hatchHint(int tokens) {
-    if (petStageIndexForTokens(tokens) != 0) return null;
-    if (petLevelForTokens(tokens) + 1 < kPetStageMinLevels[1]) return null;
-    return petLevelProgressForTokens(tokens) >= 0.75 ? '🐣' : null;
-  }
+  /// The egg starts cracking during the final quarter-level before hatching.
+  bool _isHatching(int tokens) =>
+      petStageIndexForTokens(tokens) == 0 &&
+      petLevelForTokens(tokens) + 1 >= kPetStageMinLevels[1] &&
+      petLevelProgressForTokens(tokens) >= 0.75;
 
   /// Advances the seen evolution form: silently on first load (old saves
   /// must not celebrate retroactively), with a dialog when tokens push the
@@ -396,12 +411,18 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
         children: [
           Row(
             children: [
-              Text('成长 Lv.$level',
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(
+                '成长 Lv.$level',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const Spacer(),
-              Text('已命中 ${(tokens / kPetTokensPerLevel).toStringAsFixed(2)} M tokens',
-                  style: TextStyle(fontSize: 12, color: P.textTertiary)),
+              Text(
+                '已命中 ${(tokens / kPetTokensPerLevel).toStringAsFixed(2)} M tokens',
+                style: TextStyle(fontSize: 12, color: P.textTertiary),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -417,8 +438,10 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerRight,
-            child: Text('对话每命中 1M tokens 升一级',
-                style: TextStyle(fontSize: 11, color: P.textTertiary)),
+            child: Text(
+              '对话每命中 1M tokens 升一级',
+              style: TextStyle(fontSize: 11, color: P.textTertiary),
+            ),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -431,16 +454,25 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 12),
           _StatBar(
-              icon: '🍖', label: '饱腹', value: pet.hunger,
-              color: const Color(0xFFFF9F43)),
+            icon: '🍖',
+            label: '饱腹',
+            value: pet.hunger,
+            color: const Color(0xFFFF9F43),
+          ),
           const SizedBox(height: 12),
           _StatBar(
-              icon: '⚽', label: '心情', value: pet.mood,
-              color: const Color(0xFFFF6B9D)),
+            icon: '⚽',
+            label: '心情',
+            value: pet.mood,
+            color: const Color(0xFFFF6B9D),
+          ),
           const SizedBox(height: 12),
           _StatBar(
-              icon: '🛁', label: '清洁', value: pet.hygiene,
-              color: const Color(0xFF54A0FF)),
+            icon: '🛁',
+            label: '清洁',
+            value: pet.hygiene,
+            color: const Color(0xFF54A0FF),
+          ),
         ],
       ),
     );
@@ -469,7 +501,10 @@ class _StatBar extends StatelessWidget {
         const SizedBox(width: 8),
         SizedBox(
           width: 34,
-          child: Text(label, style: TextStyle(fontSize: 13, color: P.textSecondary)),
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 13, color: P.textSecondary),
+          ),
         ),
         Expanded(
           child: ClipRRect(
@@ -485,9 +520,11 @@ class _StatBar extends StatelessWidget {
         const SizedBox(width: 10),
         SizedBox(
           width: 28,
-          child: Text('$value',
-              textAlign: TextAlign.end,
-              style: TextStyle(fontSize: 12, color: P.textTertiary)),
+          child: Text(
+            '$value',
+            textAlign: TextAlign.end,
+            style: TextStyle(fontSize: 12, color: P.textTertiary),
+          ),
         ),
       ],
     );
@@ -524,9 +561,13 @@ class _ActionButton extends StatelessWidget {
             children: [
               Text(icon, style: const TextStyle(fontSize: 30)),
               const SizedBox(height: 6),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -545,7 +586,8 @@ class _AdoptView extends StatefulWidget {
   State<_AdoptView> createState() => _AdoptViewState();
 }
 
-class _AdoptViewState extends State<_AdoptView> {  final _controller = TextEditingController(text: '小哈');
+class _AdoptViewState extends State<_AdoptView> {
+  final _controller = TextEditingController(text: '小哈');
 
   @override
   void dispose() {
@@ -571,12 +613,16 @@ class _AdoptViewState extends State<_AdoptView> {  final _controller = TextEditi
             children: [
               const Text('🥚', style: TextStyle(fontSize: 72)),
               const SizedBox(height: 12),
-              const Text('领养一颗神秘蛋',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                '领养一颗神秘蛋',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 6),
-              Text('哈灵、雷光猫、苍月狼、焚天炎龙、九天凤凰……孵化那一刻才揭晓',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: P.textSecondary)),
+              Text(
+                '哈灵、雷光猫、苍月狼、焚天炎龙、九天凤凰……孵化那一刻才揭晓',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: P.textSecondary),
+              ),
               const SizedBox(height: 20),
               TextField(
                 controller: _controller,
@@ -659,8 +705,7 @@ class _BattleDialogState extends State<_BattleDialog> {
   }
 
   void _startBattle() {
-    final opponent =
-        randomWildOpponent(petLevelForTokens(widget.tokens), _rng);
+    final opponent = randomWildOpponent(petLevelForTokens(widget.tokens), _rng);
     _wild = opponent.pet;
     _wildTokens = opponent.tokens;
     _result = simulatePetBattle(
@@ -672,8 +717,9 @@ class _BattleDialogState extends State<_BattleDialog> {
     );
     // Bot persona: a trainer near the player's rank with a plausible record.
     _botNick = kPetBotNicknames[_rng.nextInt(kPetBotNicknames.length)];
-    _botRank =
-        petRankForScore(math.max(0, widget.pet.pkScore + _rng.nextInt(201) - 100));
+    _botRank = petRankForScore(
+      math.max(0, widget.pet.pkScore + _rng.nextInt(201) - 100),
+    );
     _botWinRate = 40 + _rng.nextInt(26);
     _timer?.cancel();
     setState(() {
@@ -722,10 +768,6 @@ class _BattleDialogState extends State<_BattleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final myStage =
-        petSpeciesById(widget.pet.speciesId).stageForTokens(widget.tokens);
-    final wildStage =
-        petSpeciesById(_wild.speciesId).stageForTokens(_wildTokens);
     final done = !_matching && _revealed >= _result.rounds.length;
     final playerHp = _matching || _revealed == 0
         ? 100
@@ -739,14 +781,18 @@ class _BattleDialogState extends State<_BattleDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('训练家匹配赛',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              '训练家匹配赛',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: _fighter(
-                    face: petFace(widget.pet, myStage),
+                    speciesId: widget.pet.speciesId,
+                    stageIndex: petStageIndexForTokens(widget.tokens),
+                    mood: widget.pet.overall.round(),
                     name: widget.pet.name,
                     subtitle:
                         '${petRankForScore(widget.pet.pkScore).emoji} Lv.${petLevelForTokens(widget.tokens)}',
@@ -761,15 +807,21 @@ class _BattleDialogState extends State<_BattleDialog> {
                 Expanded(
                   child: _matching
                       ? _fighter(
-                          face: '❓',
+                          placeholder: true,
+                          speciesId: _wild.speciesId,
+                          stageIndex: petStageIndexForTokens(_wildTokens),
+                          mood: _wild.overall.round(),
                           name: '匹配中…',
                           subtitle: '',
                           hp: 100,
                           color: P.danger,
                         )
                       : _fighter(
-                          face: petFace(_wild, wildStage),
-                          name: '$_botNick的${_wild.name.replaceFirst('野生的', '')}',
+                          speciesId: _wild.speciesId,
+                          stageIndex: petStageIndexForTokens(_wildTokens),
+                          mood: _wild.overall.round(),
+                          name:
+                              '$_botNick的${_wild.name.replaceFirst('野生的', '')}',
                           subtitle:
                               '${_botRank.emoji}${_botRank.name} · 胜率$_botWinRate%',
                           hp: wildHp,
@@ -823,8 +875,10 @@ class _BattleDialogState extends State<_BattleDialog> {
             ] else
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text(_matching ? '' : '战斗中…',
-                    style: TextStyle(fontSize: 12, color: P.textTertiary)),
+                child: Text(
+                  _matching ? '' : '战斗中…',
+                  style: TextStyle(fontSize: 12, color: P.textTertiary),
+                ),
               ),
           ],
         ),
@@ -833,26 +887,44 @@ class _BattleDialogState extends State<_BattleDialog> {
   }
 
   Widget _fighter({
-    required String face,
+    required String speciesId,
+    required int stageIndex,
+    required int mood,
     required String name,
     required String subtitle,
     required int hp,
     required Color color,
+    bool placeholder = false,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(face, style: const TextStyle(fontSize: 44)),
+        placeholder
+            ? const SizedBox(
+                width: 72,
+                height: 72,
+                child: Center(child: Text('❓', style: TextStyle(fontSize: 44))),
+              )
+            : PetSprite(
+                speciesId: speciesId,
+                stageIndex: stageIndex,
+                mood: mood,
+                size: 72,
+              ),
         const SizedBox(height: 4),
-        Text(name,
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        if (subtitle.isNotEmpty)
+          Text(
+            subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        if (subtitle.isNotEmpty)
-          Text(subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: P.textTertiary)),
+            style: TextStyle(fontSize: 10, color: P.textTertiary),
+          ),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),

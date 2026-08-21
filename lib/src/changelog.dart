@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.9';
+const kAppVersion = '1.10.10';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.10',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '宠物视觉升级:使用原创 Q 版矢量精灵立绘替换 emoji,五大家族各有配色与特征,高阶形态增加光环/翅膀/角/尾巴和闪光特效,蛋快孵化时显示裂纹'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.9',
     date: '2026-08-21',
