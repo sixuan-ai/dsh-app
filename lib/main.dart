@@ -168,8 +168,11 @@ class _BrandMark extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => Container(
             decoration: BoxDecoration(gradient: P.brandGradient),
-            child: Icon(Icons.auto_awesome,
-                color: P.onAccent, size: size * 0.5),
+            child: Icon(
+              Icons.auto_awesome,
+              color: P.onAccent,
+              size: size * 0.5,
+            ),
           ),
         ),
       ),
@@ -248,8 +251,16 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: P.isDark
-                ? [P.bg, Color.lerp(P.bg, P.accent, 0.12)!, Color.lerp(P.bg, P.accent2, 0.16)!]
-                : [P.bg, Color.lerp(P.bg, P.accent, 0.06)!, Color.lerp(P.bg, P.accent2, 0.09)!],
+                ? [
+                    P.bg,
+                    Color.lerp(P.bg, P.accent, 0.12)!,
+                    Color.lerp(P.bg, P.accent2, 0.16)!,
+                  ]
+                : [
+                    P.bg,
+                    Color.lerp(P.bg, P.accent, 0.06)!,
+                    Color.lerp(P.bg, P.accent2, 0.09)!,
+                  ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -271,14 +282,17 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         const SizedBox(height: 20),
                         Text(
                           'xHarmess',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
                               ),
                         ),
                         const SizedBox(height: 8),
-                        Text('连接到你的 DeepSeek Harness',
-                            style: TextStyle(color: P.textSecondary)),
+                        Text(
+                          '连接到你的 DeepSeek Harness',
+                          style: TextStyle(color: P.textSecondary),
+                        ),
                         const SizedBox(height: 32),
                         Container(
                           padding: const EdgeInsets.all(20),
@@ -286,7 +300,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                             color: P.card,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                                color: P.isDark ? P.fillLight : P.divider),
+                              color: P.isDark ? P.fillLight : P.divider,
+                            ),
                             boxShadow: P.cardShadow,
                           ),
                           child: Column(
@@ -294,7 +309,10 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               TextField(
                                 controller: _user,
                                 autofillHints: const [AutofillHints.username],
-                                decoration: _loginDecoration('用户名', Icons.person_outline),
+                                decoration: _loginDecoration(
+                                  '用户名',
+                                  Icons.person_outline,
+                                ),
                               ),
                               const SizedBox(height: 12),
                               TextField(
@@ -302,7 +320,10 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                 obscureText: true,
                                 autofillHints: const [AutofillHints.password],
                                 onSubmitted: (_) => _connect(),
-                                decoration: _loginDecoration('密码', Icons.lock_outline),
+                                decoration: _loginDecoration(
+                                  '密码',
+                                  Icons.lock_outline,
+                                ),
                               ),
                               if (error != null) ...[
                                 const SizedBox(height: 16),
@@ -313,13 +334,18 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     color: P.danger.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: P.danger.withValues(alpha: 0.4)),
+                                      color: P.danger.withValues(alpha: 0.4),
+                                    ),
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(Icons.error_outline,
-                                          color: P.danger, size: 18),
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: P.danger,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
@@ -327,7 +353,9 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                               ? _preError!
                                               : '连接失败: $error',
                                           style: TextStyle(
-                                              color: P.danger, fontSize: 12.5),
+                                            color: P.danger,
+                                            fontSize: 12.5,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -338,7 +366,9 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               _GradientButton(
                                 label: '连接',
                                 loading: widget.state.connecting,
-                                onPressed: widget.state.connecting ? null : _connect,
+                                onPressed: widget.state.connecting
+                                    ? null
+                                    : _connect,
                               ),
                             ],
                           ),
@@ -347,12 +377,19 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.dns_outlined,
-                                size: 13, color: P.textTertiary),
+                            Icon(
+                              Icons.dns_outlined,
+                              size: 13,
+                              color: P.textTertiary,
+                            ),
                             const SizedBox(width: 6),
-                            Text('$host · 自动匹配你的实例',
-                                style: TextStyle(
-                                    color: P.textTertiary, fontSize: 12)),
+                            Text(
+                              '$host · 自动匹配你的实例',
+                              style: TextStyle(
+                                color: P.textTertiary,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -391,7 +428,11 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
 
 /// Full-width gradient action button with loading state.
 class _GradientButton extends StatelessWidget {
-  const _GradientButton({required this.label, this.onPressed, this.loading = false});
+  const _GradientButton({
+    required this.label,
+    this.onPressed,
+    this.loading = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;
@@ -416,19 +457,26 @@ class _GradientButton extends StatelessWidget {
             disabledBackgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             foregroundColor: P.onAccent,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
           child: loading
               ? SizedBox(
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: P.onAccent),
+                    strokeWidth: 2.5,
+                    color: P.onAccent,
+                  ),
                 )
-              : Text(label,
+              : Text(
+                  label,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
         ),
       ),
     );
@@ -484,10 +532,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
     // Silent re-check every 30 minutes; a find raises the green dot.
     _updateTimer = Timer.periodic(
-        const Duration(minutes: 30), (_) => _checkForUpdate());
+      const Duration(minutes: 30),
+      (_) => _checkForUpdate(),
+    );
     // Private-message notifications: first poll primes watermarks silently.
     _socialTimer = Timer.periodic(
-        const Duration(seconds: 60), (_) => _pollSocial());
+      const Duration(seconds: 60),
+      (_) => _pollSocial(),
+    );
     Timer(const Duration(seconds: 8), _pollSocial);
   }
 
@@ -526,8 +578,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final seen = watermarks[c.userId] ?? 0;
         if (c.lastTime > seen) {
           if (!_socialFirstPoll && c.unread > 0) {
-            unawaited(NotificationService.instance
-                .showMessage(c.userId, c.nickname, c.lastText));
+            unawaited(
+              NotificationService.instance.showMessage(
+                c.userId,
+                c.nickname,
+                c.lastText,
+              ),
+            );
           }
           watermarks[c.userId] = c.lastTime;
           changed = true;
@@ -548,8 +605,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (fresh.isNotEmpty) {
         if (!firstPoll) {
           for (final request in fresh) {
-            unawaited(NotificationService.instance
-                .showFriendRequest(request.from.nickname));
+            unawaited(
+              NotificationService.instance.showFriendRequest(
+                request.from.nickname,
+              ),
+            );
           }
         }
         seen.addAll(fresh.map((r) => r.id));
@@ -582,7 +642,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         builder: (dialogContext) => AlertDialog(
           backgroundColor: P.cardAlt,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24)),
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: Row(
             children: [
               Container(
@@ -592,17 +653,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   color: Colors.amber.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.install_mobile_outlined,
-                    size: 18, color: Colors.amber),
+                child: const Icon(
+                  Icons.install_mobile_outlined,
+                  size: 18,
+                  color: Colors.amber,
+                ),
               ),
               const SizedBox(width: 10),
               const Text('需要安装权限', style: TextStyle(fontSize: 16)),
             ],
           ),
           content: Text(
-              '首次使用应用内更新,需要允许本应用"安装未知来源应用"。\n\n去设置打开后返回,会自动继续下载。',
-              style: TextStyle(
-                  fontSize: 13.5, height: 1.55, color: P.textSecondary)),
+            '首次使用应用内更新,需要允许本应用"安装未知来源应用"。\n\n去设置打开后返回,会自动继续下载。',
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.55,
+              color: P.textSecondary,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -617,10 +685,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 checker.requestInstallPermission();
               },
               style: FilledButton.styleFrom(
-                  backgroundColor: P.accent,
-                  foregroundColor: P.onAccent,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
+                backgroundColor: P.accent,
+                foregroundColor: P.onAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: const Text('去设置'),
             ),
           ],
@@ -642,7 +712,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _checkForUpdate({bool manual = false}) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     final checker = UpdateChecker(
-        username: state.authUsername, password: state.authPassword);
+      username: state.authUsername,
+      password: state.authPassword,
+    );
     final result = await checker.check(kUpdateManifestUrl);
     if (!mounted) return;
     final info = result.info;
@@ -655,8 +727,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (!mounted) return;
     if (info.versionCode <= currentCode) {
       if (manual) {
-        _toast('已是最新: 本机 v${package.version}+${package.buildNumber} · '
-            '服务器 v${info.version}+${info.versionCode}');
+        _toast(
+          '已是最新: 本机 v${package.version}+${package.buildNumber} · '
+          '服务器 v${info.version}+${info.versionCode}',
+        );
       }
       return;
     }
@@ -669,10 +743,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
   }
 
   void _showUpdateDialog(UpdateChecker checker, UpdateInfo info) {
@@ -710,8 +783,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _maybeShowInteractions() {
     for (final approval in state.approvals) {
       if (_shownApprovals.add(approval.approvalId)) {
-        unawaited(
-            NotificationService.instance.showApproval(approval.toolName));
+        unawaited(NotificationService.instance.showApproval(approval.toolName));
         final target = approval;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showApproval(target);
@@ -796,13 +868,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 color: P.fillLight,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(approval.toolName,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+              child: Text(
+                approval.toolName,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              ),
             ),
             if (approval.reason != null && approval.reason!.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(approval.reason!,
-                  style: TextStyle(color: P.textSecondary, height: 1.4)),
+              Text(
+                approval.reason!,
+                style: TextStyle(color: P.textSecondary, height: 1.4),
+              ),
             ],
           ],
         ),
@@ -822,7 +898,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             child: const Text('允许一次'),
           ),
         ],
-        ),
+      ),
     );
     // Defensive: if the route went away without an answer (teardown paths
     // PopScope cannot cover), un-mark it so the next rebuild re-shows it.
@@ -896,10 +972,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final cwd = row?.cwd;
     if (state.selectedSessionId != null && cwd != null && cwd.isNotEmpty) {
       state.createSession(cwd: cwd);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('已在当前工作区新建会话'),
-        duration: Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已在当前工作区新建会话'),
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
     _showNewSessionSheet();
@@ -940,11 +1018,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             state.clearLevelUp();
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(
-                  '🎉 升级啦! 已达到 Lv.${levelUp.level} · ${levelUp.title}(共 ${levelUp.count} 次对话)'),
-              duration: const Duration(seconds: 4),
-            ));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '🎉 升级啦! 已达到 Lv.${levelUp.level} · ${levelUp.title}(共 ${levelUp.count} 次对话)',
+                ),
+                duration: const Duration(seconds: 4),
+              ),
+            );
           });
         }
         final sessionId = state.selectedSessionId;
@@ -977,7 +1058,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   title,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w600),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 if (subtitleParts.isNotEmpty)
                   Text(
@@ -1091,15 +1174,18 @@ class _EmptyState extends StatelessWidget {
           children: [
             const _BrandMark(size: 76),
             const SizedBox(height: 22),
-            Text('开始一个新的对话',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              '开始一个新的对话',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
-            Text('在下方输入消息,或从左上角菜单选择历史会话',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: P.textSecondary, fontSize: 13)),
+            Text(
+              '在下方输入消息,或从左上角菜单选择历史会话',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: P.textSecondary, fontSize: 13),
+            ),
             const SizedBox(height: 22),
             Wrap(
               spacing: 8,
@@ -1115,7 +1201,9 @@ class _EmptyState extends StatelessWidget {
                       onTap: () => onSuggestion(label),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: P.divider),
@@ -1125,9 +1213,13 @@ class _EmptyState extends StatelessWidget {
                           children: [
                             Icon(icon, size: 15, color: P.accentLight),
                             const SizedBox(width: 6),
-                            Text(label,
-                                style: TextStyle(
-                                    color: P.textSecondary, fontSize: 12.5)),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color: P.textSecondary,
+                                fontSize: 12.5,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1184,6 +1276,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
   /// Workspace keys (cwd) the user collapsed; persisted across launches.
   final Set<String> _collapsed = {};
 
+  /// 0: active list, 1: running, 2: archived, 3: pinned.
+  int _sessionFilter = 0;
+
   /// Cached social profile for the header (nickname + avatar).
   Map<String, dynamic>? _profile;
   String? _profileRaw;
@@ -1203,21 +1298,24 @@ class _SessionDrawerState extends State<SessionDrawer> {
     if (raw != _profileRaw && mounted) {
       _profileRaw = raw;
       setState(() {
-        _profile =
-            raw == null ? null : (jsonDecode(raw) as Map).cast<String, dynamic>();
+        _profile = raw == null
+            ? null
+            : (jsonDecode(raw) as Map).cast<String, dynamic>();
       });
     }
   }
 
   void _openCommunity() {
     Navigator.of(context).pop();
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => CommunityPage(
-        state: state,
-        // Social backend is centralized on the main domain for all instances.
-        socialBaseUrl: '$kDefaultServerUrl/social',
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CommunityPage(
+          state: state,
+          // Social backend is centralized on the main domain for all instances.
+          socialBaseUrl: '$kDefaultServerUrl/social',
+        ),
       ),
-    ));
+    );
   }
 
   /// Permission-mode switcher: a sheet of presets riding the host's
@@ -1225,8 +1323,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
   /// a risk confirmation before danger-full-access.
   Future<void> _openPermissions() async {
     if (state.selectedSessionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('先选择或新建一个会话')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('先选择或新建一个会话')));
       return;
     }
     final preset = await showModalBottomSheet<String>(
@@ -1243,7 +1342,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
         builder: (dialogContext) => AlertDialog(
           title: const Text('开启完全访问?'),
           content: const Text(
-              '开启后 DSH 可读写设备上所有文件,且不再弹出审批确认。仅在信任当前任务时开启,可随时切回工作区写入。'),
+            '开启后 DSH 可读写设备上所有文件,且不再弹出审批确认。仅在信任当前任务时开启,可随时切回工作区写入。',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -1267,76 +1367,80 @@ class _SessionDrawerState extends State<SessionDrawer> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => _MoreSheet(actions: [
-        _MoreAction(
-          icon: Icons.palette_outlined,
-          label: '主题',
-          caption: kAppThemes
-              .firstWhere((s) => s.id == widget.theme.themeId,
-                  orElse: () => kAppThemes.first)
-              .name,
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            showModalBottomSheet<void>(
-              context: context,
-              showDragHandle: true,
-              builder: (_) => _ThemeSheet(theme: widget.theme),
-            );
-          },
-        ),
-        _MoreAction(
-          icon: Icons.pets,
-          label: '宠物',
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => PetPage(state: state)),
-            );
-          },
-        ),
-        _MoreAction(
-          icon: Icons.shield_outlined,
-          label: '权限模式',
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            _openPermissions();
-          },
-        ),
-        // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
-        if (defaultTargetPlatform == TargetPlatform.android)
+      builder: (sheetContext) => _MoreSheet(
+        actions: [
           _MoreAction(
-            icon: Icons.system_update_alt,
-            label: '检查更新',
-            dot: widget.updateAvailable,
+            icon: Icons.palette_outlined,
+            label: '主题',
+            caption: kAppThemes
+                .firstWhere(
+                  (s) => s.id == widget.theme.themeId,
+                  orElse: () => kAppThemes.first,
+                )
+                .name,
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              showModalBottomSheet<void>(
+                context: context,
+                showDragHandle: true,
+                builder: (_) => _ThemeSheet(theme: widget.theme),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.pets,
+            label: '宠物',
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
-              widget.onCheckUpdate();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => PetPage(state: state)),
+              );
             },
           ),
-        _MoreAction(
-          icon: Icons.new_releases_outlined,
-          label: '更新日志',
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ChangelogPage()),
-            );
-          },
-        ),
-        _MoreAction(
-          icon: Icons.logout,
-          label: '退出登录',
-          danger: true,
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            Navigator.of(context).pop();
-            widget.onLogout();
-          },
-        ),
-      ]),
+          _MoreAction(
+            icon: Icons.shield_outlined,
+            label: '权限模式',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              _openPermissions();
+            },
+          ),
+          // OTA 自更新仅 Android;iOS 分发必须走 App Store / TestFlight。
+          if (defaultTargetPlatform == TargetPlatform.android)
+            _MoreAction(
+              icon: Icons.system_update_alt,
+              label: '检查更新',
+              dot: widget.updateAvailable,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
+                widget.onCheckUpdate();
+              },
+            ),
+          _MoreAction(
+            icon: Icons.new_releases_outlined,
+            label: '更新日志',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ChangelogPage()),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.logout,
+            label: '退出登录',
+            danger: true,
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              widget.onLogout();
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1359,7 +1463,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
   @override
   Widget build(BuildContext context) {
     unawaited(_loadProfile());
-    final host = Uri.parse(state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl).host;
+    final host = Uri.parse(
+      state.serverUrl.isEmpty ? kDefaultServerUrl : state.serverUrl,
+    ).host;
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -1380,34 +1486,45 @@ class _SessionDrawerState extends State<SessionDrawer> {
                     children: [
                       Icon(Icons.auto_awesome, color: P.onAccent, size: 22),
                       SizedBox(width: 8),
-                      Text('xHarmess',
-                          style: TextStyle(
-                              color: P.onAccent,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'xHarmess',
+                        style: TextStyle(
+                          color: P.onAccent,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Icon(Icons.dns_outlined,
-                          size: 12,
-                          color: P.onAccent.withValues(alpha: 0.8)),
+                      Icon(
+                        Icons.dns_outlined,
+                        size: 12,
+                        color: P.onAccent.withValues(alpha: 0.8),
+                      ),
                       const SizedBox(width: 5),
                       Expanded(
-                        child: Text(host,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: P.onAccent.withValues(alpha: 0.8),
-                                fontSize: 12)),
+                        child: Text(
+                          host,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: P.onAccent.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('${state.sessions.length} 个会话',
-                      style: TextStyle(
-                          color: P.onAccent.withValues(alpha: 0.8),
-                          fontSize: 12)),
+                  Text(
+                    '${state.sessions.length} 个会话',
+                    style: TextStyle(
+                      color: P.onAccent.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   _LevelBadge(level: state.userLevel),
                 ],
@@ -1428,6 +1545,20 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
             ),
             const SizedBox(height: 8),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  _filterChip(0, '会话'),
+                  _filterChip(1, '运行中'),
+                  _filterChip(3, '置顶'),
+                  _filterChip(2, '已归档'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1448,16 +1579,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
               title: const Text('更多功能', style: TextStyle(fontSize: 14)),
               trailing:
                   widget.updateAvailable &&
-                          defaultTargetPlatform == TargetPlatform.android
-                      ? Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: P.success,
-                            shape: BoxShape.circle,
-                          ),
-                        )
-                      : null,
+                      defaultTargetPlatform == TargetPlatform.android
+                  ? Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: P.success,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                  : null,
               onTap: _openMore,
             ),
           ],
@@ -1465,6 +1596,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
       ),
     );
   }
+
   /// Social identity row at the top of the drawer header; hidden until the
   /// user joined the community once. Taps through to the community page.
   Widget _profileHeader() {
@@ -1510,22 +1642,30 @@ class _SessionDrawerState extends State<SessionDrawer> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(nickname,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: P.onAccent,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.bold)),
                   Text(
-                      'Lv.${profile['level']} · ${profile['title']}',
-                      style: TextStyle(
-                          color: P.onAccent.withValues(alpha: 0.8),
-                          fontSize: 11)),
+                    nickname,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: P.onAccent,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Lv.${profile['level']} · ${profile['title']}',
+                    style: TextStyle(
+                      color: P.onAccent.withValues(alpha: 0.8),
+                      fontSize: 11,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right,
-                color: P.onAccent.withValues(alpha: 0.8), size: 18),
+            Icon(
+              Icons.chevron_right,
+              color: P.onAccent.withValues(alpha: 0.8),
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -1544,16 +1684,46 @@ class _SessionDrawerState extends State<SessionDrawer> {
       child: Text(
         nickname.isEmpty ? '?' : nickname.characters.first,
         style: TextStyle(
-            color: P.onAccent, fontSize: 17, fontWeight: FontWeight.bold),
+          color: P.onAccent,
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  /// Groups sessions by workspace directory (cwd), mirroring the web client;
-  /// sessions without one collect in an 未分组 section at the end.
+  Widget _filterChip(int value, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        selected: _sessionFilter == value,
+        onSelected: (_) => setState(() => _sessionFilter = value),
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+
+  /// Groups filtered sessions by workspace directory (cwd), mirroring the
+  /// web client; sessions without one collect in an 未分组 section.
   List<Widget> _groupedSessionTiles(BuildContext context) {
+    final filtered =
+        state.sessions.where((row) {
+          final archived = state.archivedSessionIds.contains(row.sessionId);
+          return switch (_sessionFilter) {
+            1 => !archived && row.running,
+            2 => archived,
+            3 => !archived && state.pinnedSessionIds.contains(row.sessionId),
+            _ => !archived,
+          };
+        }).toList()..sort((a, b) {
+          final ap = state.pinnedSessionIds.contains(a.sessionId);
+          final bp = state.pinnedSessionIds.contains(b.sessionId);
+          if (ap != bp) return bp ? 1 : -1;
+          return b.updatedAt.compareTo(a.updatedAt);
+        });
     final groups = <String, List<SessionRow>>{};
-    for (final row in state.sessions) {
+    for (final row in filtered) {
       groups.putIfAbsent(row.cwd ?? '', () => []).add(row);
     }
     final keys = groups.keys.toList()
@@ -1619,8 +1789,10 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   ),
                 ),
               ),
-              Text('$count',
-                  style: TextStyle(fontSize: 11, color: P.textTertiary)),
+              Text(
+                '$count',
+                style: TextStyle(fontSize: 11, color: P.textTertiary),
+              ),
             ],
           ),
         ),
@@ -1630,6 +1802,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
 
   Widget _sessionTile(BuildContext context, SessionRow row) {
     final selected = row.sessionId == state.selectedSessionId;
+    final archived = state.archivedSessionIds.contains(row.sessionId);
+    final pinned = state.pinnedSessionIds.contains(row.sessionId);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
@@ -1638,16 +1812,24 @@ class _SessionDrawerState extends State<SessionDrawer> {
             : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           dense: true,
-          leading: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: row.running ? P.success : P.textTertiary,
-            ),
+          leading: Icon(
+            archived
+                ? Icons.archive_outlined
+                : pinned
+                ? Icons.push_pin
+                : Icons.circle,
+            size: pinned || archived ? 18 : 8,
+            color: archived
+                ? P.textTertiary
+                : pinned
+                ? P.accentLight
+                : row.running
+                ? P.success
+                : P.textTertiary,
           ),
           title: Text(
             row.title?.isNotEmpty == true ? row.title! : '新会话',
@@ -1657,8 +1839,22 @@ class _SessionDrawerState extends State<SessionDrawer> {
               fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
-          subtitle: Text(_timeAgo(row.updatedAt),
-              style: TextStyle(fontSize: 11.5, color: P.textTertiary)),
+          subtitle: Text(
+            _timeAgo(row.updatedAt),
+            style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+          ),
+          trailing: PopupMenuButton<String>(
+            tooltip: '会话操作',
+            onSelected: (action) => _sessionAction(row, action),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: pinned ? 'unpin' : 'pin',
+                child: Text(pinned ? '取消置顶' : '置顶'),
+              ),
+              if (!archived)
+                const PopupMenuItem(value: 'archive', child: Text('归档')),
+            ],
+          ),
           onTap: () {
             HapticFeedback.selectionClick();
             Navigator.of(context).pop();
@@ -1667,6 +1863,48 @@ class _SessionDrawerState extends State<SessionDrawer> {
         ),
       ),
     );
+  }
+
+  Future<void> _sessionAction(SessionRow row, String action) async {
+    if (action == 'pin' || action == 'unpin') {
+      await state.setSessionPinned(row.sessionId, action == 'pin');
+      return;
+    }
+    if (action != 'archive' || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('归档会话?'),
+        content: Text(
+          '归档“${row.title?.isNotEmpty == true ? row.title : '新会话'}”后,它会从默认列表隐藏,可在“已归档”中查看。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('归档'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await state.archiveSession(row.sessionId);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('会话已归档')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('归档失败: $error')));
+      }
+    }
   }
 }
 
@@ -1689,15 +1927,17 @@ class _ThemeSheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('选择主题',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  '选择主题',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('立即生效,自动保存',
-                    style:
-                        TextStyle(color: P.textTertiary, fontSize: 12.5)),
+                Text(
+                  '立即生效,自动保存',
+                  style: TextStyle(color: P.textTertiary, fontSize: 12.5),
+                ),
                 const SizedBox(height: 16),
                 GridView.count(
                   crossAxisCount: 2,
@@ -1826,7 +2066,9 @@ class _ThemeCard extends StatelessWidget {
                       Text(
                         spec.subtitle,
                         style: TextStyle(
-                            color: palette.textTertiary, fontSize: 10),
+                          color: palette.textTertiary,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -1844,8 +2086,7 @@ class _ThemeCard extends StatelessWidget {
                     gradient: palette.brandGradient,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.check,
-                      size: 12, color: palette.onAccent),
+                  child: Icon(Icons.check, size: 12, color: palette.onAccent),
                 ),
               ),
           ],
@@ -1877,21 +2118,24 @@ class _LevelBadge extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.military_tech,
-                    size: 16, color: Colors.amber),
+                const Icon(Icons.military_tech, size: 16, color: Colors.amber),
                 const SizedBox(width: 6),
                 Text(
                   'Lv.${level.level} · ${level.title}',
                   style: TextStyle(
-                      color: P.onAccent,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600),
+                    color: P.onAccent,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
-                Text('${level.count} 次对话',
-                    style: TextStyle(
-                        color: P.onAccent.withValues(alpha: 0.8),
-                        fontSize: 11)),
+                Text(
+                  '${level.count} 次对话',
+                  style: TextStyle(
+                    color: P.onAccent.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -1972,9 +2216,13 @@ class _LevelBadge extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Text('≥ ${levelThresholds[i]} 次',
-                            style: TextStyle(
-                                fontSize: 11.5, color: P.textTertiary)),
+                        Text(
+                          '≥ ${levelThresholds[i]} 次',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: P.textTertiary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -2119,13 +2367,16 @@ class _ChatListState extends State<ChatList> {
             child: TextButton.icon(
               onPressed: state.loadingHistory
                   ? null
-                  : () =>
-                      state.loadHistory(state.selectedSessionId!, older: true),
+                  : () => state.loadHistory(
+                      state.selectedSessionId!,
+                      older: true,
+                    ),
               icon: state.loadingHistory
                   ? const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.history, size: 16),
               label: const Text('加载更早的消息'),
             ),
@@ -2160,9 +2411,8 @@ class _ChatListState extends State<ChatList> {
               ? RefreshIndicator(
                   color: P.accent,
                   backgroundColor: P.cardAlt,
-                  onRefresh: () => state.loadHistory(
-                      state.selectedSessionId!,
-                      older: true),
+                  onRefresh: () =>
+                      state.loadHistory(state.selectedSessionId!, older: true),
                   child: listView,
                 )
               : listView,
@@ -2259,8 +2509,11 @@ class _ScrollToBottomButton extends StatelessWidget {
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.all(9),
-                  child: Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 22, color: P.accentLight),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 22,
+                    color: P.accentLight,
+                  ),
                 ),
               ),
             ),
@@ -2337,8 +2590,12 @@ class _UserBubble extends StatelessWidget {
           onLongPressStart: (details) =>
               _showCopyMenu(context, details.globalPosition, item.text),
           child: Container(
-            margin:
-                const EdgeInsets.only(left: 56, right: 12, top: 5, bottom: 5),
+            margin: const EdgeInsets.only(
+              left: 56,
+              right: 12,
+              top: 5,
+              bottom: 5,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
               gradient: P.brandGradient,
@@ -2366,8 +2623,7 @@ class _UserBubble extends StatelessWidget {
                   height: 1.45,
                   // Slash-command echoes render monospace, mirroring the web's
                   // command-input bubble.
-                  fontFamily:
-                      item.text.startsWith('/') ? 'monospace' : null,
+                  fontFamily: item.text.startsWith('/') ? 'monospace' : null,
                 ),
               ),
             ),
@@ -2405,10 +2661,9 @@ void _showCopyMenu(BuildContext context, Offset position, String text) {
   ).then((value) {
     if (value != 'copy' || !context.mounted) return;
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('已复制到剪贴板'),
-      duration: Duration(seconds: 1),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
+    );
   });
 }
 
@@ -2437,17 +2692,21 @@ class _AssistantMessage extends StatelessWidget {
       }
     }
     if (_streaming) {
-      children.add(const Padding(
-        padding: EdgeInsets.only(top: 6),
-        child: _TypingDots(),
-      ));
+      children.add(
+        const Padding(padding: EdgeInsets.only(top: 6), child: _TypingDots()),
+      );
     }
     if (item.interrupted) {
-      children.add(const Padding(
-        padding: EdgeInsets.only(top: 6),
-        child: _MiniChip(
-            icon: Icons.stop_circle_outlined, label: '已中断', color: Colors.orange),
-      ));
+      children.add(
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: _MiniChip(
+            icon: Icons.stop_circle_outlined,
+            label: '已中断',
+            color: Colors.orange,
+          ),
+        ),
+      );
     }
     final copyable = item.blocks
         .where((b) => b.type == 'text' && b.text.trim().isNotEmpty)
@@ -2462,15 +2721,16 @@ class _AssistantMessage extends StatelessWidget {
             onTap: () {
               Clipboard.setData(ClipboardData(text: copyable));
               HapticFeedback.selectionClick();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('已复制回复内容'),
-                duration: Duration(seconds: 1),
-              ));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('已复制回复内容'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
             },
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(Icons.copy_rounded,
-                  size: 14, color: P.textTertiary),
+              child: Icon(Icons.copy_rounded, size: 14, color: P.textTertiary),
             ),
           ),
         ),
@@ -2488,8 +2748,7 @@ class _AssistantMessage extends StatelessWidget {
               gradient: P.brandGradient,
               borderRadius: BorderRadius.circular(9),
             ),
-            child:
-                Icon(Icons.auto_awesome, color: P.onAccent, size: 16),
+            child: Icon(Icons.auto_awesome, color: P.onAccent, size: 16),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2537,9 +2796,7 @@ MarkdownStyleSheet _markdownStyle(BuildContext context) {
     blockquoteDecoration: BoxDecoration(
       color: P.fillSubtle,
       borderRadius: BorderRadius.circular(8),
-      border: Border(
-        left: BorderSide(color: P.accent, width: 3),
-      ),
+      border: Border(left: BorderSide(color: P.accent, width: 3)),
     ),
     blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     tableBorder: TableBorder.all(color: P.textTertiary, width: 0.5),
@@ -2586,7 +2843,8 @@ class _TypingDotsState extends State<_TypingDots>
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (i) {
-            final phase = _controller.value * 2 * math.pi + i * (2 * math.pi / 3);
+            final phase =
+                _controller.value * 2 * math.pi + i * (2 * math.pi / 3);
             final opacity = 0.25 + 0.55 * (0.5 + 0.5 * math.sin(phase));
             return Container(
               width: 7,
@@ -2594,10 +2852,9 @@ class _TypingDotsState extends State<_TypingDots>
               margin: const EdgeInsets.only(right: 5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: opacity),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: opacity),
               ),
             );
           }),
@@ -2640,15 +2897,19 @@ class _ReasoningCardState extends State<_ReasoningCard> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.psychology_alt_outlined,
-                      size: 16, color: Colors.amber),
+                  const Icon(
+                    Icons.psychology_alt_outlined,
+                    size: 16,
+                    color: Colors.amber,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     widget.streaming ? '正在思考…' : '思考过程',
                     style: const TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.amber,
-                        fontWeight: FontWeight.w500),
+                      fontSize: 12.5,
+                      color: Colors.amber,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const Spacer(),
                   Icon(
@@ -2666,10 +2927,11 @@ class _ReasoningCardState extends State<_ReasoningCard> {
               child: Text(
                 widget.text,
                 style: TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: P.textSecondary,
-                    fontStyle: FontStyle.italic),
+                  fontSize: 13,
+                  height: 1.5,
+                  color: P.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
         ],
@@ -2680,7 +2942,11 @@ class _ReasoningCardState extends State<_ReasoningCard> {
 
 /// Small label chip used for message metadata.
 class _MiniChip extends StatelessWidget {
-  const _MiniChip({required this.icon, required this.label, required this.color});
+  const _MiniChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   final IconData icon;
   final String label;
@@ -2783,7 +3049,9 @@ class _ToolCardState extends State<ToolCard> {
                       onTap: () => setState(() => _expanded = !_expanded),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 9),
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
                         child: Row(
                           children: [
                             Icon(_icon, size: 16, color: P.textSecondary),
@@ -2793,26 +3061,25 @@ class _ToolCardState extends State<ToolCard> {
                                 item.name,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600),
+                                  fontFamily: 'monospace',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             _MiniChip(
                               icon: item.completed
                                   ? (item.resultIsError
-                                      ? Icons.error_outline
-                                      : Icons.check_circle_outline)
+                                        ? Icons.error_outline
+                                        : Icons.check_circle_outline)
                                   : Icons.hourglass_top,
                               label: _statusLabel,
                               color: _statusColor,
                             ),
                             const Spacer(),
                             Icon(
-                              _expanded
-                                  ? Icons.expand_less
-                                  : Icons.expand_more,
+                              _expanded ? Icons.expand_less : Icons.expand_more,
                               size: 18,
                               color: P.textTertiary,
                             ),
@@ -2829,7 +3096,9 @@ class _ToolCardState extends State<ToolCard> {
                           children: [
                             if (item.arguments.isNotEmpty)
                               _codeSection(
-                                  '参数', _truncate(summarizeArguments(item.arguments))),
+                                '参数',
+                                _truncate(summarizeArguments(item.arguments)),
+                              ),
                             if (item.resultText != null) ...[
                               const SizedBox(height: 10),
                               _codeSection(
@@ -2845,13 +3114,17 @@ class _ToolCardState extends State<ToolCard> {
                                     width: 12,
                                     height: 12,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                   SizedBox(width: 8),
-                                  Text('等待结果…',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: P.textTertiary)),
+                                  Text(
+                                    '等待结果…',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: P.textTertiary,
+                                    ),
+                                  ),
                                 ],
                               ),
                           ],
@@ -2872,11 +3145,14 @@ class _ToolCardState extends State<ToolCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(),
-            style: TextStyle(
-                fontSize: 10.5,
-                letterSpacing: 1,
-                color: isError ? P.danger : P.textTertiary)),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10.5,
+            letterSpacing: 1,
+            color: isError ? P.danger : P.textTertiary,
+          ),
+        ),
         const SizedBox(height: 4),
         Container(
           width: double.infinity,
@@ -2885,9 +3161,7 @@ class _ToolCardState extends State<ToolCard> {
             color: P.code,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isError
-                  ? P.danger.withValues(alpha: 0.35)
-                  : P.fillLight,
+              color: isError ? P.danger.withValues(alpha: 0.35) : P.fillLight,
             ),
           ),
           child: SelectableText(
@@ -2896,7 +3170,9 @@ class _ToolCardState extends State<ToolCard> {
               fontFamily: 'monospace',
               fontSize: 12,
               height: 1.45,
-              color: isError ? P.danger.withValues(alpha: 0.9) : P.textSecondary,
+              color: isError
+                  ? P.danger.withValues(alpha: 0.9)
+                  : P.textSecondary,
             ),
           ),
         ),
@@ -2921,8 +3197,8 @@ class _NoticeCard extends StatelessWidget {
     final color = item.isError
         ? P.danger
         : item.pending
-            ? P.accentLight
-            : P.textTertiary;
+        ? P.accentLight
+        : P.textTertiary;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2930,15 +3206,15 @@ class _NoticeCard extends StatelessWidget {
         color: item.isError
             ? P.danger.withValues(alpha: 0.08)
             : item.pending
-                ? P.accent.withValues(alpha: 0.08)
-                : P.fillSubtle,
+            ? P.accent.withValues(alpha: 0.08)
+            : P.fillSubtle,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: item.isError
               ? P.danger.withValues(alpha: 0.3)
               : item.pending
-                  ? P.accent.withValues(alpha: 0.3)
-                  : P.fillLight,
+              ? P.accent.withValues(alpha: 0.3)
+              : P.fillLight,
         ),
       ),
       child: Row(
@@ -2980,7 +3256,12 @@ class _NoticeCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class QuestionDialog extends StatefulWidget {
-  const QuestionDialog({super.key, required this.state, required this.pending, this.onClosed});
+  const QuestionDialog({
+    super.key,
+    required this.state,
+    required this.pending,
+    this.onClosed,
+  });
 
   final AppState state;
   final PendingQuestion pending;
@@ -3107,31 +3388,47 @@ class _QuestionDialogState extends State<QuestionDialog> {
         if (header != null && header.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(header,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    letterSpacing: 0.6,
-                    color: P.accentLight)),
+            child: Text(
+              header,
+              style: TextStyle(
+                fontSize: 11.5,
+                letterSpacing: 0.6,
+                color: P.accentLight,
+              ),
+            ),
           ),
-        Text(question,
-            style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4)),
+        Text(
+          question,
+          style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4),
+        ),
         if (detail != null && detail.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(detail,
-                style: TextStyle(
-                    fontSize: 12.5, color: P.textSecondary, height: 1.45)),
+            child: Text(
+              detail,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: P.textSecondary,
+                height: 1.45,
+              ),
+            ),
           ),
         if (multi)
           Padding(
             padding: EdgeInsets.only(top: 4),
-            child: Text('可多选',
-                style: TextStyle(fontSize: 11, color: P.textTertiary)),
+            child: Text(
+              '可多选',
+              style: TextStyle(fontSize: 11, color: P.textTertiary),
+            ),
           ),
         const SizedBox(height: 10),
         for (final option in options)
-          _optionTile(id, option, multi,
-              selected.contains(option['label'] as String? ?? '')),
+          _optionTile(
+            id,
+            option,
+            multi,
+            selected.contains(option['label'] as String? ?? ''),
+          ),
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: TextField(
@@ -3147,13 +3444,11 @@ class _QuestionDialogState extends State<QuestionDialog> {
               fillColor: P.fillSubtle,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    BorderSide(color: P.fillLight),
+                borderSide: BorderSide(color: P.fillLight),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    BorderSide(color: P.fillLight),
+                borderSide: BorderSide(color: P.fillLight),
               ),
             ),
             style: const TextStyle(fontSize: 13.5),
@@ -3164,7 +3459,11 @@ class _QuestionDialogState extends State<QuestionDialog> {
   }
 
   Widget _optionTile(
-      String id, Map<String, dynamic> option, bool multi, bool selected) {
+    String id,
+    Map<String, dynamic> option,
+    bool multi,
+    bool selected,
+  ) {
     final label = option['label'] as String? ?? '';
     final description = option['description'] as String?;
     final primary = Theme.of(context).colorScheme.primary;
@@ -3177,14 +3476,10 @@ class _QuestionDialogState extends State<QuestionDialog> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected
-                ? primary.withValues(alpha: 0.18)
-                : P.fillSubtle,
+            color: selected ? primary.withValues(alpha: 0.18) : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected
-                  ? primary.withValues(alpha: 0.7)
-                  : P.fillMedium,
+              color: selected ? primary.withValues(alpha: 0.7) : P.fillMedium,
             ),
           ),
           child: Row(
@@ -3192,11 +3487,11 @@ class _QuestionDialogState extends State<QuestionDialog> {
               Icon(
                 multi
                     ? (selected
-                        ? Icons.check_box
-                        : Icons.check_box_outline_blank)
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank)
                     : (selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off),
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off),
                 size: 20,
                 color: selected ? primary : P.textTertiary,
               ),
@@ -3209,9 +3504,10 @@ class _QuestionDialogState extends State<QuestionDialog> {
                     if (description != null && description.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(description,
-                            style: TextStyle(
-                                fontSize: 12, color: P.textTertiary)),
+                        child: Text(
+                          description,
+                          style: TextStyle(fontSize: 12, color: P.textTertiary),
+                        ),
                       ),
                   ],
                 ),
@@ -3272,7 +3568,8 @@ class _ComposerState extends State<Composer> {
           Navigator.of(sheetContext).pop();
           _controller.text = '/$command ';
           _controller.selection = TextSelection.collapsed(
-              offset: _controller.text.length);
+            offset: _controller.text.length,
+          );
           _focusNode.requestFocus();
         },
       ),
@@ -3304,8 +3601,7 @@ class _ComposerState extends State<Composer> {
           decoration: BoxDecoration(
             color: P.card,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-                color: P.isDark ? P.fillMedium : P.divider),
+            border: Border.all(color: P.isDark ? P.fillMedium : P.divider),
             boxShadow: P.cardShadow,
           ),
           padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
@@ -3345,12 +3641,12 @@ class _ComposerState extends State<Composer> {
                       color: P.danger.withValues(alpha: 0.16),
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: P.danger.withValues(alpha: 0.5)),
+                        color: P.danger.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: IconButton(
                       tooltip: '停止生成',
-                      icon: Icon(Icons.stop_rounded,
-                          color: P.danger),
+                      icon: Icon(Icons.stop_rounded, color: P.danger),
                       onPressed: () => widget.state.cancelTurn(),
                     ),
                   ),
@@ -3415,38 +3711,51 @@ class StatsBar extends StatelessWidget {
     final llmMs = _num(stats, 'llmMs');
     final toolMs = _num(stats, 'toolMs');
     if (llmMs != null) {
-      chips.add(_StatChip(
-        icon: Icons.schedule,
-        label: 'LLM ${_fmtDuration(llmMs)} · 工具 ${_fmtDuration(toolMs ?? 0)}',
-      ));
+      chips.add(
+        _StatChip(
+          icon: Icons.schedule,
+          label: 'LLM ${_fmtDuration(llmMs)} · 工具 ${_fmtDuration(toolMs ?? 0)}',
+        ),
+      );
     }
     final ttftMs = _num(stats, 'ttftMs');
     final ttftSteps = _num(stats, 'ttftSteps');
     if (ttftMs != null && ttftSteps != null && ttftSteps > 0) {
-      chips.add(_StatChip(
+      chips.add(
+        _StatChip(
           icon: Icons.bolt,
-          label: '首 token 平均 ${_fmtDuration(ttftMs / ttftSteps)}'));
+          label: '首 token 平均 ${_fmtDuration(ttftMs / ttftSteps)}',
+        ),
+      );
     }
     final decodeMs = _num(stats, 'decodeMs');
     final decodeTokens = _num(stats, 'decodeTokens');
     if (decodeMs != null && decodeMs > 0 && decodeTokens != null) {
       final speed = decodeTokens / (decodeMs / 1000);
-      chips.add(_StatChip(
-          icon: Icons.speed, label: '${speed.toStringAsFixed(0)} tok/s'));
+      chips.add(
+        _StatChip(
+          icon: Icons.speed,
+          label: '${speed.toStringAsFixed(0)} tok/s',
+        ),
+      );
     }
     final uncached = _num(usage, 'uncachedInputTokens');
     final output = _num(usage, 'outputTokens');
     final cacheRead = _num(usage, 'cacheReadTokens');
     if (cacheRead != null && uncached != null && cacheRead + uncached > 0) {
       final pct = cacheRead / (cacheRead + uncached) * 100;
-      chips.add(_StatChip(
-          icon: Icons.cached, label: '缓存命中 ${pct.toStringAsFixed(0)}%'));
+      chips.add(
+        _StatChip(icon: Icons.cached, label: '缓存命中 ${pct.toStringAsFixed(0)}%'),
+      );
     }
     if (uncached != null || output != null) {
-      chips.add(_StatChip(
-        icon: Icons.swap_vert,
-        label: '输入 ${_fmtTokens(uncached ?? 0)} · 输出 ${_fmtTokens(output ?? 0)}',
-      ));
+      chips.add(
+        _StatChip(
+          icon: Icons.swap_vert,
+          label:
+              '输入 ${_fmtTokens(uncached ?? 0)} · 输出 ${_fmtTokens(output ?? 0)}',
+        ),
+      );
     }
     final projected =
         _num(pressure, 'projectedTokens') ?? _num(pressure, 'pressureTokens');
@@ -3458,9 +3767,7 @@ class StatsBar extends StatelessWidget {
     if (chips.isEmpty) return const SizedBox.shrink();
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: P.fillLight),
-        ),
+        border: Border(bottom: BorderSide(color: P.fillLight)),
       ),
       child: SizedBox(
         height: 44,
@@ -3496,8 +3803,7 @@ class _StatChip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: P.accentLight),
           const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(fontSize: 11.5, color: P.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 11.5, color: P.textSecondary)),
         ],
       ),
     );
@@ -3518,8 +3824,8 @@ class _ContextChip extends StatelessWidget {
     final color = pct >= 85
         ? P.danger
         : pct >= 70
-            ? Colors.amber
-            : P.success;
+        ? Colors.amber
+        : P.success;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -3532,8 +3838,10 @@ class _ContextChip extends StatelessWidget {
         children: [
           Icon(Icons.data_usage, size: 13, color: color),
           const SizedBox(width: 5),
-          Text('上下文 ${pct.toStringAsFixed(0)}%',
-              style: TextStyle(fontSize: 11.5, color: color)),
+          Text(
+            '上下文 ${pct.toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 11.5, color: color),
+          ),
           const SizedBox(width: 6),
           SizedBox(
             width: 46,
@@ -3582,8 +3890,11 @@ class ModelPickerSheet extends StatelessWidget {
     return current['provider'] == provider && current['model'] == model;
   }
 
-  Future<void> _pick(BuildContext context, String provider,
-      Map<String, dynamic> model) async {
+  Future<void> _pick(
+    BuildContext context,
+    String provider,
+    Map<String, dynamic> model,
+  ) async {
     final modelId = model['id'] as String? ?? '';
     if (modelId.isEmpty) return;
     final reasoning = (model['reasoning'] as Map?)?.cast<String, dynamic>();
@@ -3618,22 +3929,27 @@ class ModelPickerSheet extends StatelessWidget {
     final chosenEffort = (effort == null || effort.isEmpty) ? null : effort;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await state.selectModel(provider, modelId,
-          reasoningEffort: chosenEffort);
+      await state.selectModel(provider, modelId, reasoningEffort: chosenEffort);
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      messenger.showSnackBar(SnackBar(
-        content: Text(chosenEffort == null
-            ? '已切换模型: $name'
-            : '已切换模型: $name · 推理强度 $chosenEffort'),
-        duration: const Duration(seconds: 2),
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            chosenEffort == null
+                ? '已切换模型: $name'
+                : '已切换模型: $name · 推理强度 $chosenEffort',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } catch (error) {
-      messenger.showSnackBar(SnackBar(
-        content: Text('切换失败: $error'),
-        backgroundColor: P.danger,
-        duration: const Duration(seconds: 4),
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('切换失败: $error'),
+          backgroundColor: P.danger,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -3641,10 +3957,7 @@ class ModelPickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final models = state.models;
     if (models == null) {
-      return const SizedBox(
-        height: 200,
-        child: Center(child: Text('模型目录不可用')),
-      );
+      return const SizedBox(height: 200, child: Center(child: Text('模型目录不可用')));
     }
     return AnimatedBuilder(
       animation: state,
@@ -3662,17 +3975,17 @@ class ModelPickerSheet extends StatelessWidget {
                   children: [
                     const Icon(Icons.smart_toy_outlined, size: 20),
                     const SizedBox(width: 8),
-                    Text('选择模型',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      '选择模型',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
                     if (models.current['model'] != null)
                       Text(
                         '当前: ${models.label}',
-                        style: TextStyle(
-                            fontSize: 12, color: P.textTertiary),
+                        style: TextStyle(fontSize: 12, color: P.textTertiary),
                       ),
                   ],
                 ),
@@ -3684,15 +3997,17 @@ class ModelPickerSheet extends StatelessWidget {
                       (group['name'] as String? ?? group['id'] as String? ?? '')
                           .toUpperCase(),
                       style: TextStyle(
-                          fontSize: 11.5,
-                          letterSpacing: 1.1,
-                          color: P.accentLight,
-                          fontWeight: FontWeight.w600),
+                        fontSize: 11.5,
+                        letterSpacing: 1.1,
+                        color: P.accentLight,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   for (final model
-                      in ((group['models'] as List?) ?? const [])
-                          .map((m) => (m as Map).cast<String, dynamic>()))
+                      in ((group['models'] as List?) ?? const []).map(
+                        (m) => (m as Map).cast<String, dynamic>(),
+                      ))
                     _modelTile(context, group['id'] as String? ?? '', model),
                 ],
               ],
@@ -3704,7 +4019,10 @@ class ModelPickerSheet extends StatelessWidget {
   }
 
   Widget _modelTile(
-      BuildContext context, String provider, Map<String, dynamic> model) {
+    BuildContext context,
+    String provider,
+    Map<String, dynamic> model,
+  ) {
     final id = model['id'] as String? ?? '';
     final name = model['name'] as String? ?? id;
     final description = model['description'] as String?;
@@ -3720,24 +4038,32 @@ class ModelPickerSheet extends StatelessWidget {
             : P.fillSubtle,
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          title: Text(name,
-              style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: current ? FontWeight.w600 : FontWeight.normal)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          title: Text(
+            name,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: current ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(id,
-                  style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 11.5,
-                      color: P.textTertiary)),
+              Text(
+                id,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11.5,
+                  color: P.textTertiary,
+                ),
+              ),
               if (description != null && description.isNotEmpty)
-                Text(description,
-                    style: TextStyle(
-                        fontSize: 12, color: P.textTertiary)),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 12, color: P.textTertiary),
+                ),
               if (current &&
                   (state.models?.current['reasoningEffort'] as String? ?? '')
                       .isNotEmpty)
@@ -3745,19 +4071,21 @@ class ModelPickerSheet extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 3),
                   child: _MiniChip(
                     icon: Icons.tune,
-                    label:
-                        '推理强度 ${state.models!.current['reasoningEffort']}',
+                    label: '推理强度 ${state.models!.current['reasoningEffort']}',
                     color: P.accentLight,
                   ),
                 ),
             ],
           ),
           trailing: current
-              ? Icon(Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary, size: 20)
+              ? Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                )
               : hasEfforts
-                  ? Icon(Icons.tune, size: 18, color: P.textTertiary)
-                  : null,
+              ? Icon(Icons.tune, size: 18, color: P.textTertiary)
+              : null,
           onTap: () => _pick(context, provider, model),
         ),
       ),
@@ -3771,24 +4099,24 @@ class ModelPickerSheet extends StatelessWidget {
 
 /// Display metadata of one changelog change type.
 ({Color color, IconData icon, String label}) _changeTypeMeta(
-        ChangelogChangeType type) =>
-    switch (type) {
-      ChangelogChangeType.feature => (
-          color: P.success,
-          icon: Icons.auto_awesome,
-          label: '新功能',
-        ),
-      ChangelogChangeType.improvement => (
-          color: P.accentLight,
-          icon: Icons.trending_up,
-          label: '优化',
-        ),
-      ChangelogChangeType.fix => (
-          color: Colors.orangeAccent,
-          icon: Icons.bug_report_outlined,
-          label: '修复',
-        ),
-    };
+  ChangelogChangeType type,
+) => switch (type) {
+  ChangelogChangeType.feature => (
+    color: P.success,
+    icon: Icons.auto_awesome,
+    label: '新功能',
+  ),
+  ChangelogChangeType.improvement => (
+    color: P.accentLight,
+    icon: Icons.trending_up,
+    label: '优化',
+  ),
+  ChangelogChangeType.fix => (
+    color: Colors.orangeAccent,
+    icon: Icons.bug_report_outlined,
+    label: '修复',
+  ),
+};
 
 /// One change row: colored type chip plus the change text.
 class _ChangelogChangeRow extends StatelessWidget {
@@ -3817,16 +4145,23 @@ class _ChangelogChangeRow extends StatelessWidget {
               children: [
                 Icon(meta.icon, size: 11, color: meta.color),
                 const SizedBox(width: 3),
-                Text(meta.label,
-                    style: TextStyle(fontSize: 10, color: meta.color)),
+                Text(
+                  meta.label,
+                  style: TextStyle(fontSize: 10, color: meta.color),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(change.text,
-                style: TextStyle(
-                    fontSize: 13, height: 1.45, color: P.textSecondary)),
+            child: Text(
+              change.text,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: P.textSecondary,
+              ),
+            ),
           ),
         ],
       ),
@@ -3852,35 +4187,42 @@ class ChangelogPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: P.card,
                 borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: P.fillLight),
+                border: Border.all(color: P.fillLight),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Text('v${release.version}',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        'v${release.version}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       if (release.version == kLatestRelease.version) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             gradient: P.brandGradient,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text('当前',
-                              style: TextStyle(
-                                  fontSize: 10, color: P.onAccent)),
+                          child: Text(
+                            '当前',
+                            style: TextStyle(fontSize: 10, color: P.onAccent),
+                          ),
                         ),
                       ],
                       const Spacer(),
-                      Text(release.date,
-                          style: TextStyle(
-                              fontSize: 12, color: P.textTertiary)),
+                      Text(
+                        release.date,
+                        style: TextStyle(fontSize: 12, color: P.textTertiary),
+                      ),
                     ],
                   ),
                   const Divider(height: 18),
@@ -3908,8 +4250,10 @@ class WhatsNewDialog extends StatelessWidget {
           Icon(Icons.new_releases_outlined, color: P.accentLight),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('v${release.version} 更新内容',
-                style: const TextStyle(fontSize: 17)),
+            child: Text(
+              'v${release.version} 更新内容',
+              style: const TextStyle(fontSize: 17),
+            ),
           ),
         ],
       ),
@@ -4034,11 +4378,11 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                     children: [
                       const Icon(Icons.add_comment_outlined, size: 20),
                       const SizedBox(width: 8),
-                      Text('新建会话',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(
+                        '新建会话',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -4047,11 +4391,14 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                     const SizedBox(height: 8),
                     Padding(
                       padding: EdgeInsets.only(left: 4, bottom: 6),
-                      child: Text('选择工作区目录',
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              letterSpacing: 0.6,
-                              color: P.accentLight)),
+                      child: Text(
+                        '选择工作区目录',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          letterSpacing: 0.6,
+                          color: P.accentLight,
+                        ),
+                      ),
                     ),
                     if (state.loadingWorkspaces)
                       const Padding(
@@ -4065,17 +4412,22 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                       if (state.workspaces.isEmpty && !_customMode)
                         Padding(
                           padding: EdgeInsets.all(8),
-                          child: Text('没有已注册的工作区,可使用自定义路径',
-                              style: TextStyle(
-                                  fontSize: 12, color: P.textTertiary)),
+                          child: Text(
+                            '没有已注册的工作区,可使用自定义路径',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: P.textTertiary,
+                            ),
+                          ),
                         ),
                     ],
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 10),
-                    Text('创建失败: $_error',
-                        style: TextStyle(
-                            fontSize: 12.5, color: P.danger)),
+                    Text(
+                      '创建失败: $_error',
+                      style: TextStyle(fontSize: 12.5, color: P.danger),
+                    ),
                   ],
                   const SizedBox(height: 16),
                   _GradientButton(
@@ -4125,8 +4477,10 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('在默认工作区创建', style: TextStyle(fontSize: 14)),
-                  Text('使用服务器的默认目录',
-                      style: TextStyle(fontSize: 11.5, color: P.textTertiary)),
+                  Text(
+                    '使用服务器的默认目录',
+                    style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+                  ),
                 ],
               ),
             ),
@@ -4160,19 +4514,14 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
-                  ? Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.6)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
                   : P.fillLight,
             ),
           ),
           child: Row(
             children: [
               Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
                 size: 20,
                 color: selected
                     ? Theme.of(context).colorScheme.primary
@@ -4184,18 +4533,22 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: const TextStyle(fontSize: 14)),
-                    Text(path,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            color: P.textTertiary)),
+                    Text(
+                      path,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: P.textTertiary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Text('$sessions 个会话',
-                  style:
-                      TextStyle(fontSize: 11, color: P.textTertiary)),
+              Text(
+                '$sessions 个会话',
+                style: TextStyle(fontSize: 11, color: P.textTertiary),
+              ),
             ],
           ),
         ),
@@ -4215,18 +4568,16 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: _customMode
-                  ? Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.16)
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.16)
                   : P.fillSubtle,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _customMode
-                    ? Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.6)
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.6)
                     : P.fillLight,
               ),
             ),
@@ -4245,8 +4596,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 const Expanded(
                   child: Text('自定义路径', style: TextStyle(fontSize: 14)),
                 ),
-                Icon(Icons.edit_outlined,
-                    size: 16, color: P.textTertiary),
+                Icon(Icons.edit_outlined, size: 16, color: P.textTertiary),
               ],
             ),
           ),
@@ -4262,20 +4612,17 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 hintText: '/home/you/project',
                 hintStyle: TextStyle(color: P.textTertiary),
                 helperText: '必须是服务器上已存在的目录',
-                helperStyle:
-                    TextStyle(fontSize: 11, color: P.textTertiary),
+                helperStyle: TextStyle(fontSize: 11, color: P.textTertiary),
                 isDense: true,
                 filled: true,
                 fillColor: P.fillSubtle,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: P.fillLight),
+                  borderSide: BorderSide(color: P.fillLight),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: P.fillLight),
+                  borderSide: BorderSide(color: P.fillLight),
                 ),
               ),
             ),
@@ -4327,20 +4674,29 @@ class _UpdateAvailableDialog extends StatelessWidget {
                     color: P.onAccent.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.system_update_alt_rounded,
-                      size: 28, color: P.onAccent),
+                  child: Icon(
+                    Icons.system_update_alt_rounded,
+                    size: 28,
+                    color: P.onAccent,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                Text('发现新版本',
-                    style: TextStyle(
-                        color: P.onAccent,
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  '发现新版本',
+                  style: TextStyle(
+                    color: P.onAccent,
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text('v${info.version}',
-                    style: TextStyle(
-                        color: P.onAccent.withValues(alpha: 0.85),
-                        fontSize: 13)),
+                Text(
+                  'v${info.version}',
+                  style: TextStyle(
+                    color: P.onAccent.withValues(alpha: 0.85),
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -4352,8 +4708,10 @@ class _UpdateAvailableDialog extends StatelessWidget {
               children: [
                 if (info.size != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: P.fillSubtle,
                       borderRadius: BorderRadius.circular(14),
@@ -4361,12 +4719,19 @@ class _UpdateAvailableDialog extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.save_alt_rounded,
-                            size: 13, color: P.textTertiary),
+                        Icon(
+                          Icons.save_alt_rounded,
+                          size: 13,
+                          color: P.textTertiary,
+                        ),
                         const SizedBox(width: 5),
-                        Text('安装包 ${_fmtBytes(info.size!)}',
-                            style: TextStyle(
-                                fontSize: 11.5, color: P.textTertiary)),
+                        Text(
+                          '安装包 ${_fmtBytes(info.size!)}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: P.textTertiary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -4384,9 +4749,10 @@ class _UpdateAvailableDialog extends StatelessWidget {
                       child: Text(
                         info.notes!,
                         style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.55,
-                            color: P.textSecondary),
+                          fontSize: 12.5,
+                          height: 1.55,
+                          color: P.textSecondary,
+                        ),
                       ),
                     ),
                   ),
@@ -4410,14 +4776,20 @@ class _UpdateAvailableDialog extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.download_rounded,
-                                size: 18, color: P.onAccent),
+                            Icon(
+                              Icons.download_rounded,
+                              size: 18,
+                              color: P.onAccent,
+                            ),
                             const SizedBox(width: 6),
-                            Text('立即更新',
-                                style: TextStyle(
-                                    color: P.onAccent,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
+                            Text(
+                              '立即更新',
+                              style: TextStyle(
+                                color: P.onAccent,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -4428,9 +4800,10 @@ class _UpdateAvailableDialog extends StatelessWidget {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: Text('稍后',
-                        style:
-                            TextStyle(color: P.textTertiary, fontSize: 13.5)),
+                    child: Text(
+                      '稍后',
+                      style: TextStyle(color: P.textTertiary, fontSize: 13.5),
+                    ),
                   ),
                 ),
               ],
@@ -4527,12 +4900,15 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('正在下载更新',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              '正在下载更新',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 3),
-            Text('v${widget.info.version}',
-                style: TextStyle(fontSize: 12.5, color: P.textTertiary)),
+            Text(
+              'v${widget.info.version}',
+              style: TextStyle(fontSize: 12.5, color: P.textTertiary),
+            ),
             const SizedBox(height: 22),
             if (_error != null) ...[
               Container(
@@ -4542,21 +4918,30 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
                   color: P.danger.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.cloud_off_outlined,
-                    size: 26, color: P.danger),
+                child: Icon(
+                  Icons.cloud_off_outlined,
+                  size: 26,
+                  color: P.danger,
+                ),
               ),
               const SizedBox(height: 12),
-              Text('下载失败',
-                  style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: P.danger)),
+              Text(
+                '下载失败',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: P.danger,
+                ),
+              ),
               const SizedBox(height: 6),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 12, height: 1.5, color: P.textTertiary),
+                  fontSize: 12,
+                  height: 1.5,
+                  color: P.textTertiary,
+                ),
               ),
               const SizedBox(height: 18),
               Row(
@@ -4564,8 +4949,7 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: Text('关闭',
-                        style: TextStyle(color: P.textTertiary)),
+                    child: Text('关闭', style: TextStyle(color: P.textTertiary)),
                   ),
                   const SizedBox(width: 10),
                   FilledButton.icon(
@@ -4573,10 +4957,12 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('重试'),
                     style: FilledButton.styleFrom(
-                        backgroundColor: P.accent,
-                        foregroundColor: P.onAccent,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
+                      backgroundColor: P.accent,
+                      foregroundColor: P.onAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -4606,15 +4992,18 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
                               ? '${(progress * 100).toStringAsFixed(0)}%'
                               : '…',
                           style: TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w700,
-                              color: P.text),
+                            fontSize: 21,
+                            fontWeight: FontWeight.w700,
+                            color: P.text,
+                          ),
                         ),
                         if (_speed != null)
                           Text(
                             '${_fmtBytes(_speed!.round())}/s',
                             style: TextStyle(
-                                fontSize: 10.5, color: P.textTertiary),
+                              fontSize: 10.5,
+                              color: P.textTertiary,
+                            ),
                           ),
                       ],
                     ),
@@ -4629,8 +5018,10 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
                 style: TextStyle(fontSize: 12, color: P.textSecondary),
               ),
               const SizedBox(height: 4),
-              Text('完成后将自动打开安装界面',
-                  style: TextStyle(fontSize: 11, color: P.textTertiary)),
+              Text(
+                '完成后将自动打开安装界面',
+                style: TextStyle(fontSize: 11, color: P.textTertiary),
+              ),
             ],
           ],
         ),
@@ -4639,15 +5030,18 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
   }
 }
 
-
 // ---------------------------------------------------------------------------
 // Slash commands
 // ---------------------------------------------------------------------------
 
 /// One slash command offered by the composer sheet.
 class _SlashCommand {
-  const _SlashCommand(this.name, this.icon, this.description,
-      {this.hasInput = false});
+  const _SlashCommand(
+    this.name,
+    this.icon,
+    this.description, {
+    this.hasInput = false,
+  });
 
   final String name;
   final IconData icon;
@@ -4660,13 +5054,19 @@ class _SlashCommand {
 const _slashCommands = [
   _SlashCommand('compact', Icons.compress, '压缩较早的对话历史,释放上下文空间'),
   _SlashCommand('plan', Icons.map_outlined, '进入或退出计划模式'),
-  _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标',
-      hasInput: true),
-  _SlashCommand('permission', Icons.shield_outlined,
-      '切换权限模式(如 /permission danger-full-access)',
-      hasInput: true),
-  _SlashCommand('feedback', Icons.rate_review_outlined, '记录对本会话的反馈',
-      hasInput: true),
+  _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标', hasInput: true),
+  _SlashCommand(
+    'permission',
+    Icons.shield_outlined,
+    '切换权限模式(如 /permission danger-full-access)',
+    hasInput: true,
+  ),
+  _SlashCommand(
+    'feedback',
+    Icons.rate_review_outlined,
+    '记录对本会话的反馈',
+    hasInput: true,
+  ),
 ];
 
 /// One entry of the "更多功能" grid sheet.
@@ -4710,11 +5110,12 @@ class _MoreSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('更多功能',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              '更多功能',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             GridView.count(
               crossAxisCount: 4,
@@ -4779,13 +5180,18 @@ class _MoreCell extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(action.label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: action.danger ? P.danger : P.textSecondary)),
+          Text(
+            action.label,
+            style: TextStyle(
+              fontSize: 12,
+              color: action.danger ? P.danger : P.textSecondary,
+            ),
+          ),
           if (action.caption != null)
-            Text(action.caption!,
-                style: TextStyle(fontSize: 10, color: P.textTertiary)),
+            Text(
+              action.caption!,
+              style: TextStyle(fontSize: 10, color: P.textTertiary),
+            ),
         ],
       ),
     );
@@ -4809,14 +5215,17 @@ class _PermissionSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('权限模式',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              '权限模式',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
-            Text('控制当前会话的文件访问范围与审批策略',
-                style: TextStyle(fontSize: 12, color: P.textTertiary)),
+            Text(
+              '控制当前会话的文件访问范围与审批策略',
+              style: TextStyle(fontSize: 12, color: P.textTertiary),
+            ),
             const SizedBox(height: 12),
             _PermissionOption(
               icon: Icons.edit_note,
@@ -4863,8 +5272,7 @@ class _PermissionOption extends StatelessWidget {
       color: P.fillSubtle,
       borderRadius: BorderRadius.circular(14),
       child: ListTile(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: Container(
           width: 36,
           height: 36,
@@ -4874,11 +5282,14 @@ class _PermissionOption extends StatelessWidget {
           ),
           child: Icon(icon, size: 18, color: P.onAccent),
         ),
-        title: Text(title,
-            style:
-                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        subtitle: Text(description,
-            style: TextStyle(fontSize: 12, color: P.textSecondary)),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          description,
+          style: TextStyle(fontSize: 12, color: P.textSecondary),
+        ),
         onTap: () => onPick(preset),
       ),
     );
@@ -4953,14 +5364,17 @@ class _CommandsSheetState extends State<_CommandsSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('快捷命令',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              '快捷命令',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
-            Text('以 / 开头的消息会作为命令执行,不会发送给模型',
-                style: TextStyle(fontSize: 12, color: P.textTertiary)),
+            Text(
+              '以 / 开头的消息会作为命令执行,不会发送给模型',
+              style: TextStyle(fontSize: 12, color: P.textTertiary),
+            ),
             const SizedBox(height: 12),
             // Bounded, scrollable list: the catalog comes from the server and
             // grows over time; a fixed Column clipped past the sheet height.
@@ -4979,7 +5393,8 @@ class _CommandsSheetState extends State<_CommandsSheet> {
                         borderRadius: BorderRadius.circular(14),
                         child: ListTile(
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           leading: Container(
                             width: 36,
                             height: 36,
@@ -4987,17 +5402,27 @@ class _CommandsSheetState extends State<_CommandsSheet> {
                               gradient: P.brandGradient,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(command.icon,
-                                size: 18, color: P.onAccent),
+                            child: Icon(
+                              command.icon,
+                              size: 18,
+                              color: P.onAccent,
+                            ),
                           ),
-                          title: Text('/${command.name}',
-                              style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600)),
-                          subtitle: Text(command.description,
-                              style: TextStyle(
-                                  fontSize: 12, color: P.textSecondary)),
+                          title: Text(
+                            '/${command.name}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            command.description,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: P.textSecondary,
+                            ),
+                          ),
                           trailing: Icon(
                             command.hasInput
                                 ? Icons.edit_outlined

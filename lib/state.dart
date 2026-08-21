@@ -45,21 +45,32 @@ class SessionRow {
 
 /// Renderable conversation unit produced by the event fold.
 class ChatItem {
-  ChatItem.user({required this.id, required this.text, this.provisional = false})
-      : kind = ChatItemKind.user,
-        time = null;
+  ChatItem.user({
+    required this.id,
+    required this.text,
+    this.provisional = false,
+  }) : kind = ChatItemKind.user,
+       time = null;
 
-  ChatItem.assistant({required this.id, required this.blocks, this.usage, this.interrupted = false})
-      : kind = ChatItemKind.assistant,
-        time = null;
+  ChatItem.assistant({
+    required this.id,
+    required this.blocks,
+    this.usage,
+    this.interrupted = false,
+  }) : kind = ChatItemKind.assistant,
+       time = null;
 
-  ChatItem.tool({required this.id, required this.callId, required this.name, required this.arguments})
-      : kind = ChatItemKind.tool,
-        time = null;
+  ChatItem.tool({
+    required this.id,
+    required this.callId,
+    required this.name,
+    required this.arguments,
+  }) : kind = ChatItemKind.tool,
+       time = null;
 
   ChatItem.notice({required this.id, required this.text, this.isError = false})
-      : kind = ChatItemKind.notice,
-        time = null;
+    : kind = ChatItemKind.notice,
+      time = null;
 
   final ChatItemKind kind;
   final String id;
@@ -117,7 +128,11 @@ class PendingApproval {
 
 /// A pending ask-user-question batch.
 class PendingQuestion {
-  PendingQuestion({required this.rpcId, required this.sessionId, required this.questions});
+  PendingQuestion({
+    required this.rpcId,
+    required this.sessionId,
+    required this.questions,
+  });
 
   final String rpcId;
   final String sessionId;
@@ -133,7 +148,11 @@ class ProjectionCell {
 
 /// Detached model catalog of one session (session.models value).
 class SessionModelsData {
-  SessionModelsData({required this.current, required this.routable, required this.groups});
+  SessionModelsData({
+    required this.current,
+    required this.routable,
+    required this.groups,
+  });
 
   final Map<String, dynamic> current;
   final bool routable;
@@ -159,6 +178,12 @@ class AppState extends ChangeNotifier {
 
   final List<SessionRow> sessions = [];
   String? selectedSessionId;
+
+  /// Server-owned archived sessions returned by workspace.archiveSession.
+  final Set<String> archivedSessionIds = {};
+
+  /// Device-local pins; pinning is intentionally independent of server order.
+  final Set<String> pinnedSessionIds = {};
 
   /// Conversation of the selected session.
   final List<ChatItem> items = [];
@@ -186,24 +211,28 @@ class AppState extends ChangeNotifier {
     if (value is! Map) return;
     final hit = (value['cacheReadTokens'] as num?)?.toInt();
     if (hit == null) return;
-    unawaited(_petTokens.record(sessionId, hit).then((total) {
-      if (total != petTokensTotal) {
-        petTokensTotal = total;
-        notifyListeners();
-      }
-    }));
+    unawaited(
+      _petTokens.record(sessionId, hit).then((total) {
+        if (total != petTokensTotal) {
+          petTokensTotal = total;
+          notifyListeners();
+        }
+      }),
+    );
   }
 
   /// Seeds [petTokensTotal] from the persisted per-session maxima; the pet
   /// page calls this on open (idempotent, and test-safe — plain unit tests
   /// without a binding never construct the read).
   void ensurePetTokensLoaded() {
-    unawaited(_petTokens.total().then((total) {
-      if (total != petTokensTotal) {
-        petTokensTotal = total;
-        notifyListeners();
-      }
-    }));
+    unawaited(
+      _petTokens.total().then((total) {
+        if (total != petTokensTotal) {
+          petTokensTotal = total;
+          notifyListeners();
+        }
+      }),
+    );
   }
 
   /// Re-reads the pet token total after an out-of-band change (pet battle
@@ -223,13 +252,15 @@ class AppState extends ChangeNotifier {
   /// Reads one projection value for a session.
   Map<String, dynamic>? projectionOf(String? sessionId, String key) {
     if (sessionId == null) return null;
-    return (projections[sessionId]?[key]?.value as Map?)?.cast<String, dynamic>();
+    return (projections[sessionId]?[key]?.value as Map?)
+        ?.cast<String, dynamic>();
   }
 
   void _seedProjections(String sessionId, Map<String, dynamic>? block) {
     if (block == null) return;
     final asOf = (block['asOfSeq'] as num?)?.toInt() ?? -1;
-    final values = (block['values'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final values =
+        (block['values'] as Map?)?.cast<String, dynamic>() ?? const {};
     final table = projections.putIfAbsent(sessionId, () => {});
     for (final entry in values.entries) {
       final cell = table[entry.key];
@@ -351,10 +382,16 @@ class AppState extends ChangeNotifier {
   }
 
   void _startStreams() {
-    _muxSub = _api!.muxStream().listen(_onMuxFrame,
-        onError: (_) => _scheduleReconnect(), onDone: _scheduleReconnect);
-    _hostSub = _api!.hostStream().listen(_onHostFrame,
-        onError: (_) => _scheduleReconnect(), onDone: _scheduleReconnect);
+    _muxSub = _api!.muxStream().listen(
+      _onMuxFrame,
+      onError: (_) => _scheduleReconnect(),
+      onDone: _scheduleReconnect,
+    );
+    _hostSub = _api!.hostStream().listen(
+      _onHostFrame,
+      onError: (_) => _scheduleReconnect(),
+      onDone: _scheduleReconnect,
+    );
   }
 
   /// Reconnect backoff: 2s doubling to a 30s cap with ±25% jitter, so a
@@ -397,10 +434,14 @@ class AppState extends ChangeNotifier {
     for (final raw in list) {
       final id = raw['sessionId'] as String;
       seen.add(id);
-      _seedProjections(id, (raw['projections'] as Map?)?.cast<String, dynamic>());
+      _seedProjections(
+        id,
+        (raw['projections'] as Map?)?.cast<String, dynamic>(),
+      );
       final titleCell = projections[id]?['title']?.value;
       final title = titleCell as String?;
-      final row = _rowOf(id) ??
+      final row =
+          _rowOf(id) ??
           () {
             final created = SessionRow(
               sessionId: id,
@@ -420,6 +461,21 @@ class AppState extends ChangeNotifier {
     }
     sessions.removeWhere((row) => !seen.contains(row.sessionId));
     sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    // Archive membership is owned by the workspace registry, not session.list.
+    // Keep the cached set on a transient failure so archived rows do not flash.
+    try {
+      final workspaceValue =
+          await api.call('workspace.list', {}) as Map<String, dynamic>;
+      archivedSessionIds
+        ..clear()
+        ..addAll(
+          ((workspaceValue['archivedSessionIds'] as List?) ?? const [])
+              .cast<String>(),
+        );
+      await _saveSessionMetadata();
+    } catch (_) {
+      // Session refresh remains usable when the workspace registry is down.
+    }
     notifyListeners();
     unawaited(_saveSessionList());
   }
@@ -430,18 +486,32 @@ class AppState extends ChangeNotifier {
     if (store == null) return;
     try {
       promptCount = int.tryParse(await store.kvRead('promptCount') ?? '') ?? 0;
+      final pinsJson = await store.kvRead('pinnedSessionIds');
+      if (pinsJson != null) {
+        pinnedSessionIds
+          ..clear()
+          ..addAll((jsonDecode(pinsJson) as List).cast<String>());
+      }
+      final archivedJson = await store.kvRead('archivedSessionIds');
+      if (archivedJson != null) {
+        archivedSessionIds
+          ..clear()
+          ..addAll((jsonDecode(archivedJson) as List).cast<String>());
+      }
       final listJson = await store.kvRead('sessionList');
       if (listJson != null && sessions.isEmpty) {
         for (final raw
             in (jsonDecode(listJson) as List).cast<Map<String, dynamic>>()) {
-          sessions.add(SessionRow(
-            sessionId: raw['sessionId'] as String,
-            updatedAt: (raw['updatedAt'] as num).toInt(),
-            running: false,
-            blank: raw['blank'] == true,
-            cwd: raw['cwd'] as String?,
-            title: raw['title'] as String?,
-          ));
+          sessions.add(
+            SessionRow(
+              sessionId: raw['sessionId'] as String,
+              updatedAt: (raw['updatedAt'] as num).toInt(),
+              running: false,
+              blank: raw['blank'] == true,
+              cwd: raw['cwd'] as String?,
+              title: raw['title'] as String?,
+            ),
+          );
         }
         sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       }
@@ -554,8 +624,10 @@ class AppState extends ChangeNotifier {
         ? persistable.sublist(persistable.length - 300)
         : persistable;
     try {
-      await store.saveChatItems(sessionId,
-          jsonEncode([for (final item in tail) chatItemToJson(item)]));
+      await store.saveChatItems(
+        sessionId,
+        jsonEncode([for (final item in tail) chatItemToJson(item)]),
+      );
     } catch (_) {
       // Best-effort cache.
     }
@@ -579,7 +651,8 @@ class AppState extends ChangeNotifier {
         // beforeSeq pages align to message boundaries; use the oldest known seq.
         payload['beforeSeq'] = _oldestSeq;
       }
-      final value = await api.call('session.history', payload) as Map<String, dynamic>;
+      final value =
+          await api.call('session.history', payload) as Map<String, dynamic>;
       final entries = (value['events'] as List).cast<Map<String, dynamic>>();
       hasMoreHistory = value['hasMore'] == true;
       final folded = <ChatItem>[];
@@ -596,7 +669,9 @@ class AppState extends ChangeNotifier {
           ..addAll(folded);
         _rebuildToolIndex();
         _seedProjections(
-            sessionId, (value['projections'] as Map?)?.cast<String, dynamic>());
+          sessionId,
+          (value['projections'] as Map?)?.cast<String, dynamic>(),
+        );
         // Live dedupe watermark: frames at or below the history tail are replays.
         if (entries.isNotEmpty) {
           var maxSeq = -1;
@@ -665,19 +740,25 @@ class AppState extends ChangeNotifier {
     final sessionId = selectedSessionId;
     if (api == null || sessionId == null || text.trim().isEmpty) return;
     final rpcId = mintRpcId('prompt');
-    final provisional = ChatItem.user(id: 'local-$rpcId', text: text, provisional: true);
+    final provisional = ChatItem.user(
+      id: 'local-$rpcId',
+      text: text,
+      provisional: true,
+    );
     items.add(provisional);
     notifyListeners();
     final timeZone = await _ianaTimeZone();
     try {
-      final value = await api.call('session.prompt', {
-        'sessionId': sessionId,
-        'mode': 'queue',
-        'content': [
-          {'type': 'text', 'text': text},
-        ],
-        'clientTimeZone': ?timeZone,
-      }, rpcId: rpcId) as Map<String, dynamic>;
+      final value =
+          await api.call('session.prompt', {
+                'sessionId': sessionId,
+                'mode': 'queue',
+                'content': [
+                  {'type': 'text', 'text': text},
+                ],
+                'clientTimeZone': ?timeZone,
+              }, rpcId: rpcId)
+              as Map<String, dynamic>;
       if (value['command'] != null) {
         // Slash commands execute server-side and never log a user/message,
         // so the provisional bubble finalizes immediately.
@@ -689,8 +770,9 @@ class AppState extends ChangeNotifier {
       unawaited(_bumpPromptCount());
     } catch (error) {
       items.remove(provisional);
-      items.add(ChatItem.notice(
-          id: 'err-$rpcId', text: '发送失败: $error', isError: true));
+      items.add(
+        ChatItem.notice(id: 'err-$rpcId', text: '发送失败: $error', isError: true),
+      );
       notifyListeners();
     }
   }
@@ -719,9 +801,11 @@ class AppState extends ChangeNotifier {
     final api = _api;
     final sessionId = selectedSessionId;
     if (api == null || sessionId == null) return const [];
-    final value = await api.call('commands/list', {
-      'args': {'agentId': sessionId},
-    }) as List;
+    final value =
+        await api.call('commands/list', {
+              'args': {'agentId': sessionId},
+            })
+            as List;
     return value.map((c) => (c as Map).cast<String, dynamic>()).toList();
   }
 
@@ -737,8 +821,9 @@ class AppState extends ChangeNotifier {
     final rpcId = mintRpcId('cmd');
     final echo = ChatItem.user(id: 'local-cmdin-$rpcId', text: line);
     final status = ChatItem.notice(
-        id: 'local-cmdrun-$rpcId', text: '正在执行 $line …')
-      ..pending = true;
+      id: 'local-cmdrun-$rpcId',
+      text: '正在执行 $line …',
+    )..pending = true;
     items.add(echo);
     items.add(status);
     _localCommandLines[line] = (echo: echo, status: status);
@@ -747,7 +832,8 @@ class AppState extends ChangeNotifier {
   }
 
   ({String line, ChatItem echo, ChatItem status})? _takeLocalCommand(
-      String name) {
+    String name,
+  ) {
     final prefix = '/$name';
     for (final entry in _localCommandLines.entries) {
       if (entry.key == prefix || entry.key.startsWith('$prefix ')) {
@@ -755,7 +841,7 @@ class AppState extends ChangeNotifier {
         return (
           line: entry.key,
           echo: entry.value.echo,
-          status: entry.value.status
+          status: entry.value.status,
         );
       }
     }
@@ -783,9 +869,15 @@ class AppState extends ChangeNotifier {
     if (api == null || sessionId == null || trimmed.isEmpty) return;
     final local = beginLocalCommand(trimmed);
     try {
-      final value = await api.call('commands/execute', {
-        'args': {'agentId': sessionId, 'line': trimmed, 'images': <String>[]},
-      }) as Map<String, dynamic>?;
+      final value =
+          await api.call('commands/execute', {
+                'args': {
+                  'agentId': sessionId,
+                  'line': trimmed,
+                  'images': <String>[],
+                },
+              })
+              as Map<String, dynamic>?;
       if (_localCommandLines.remove(trimmed) == null) {
         return; // command/run adopted the rows; command/done settles them
       }
@@ -793,36 +885,42 @@ class AppState extends ChangeNotifier {
         // Admission miss logs no events: convert the local rows to the error.
         items.remove(local.echo);
         _replaceItem(
-            local.status,
-            ChatItem.notice(
-                id: local.status.id,
-                text: '未知命令: $trimmed · 点输入框 + 查看可用命令',
-                isError: true));
+          local.status,
+          ChatItem.notice(
+            id: local.status.id,
+            text: '未知命令: $trimmed · 点输入框 + 查看可用命令',
+            isError: true,
+          ),
+        );
       } else {
         final commandId = value['commandId'] as String? ?? '';
         final result = (value['result'] as Map?)?.cast<String, dynamic>();
         final isError = result?['kind'] == 'error';
         final text = result?['text'] as String? ?? '';
-        _replaceItem(local.echo,
-            ChatItem.user(id: 'cmdin-$commandId', text: trimmed));
         _replaceItem(
-            local.status,
-            ChatItem.notice(
-                id: 'cmdrun-$commandId',
-                text: text.isNotEmpty
-                    ? text
-                    : (isError ? '命令执行失败' : '执行完成'),
-                isError: isError));
+          local.echo,
+          ChatItem.user(id: 'cmdin-$commandId', text: trimmed),
+        );
+        _replaceItem(
+          local.status,
+          ChatItem.notice(
+            id: 'cmdrun-$commandId',
+            text: text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成'),
+            isError: isError,
+          ),
+        );
       }
     } catch (error) {
       if (_localCommandLines.remove(trimmed) != null) {
         items.remove(local.echo);
         _replaceItem(
-            local.status,
-            ChatItem.notice(
-                id: local.status.id,
-                text: '命令发送失败: $error',
-                isError: true));
+          local.status,
+          ChatItem.notice(
+            id: local.status.id,
+            text: '命令发送失败: $error',
+            isError: true,
+          ),
+        );
       }
       // Rows already adopted: the command reached the host, so the failure is
       // the connection dropping mid-flight; the connection UI reports that.
@@ -847,10 +945,12 @@ class AppState extends ChangeNotifier {
   Future<void> createSession({String? workspaceId, String? cwd}) async {
     final api = _api;
     if (api == null) return;
-    final value = await api.call('session.create', {
-      'workspaceId': ?workspaceId,
-      'cwd': ?cwd,
-    }) as Map<String, dynamic>;
+    final value =
+        await api.call('session.create', {
+              'workspaceId': ?workspaceId,
+              'cwd': ?cwd,
+            })
+            as Map<String, dynamic>;
     final id = value['sessionId'] as String;
     await refreshSessions();
     await openSession(id);
@@ -873,6 +973,12 @@ class AppState extends ChangeNotifier {
       workspaces = ((value['items'] as List?) ?? const [])
           .map((w) => (w as Map).cast<String, dynamic>())
           .toList();
+      archivedSessionIds
+        ..clear()
+        ..addAll(
+          ((value['archivedSessionIds'] as List?) ?? const []).cast<String>(),
+        );
+      await _saveSessionMetadata();
     } catch (_) {
       workspaces = [];
     } finally {
@@ -889,6 +995,51 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Archives a session through the host workspace registry and keeps the
+  /// returned complete archive set as the authoritative local view.
+  Future<void> archiveSession(String sessionId) async {
+    final api = _api;
+    if (api == null) return;
+    final value =
+        await api.call('workspace.archiveSession', {'sessionId': sessionId})
+            as Map<String, dynamic>;
+    archivedSessionIds
+      ..clear()
+      ..addAll(
+        ((value['archivedSessionIds'] as List?) ?? const []).cast<String>(),
+      );
+    if (selectedSessionId == sessionId) {
+      selectedSessionId = null;
+      items.clear();
+    }
+    await _saveSessionMetadata();
+    notifyListeners();
+  }
+
+  /// Pins or unpins a session locally; server session order is untouched.
+  Future<void> setSessionPinned(String sessionId, bool pinned) async {
+    if (pinned) {
+      pinnedSessionIds.add(sessionId);
+    } else {
+      pinnedSessionIds.remove(sessionId);
+    }
+    await _saveSessionMetadata();
+    notifyListeners();
+  }
+
+  Future<void> _saveSessionMetadata() async {
+    final store = _store;
+    if (store == null) return;
+    await store.kvWrite(
+      'pinnedSessionIds',
+      jsonEncode(pinnedSessionIds.toList()),
+    );
+    await store.kvWrite(
+      'archivedSessionIds',
+      jsonEncode(archivedSessionIds.toList()),
+    );
+  }
+
   /// Loads the model catalog of the selected session.
   Future<void> loadModels() async {
     final api = _api;
@@ -897,11 +1048,13 @@ class AppState extends ChangeNotifier {
     loadingModels = true;
     notifyListeners();
     try {
-      final value = await api.call('session.models', {'sessionId': sessionId})
-          as Map<String, dynamic>;
+      final value =
+          await api.call('session.models', {'sessionId': sessionId})
+              as Map<String, dynamic>;
       models = SessionModelsData(
         current: Map<String, dynamic>.from(
-            (value['current'] as Map?) ?? const {}),
+          (value['current'] as Map?) ?? const {},
+        ),
         routable: value['routable'] == true,
         groups: ((value['groups'] as List?) ?? const [])
             .map((g) => (g as Map).cast<String, dynamic>())
@@ -916,17 +1069,24 @@ class AppState extends ChangeNotifier {
   }
 
   /// Selects the model route for the selected session.
-  Future<void> selectModel(String provider, String model, {String? reasoningEffort}) async {
+  Future<void> selectModel(
+    String provider,
+    String model, {
+    String? reasoningEffort,
+  }) async {
     final api = _api;
     final sessionId = selectedSessionId;
     if (api == null || sessionId == null) return;
-    final value = await api.call('session.selectModel', {
-      'sessionId': sessionId,
-      'provider': provider,
-      'model': model,
-      'reasoningEffort': ?reasoningEffort,
-    }) as Map<String, dynamic>;
-    final selected = ((value['selected'] as Map?) ?? const {}).cast<String, dynamic>();
+    final value =
+        await api.call('session.selectModel', {
+              'sessionId': sessionId,
+              'provider': provider,
+              'model': model,
+              'reasoningEffort': ?reasoningEffort,
+            })
+            as Map<String, dynamic>;
+    final selected = ((value['selected'] as Map?) ?? const {})
+        .cast<String, dynamic>();
     models?.current.addAll(selected);
     notifyListeners();
   }
@@ -943,16 +1103,22 @@ class AppState extends ChangeNotifier {
       'outcome': outcome,
     });
     if (accepted == false) {
-      items.add(ChatItem.notice(
+      items.add(
+        ChatItem.notice(
           id: 'stale-approval-${approval.rpcId}',
-          text: '这条审批已失效(服务可能已重启或该轮已取消),无需处理'));
+          text: '这条审批已失效(服务可能已重启或该轮已取消),无需处理',
+        ),
+      );
       notifyListeners();
     }
   }
 
   /// Answers a pending question batch; a rejected respond surfaces like
   /// [answerApproval]'s stale-notice.
-  Future<void> answerQuestion(PendingQuestion question, List<Map<String, dynamic>> answers) async {
+  Future<void> answerQuestion(
+    PendingQuestion question,
+    List<Map<String, dynamic>> answers,
+  ) async {
     questions.remove(question);
     notifyListeners();
     final accepted = await _api?.respond(question.rpcId, {
@@ -960,9 +1126,12 @@ class AppState extends ChangeNotifier {
       'answer': {'answers': answers},
     });
     if (accepted == false) {
-      items.add(ChatItem.notice(
+      items.add(
+        ChatItem.notice(
           id: 'stale-question-${question.rpcId}',
-          text: '这个提问已失效(服务可能已重启或该轮已取消),你的回答未送达'));
+          text: '这个提问已失效(服务可能已重启或该轮已取消),你的回答未送达',
+        ),
+      );
       notifyListeners();
     }
   }
@@ -975,13 +1144,16 @@ class AppState extends ChangeNotifier {
       case 'host/session-added':
         final id = p['sessionId'] as String;
         if (_rowOf(id) == null) {
-          sessions.insert(0, SessionRow(
-            sessionId: id,
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
-            running: false,
-            blank: p['blank'] == true,
-            cwd: p['cwd'] as String?,
-          ));
+          sessions.insert(
+            0,
+            SessionRow(
+              sessionId: id,
+              updatedAt: DateTime.now().millisecondsSinceEpoch,
+              running: false,
+              blank: p['blank'] == true,
+              cwd: p['cwd'] as String?,
+            ),
+          );
         }
       case 'host/session-removed':
         sessions.removeWhere((row) => row.sessionId == p['sessionId']);
@@ -996,8 +1168,13 @@ class AppState extends ChangeNotifier {
         }
       case 'host/agent-error':
         if (p['sessionId'] == selectedSessionId) {
-          items.add(ChatItem.notice(
-              id: 'agenterr-${frame.rpcId}', text: '代理错误: ${p['message']}', isError: true));
+          items.add(
+            ChatItem.notice(
+              id: 'agenterr-${frame.rpcId}',
+              text: '代理错误: ${p['message']}',
+              isError: true,
+            ),
+          );
         }
       default:
         return;
@@ -1033,21 +1210,25 @@ class AppState extends ChangeNotifier {
           if (key == 'tokenUsage') _trackPetTokens(sessionId, p['value']);
         }
       case 'approval/requested':
-        approvals.add(PendingApproval(
-          rpcId: frame.rpcId,
-          sessionId: sessionId!,
-          approvalId: p['approvalId'] as String,
-          toolName: p['toolName'] as String,
-          reason: p['reason'] as String?,
-        ));
+        approvals.add(
+          PendingApproval(
+            rpcId: frame.rpcId,
+            sessionId: sessionId!,
+            approvalId: p['approvalId'] as String,
+            toolName: p['toolName'] as String,
+            reason: p['reason'] as String?,
+          ),
+        );
       case 'approval/resolved':
         approvals.removeWhere((a) => a.approvalId == p['approvalId']);
       case 'question/requested':
-        questions.add(PendingQuestion(
-          rpcId: frame.rpcId,
-          sessionId: sessionId!,
-          questions: (p['questions'] as List).cast<Map<String, dynamic>>(),
-        ));
+        questions.add(
+          PendingQuestion(
+            rpcId: frame.rpcId,
+            sessionId: sessionId!,
+            questions: (p['questions'] as List).cast<Map<String, dynamic>>(),
+          ),
+        );
       case 'question/resolved':
         questions.removeWhere((q) => q.rpcId == p['questionRpcId']);
       default:
@@ -1063,8 +1244,11 @@ class AppState extends ChangeNotifier {
   /// Folds one raw session event into chat items. When [into] is given the
   /// produced items collect there (history paging); otherwise they append to
   /// the live conversation.
-  void _foldEvent(Map<String, dynamic> event,
-      {List<ChatItem>? into, bool trackSeq = false}) {
+  void _foldEvent(
+    Map<String, dynamic> event, {
+    List<ChatItem>? into,
+    bool trackSeq = false,
+  }) {
     final target = into ?? items;
     final type = event['type'] as String;
     final data = (event['data'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -1074,7 +1258,9 @@ class AppState extends ChangeNotifier {
       _liveBuffer.add(event);
       return;
     }
-    if (into == null && seq <= _lastLiveSeq && _lastLiveSeq >= 0) return; // duplicate after reconnect
+    if (into == null && seq <= _lastLiveSeq && _lastLiveSeq >= 0) {
+      return; // duplicate after reconnect
+    }
     if (into == null) _lastLiveSeq = seq;
 
     // Items appended by this fold inherit the event timestamp (drives the
@@ -1084,7 +1270,8 @@ class AppState extends ChangeNotifier {
 
     switch (type) {
       case 'user/message':
-        final source = (data['source'] as Map?)?.cast<String, dynamic>() ?? const {};
+        final source =
+            (data['source'] as Map?)?.cast<String, dynamic>() ?? const {};
         final kind = source['kind'];
         final content = (data['content'] as List?) ?? const [];
         final text = content
@@ -1094,7 +1281,9 @@ class AppState extends ChangeNotifier {
             .join('\n');
         if (kind == 'user') {
           final rpcId = source['rpcId'] as String?;
-          final provisional = rpcId != null ? _pendingPrompts.remove(rpcId) : null;
+          final provisional = rpcId != null
+              ? _pendingPrompts.remove(rpcId)
+              : null;
           if (provisional != null && into == null) {
             provisional
               ..text = text
@@ -1110,25 +1299,32 @@ class AppState extends ChangeNotifier {
         final key = '${data['turn']}:${data['step']}';
         final streaming = into == null ? _streams.remove(key) : null;
         if (streaming != null) target.remove(streaming);
-        final content = (data['message'] as Map?)?['content'] as List? ?? const [];
+        final content =
+            (data['message'] as Map?)?['content'] as List? ?? const [];
         final blocks = <AssistantBlock>[];
         for (final block in content.whereType<Map>()) {
           if (block['type'] == 'text') {
             blocks.add(AssistantBlock('text', block['text'] as String? ?? ''));
           } else if (block['type'] == 'reasoning') {
-            blocks.add(AssistantBlock('reasoning', block['text'] as String? ?? ''));
+            blocks.add(
+              AssistantBlock('reasoning', block['text'] as String? ?? ''),
+            );
           }
         }
         if (blocks.isNotEmpty || data['interrupted'] == true) {
-          target.add(ChatItem.assistant(
-            id: 'a-$seq',
-            blocks: blocks,
-            usage: (data['usage'] as Map?)?.cast<String, dynamic>(),
-            interrupted: data['interrupted'] == true,
-          ));
+          target.add(
+            ChatItem.assistant(
+              id: 'a-$seq',
+              blocks: blocks,
+              usage: (data['usage'] as Map?)?.cast<String, dynamic>(),
+              interrupted: data['interrupted'] == true,
+            ),
+          );
         }
       case 'assistant/chunk':
-        if (into != null) return; // history tail replays chunks; the final message covers them
+        if (into != null) {
+          return; // history tail replays chunks; the final message covers them
+        }
         final turn = data['turn'];
         final step = data['step'];
         final chunk = (data['chunk'] as Map).cast<String, dynamic>();
@@ -1140,9 +1336,19 @@ class AppState extends ChangeNotifier {
         });
         switch (chunk['type']) {
           case 'text-delta':
-            _appendDelta(item, 'text', chunk['index'] as int? ?? 0, chunk['text'] as String? ?? '');
+            _appendDelta(
+              item,
+              'text',
+              chunk['index'] as int? ?? 0,
+              chunk['text'] as String? ?? '',
+            );
           case 'reasoning-delta':
-            _appendDelta(item, 'reasoning', chunk['index'] as int? ?? 0, chunk['text'] as String? ?? '');
+            _appendDelta(
+              item,
+              'reasoning',
+              chunk['index'] as int? ?? 0,
+              chunk['text'] as String? ?? '',
+            );
           default:
             break; // block boundaries and tool-call deltas arrive complete via other events
         }
@@ -1166,15 +1372,21 @@ class AppState extends ChangeNotifier {
           if (item != null) {
             item
               ..resultText = text
-              ..resultIsError = block['isError'] == true || data['error'] != null
+              ..resultIsError =
+                  block['isError'] == true || data['error'] != null
               ..completed = true;
           } else if (into == null) {
             // Result without a seen call (page boundary): render standalone.
-            final standalone = ChatItem.tool(
-                id: 'tr-$seq', callId: callId, name: 'tool', arguments: '')
-              ..resultText = text
-              ..resultIsError = block['isError'] == true
-              ..completed = true;
+            final standalone =
+                ChatItem.tool(
+                    id: 'tr-$seq',
+                    callId: callId,
+                    name: 'tool',
+                    arguments: '',
+                  )
+                  ..resultText = text
+                  ..resultIsError = block['isError'] == true
+                  ..completed = true;
             target.add(standalone);
           }
         }
@@ -1182,10 +1394,13 @@ class AppState extends ChangeNotifier {
         final reason = (data['reason'] as Map?)?.cast<String, dynamic>();
         if (reason?['kind'] == 'error' && into == null) {
           final failure = (reason?['error'] as Map?)?.cast<String, dynamic>();
-          items.add(ChatItem.notice(
+          items.add(
+            ChatItem.notice(
               id: 'turnerr-$seq',
               text: '本轮失败: ${failure?['message'] ?? '未知错误'}',
-              isError: true));
+              isError: true,
+            ),
+          );
         }
       case 'command/run':
         // A resolved slash command entered its handler: echo the line as a
@@ -1208,8 +1423,9 @@ class AppState extends ChangeNotifier {
         final shown = local?.line ?? line;
         final echo = ChatItem.user(id: 'cmdin-$commandId', text: shown);
         final status = ChatItem.notice(
-            id: 'cmdrun-$commandId', text: '正在执行 $shown …')
-          ..pending = true;
+          id: 'cmdrun-$commandId',
+          text: '正在执行 $shown …',
+        )..pending = true;
         if (local != null) {
           _replaceItem(local.echo, echo);
           _replaceItem(local.status, status);
@@ -1232,29 +1448,33 @@ class AppState extends ChangeNotifier {
         }
         if (status != null) {
           status
-            ..text =
-                text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成')
+            ..text = text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成')
             ..isError = isError
             ..pending = false;
         } else if (text.isNotEmpty) {
-          target.add(ChatItem.notice(
-            id: 'cmddone-$commandId',
-            text: text,
-            isError: isError,
-          ));
+          target.add(
+            ChatItem.notice(
+              id: 'cmddone-$commandId',
+              text: text,
+              isError: isError,
+            ),
+          );
         }
       case 'todo/write':
         if (into == null) {
           final todos = (data['todos'] as List?) ?? const [];
           if (todos.isNotEmpty) {
-            final lines = todos.whereType<Map>().map((t) {
-              final mark = switch (t['status']) {
-                'completed' => '☑',
-                'in_progress' => '◐',
-                _ => '☐',
-              };
-              return '$mark ${t['content']}';
-            }).join('\n');
+            final lines = todos
+                .whereType<Map>()
+                .map((t) {
+                  final mark = switch (t['status']) {
+                    'completed' => '☑',
+                    'in_progress' => '◐',
+                    _ => '☐',
+                  };
+                  return '$mark ${t['content']}';
+                })
+                .join('\n');
             items.add(ChatItem.notice(id: 'todo-$seq', text: lines));
           }
         }
@@ -1345,7 +1565,9 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
   switch (kind) {
     case ChatItemKind.user:
       item = ChatItem.user(
-          id: json['id'] as String, text: json['text'] as String? ?? '');
+        id: json['id'] as String,
+        text: json['text'] as String? ?? '',
+      );
     case ChatItemKind.assistant:
       item = ChatItem.assistant(
         id: json['id'] as String,
@@ -1360,15 +1582,16 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
         interrupted: json['interrupted'] == true,
       );
     case ChatItemKind.tool:
-      item = ChatItem.tool(
-        id: json['id'] as String,
-        callId: json['callId'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        arguments: json['arguments'] as String? ?? '',
-      )
-        ..resultText = json['resultText'] as String?
-        ..resultIsError = json['resultIsError'] == true
-        ..completed = json['completed'] == true;
+      item =
+          ChatItem.tool(
+              id: json['id'] as String,
+              callId: json['callId'] as String? ?? '',
+              name: json['name'] as String? ?? '',
+              arguments: json['arguments'] as String? ?? '',
+            )
+            ..resultText = json['resultText'] as String?
+            ..resultIsError = json['resultIsError'] == true
+            ..completed = json['completed'] == true;
     case ChatItemKind.notice:
       item = ChatItem.notice(
         id: json['id'] as String,
@@ -1384,7 +1607,18 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
 const levelThresholds = [0, 5, 15, 30, 60, 100, 160, 250, 400, 600];
 
 /// Display title of each level, aligned with [levelThresholds].
-const levelTitles = ['新手', '学徒', '熟手', '老手', '行家', '专家', '大师', '宗师', '传奇', '永恒'];
+const levelTitles = [
+  '新手',
+  '学徒',
+  '熟手',
+  '老手',
+  '行家',
+  '专家',
+  '大师',
+  '宗师',
+  '传奇',
+  '永恒',
+];
 
 /// User level derived from the local prompt counter.
 class UserLevel {
@@ -1434,6 +1668,8 @@ UserLevel userLevelFor(int count) {
     title: levelTitles[index],
     count: count,
     floor: levelThresholds[index],
-    next: index + 1 < levelThresholds.length ? levelThresholds[index + 1] : null,
+    next: index + 1 < levelThresholds.length
+        ? levelThresholds[index + 1]
+        : null,
   );
 }

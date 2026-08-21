@@ -96,9 +96,9 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
 - **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
 
-## 7. 当前状态快照(v1.10.10)
+## 7. 当前状态快照(v1.10.11)
 
-App 功能:登录(directory 路由/实例记忆)、会话(分组/折叠/重命名/新建继承 cwd)、
+App 功能:登录(directory 路由/实例记忆)、会话(分组/折叠/重命名/新建继承 cwd/运行中与归档筛选/本地置顶/服务端归档)、
 对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
 (⊕ 面板+实时目录+进度反馈,面板已修:命令多时可滚动)、模型切换(含推理强度)、
 统计栏、四套主题(暗夜蓝/纯净白/护眼绿/樱花粉)、社区(动态/好友码/私聊/等级/
@@ -114,7 +114,7 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 
 ## 8. 未决事项 / 风险
 
-1. ~~用户还没选 Phase 1 开工方向~~ 已开工:宠物功能落地于 v1.10.0(纯本地 MVP,后续可扩:多宠物/进化/社交串门)
+1. 会话管理已支持筛选/置顶/归档;当前 host 仅暴露 `workspace.archiveSession`,没有删除或取消归档 RPC,因此这两项必须等协议补齐,不能只删手机缓存伪装成功
 2. Mac 实例的 dsh web 平时不在跑(唤醒即用);mac 用户社交 401(待社交多用户化)
 3. 本机两个隧道 sshd(22022/22023)仍是裸进程,可 systemd 化
 4. 凭证轮换清单未执行(OPERATIONS.md §6)
@@ -124,4 +124,4 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 ## 9. 给新对话的开场白(用户可直接粘贴)
 
 > 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarmess 项目。
-> 当前版本 v1.10.10,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+> 当前版本 v1.10.11,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。

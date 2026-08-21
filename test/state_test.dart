@@ -5,21 +5,37 @@ library;
 import 'package:dsh_mobile/state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, dynamic> event(int seq, String type, Map<String, dynamic> data) =>
-    {'seq': seq, 'time': 0, 'type': type, 'data': data};
+Map<String, dynamic> event(int seq, String type, Map<String, dynamic> data) => {
+  'seq': seq,
+  'time': 0,
+  'type': type,
+  'data': data,
+};
 
 void main() {
+  group('session management state', () {
+    test('pinning is local and toggles the pinned set', () async {
+      final app = AppState();
+      await app.setSessionPinned('s1', true);
+      expect(app.pinnedSessionIds, contains('s1'));
+      await app.setSessionPinned('s1', false);
+      expect(app.pinnedSessionIds, isNot(contains('s1')));
+    });
+  });
+
   group('event fold', () {
     test('user message with user source renders a user bubble', () {
       final app = AppState();
-      app.foldForTest(event(1, 'user/message', {
-        'id': 'm1',
-        'role': 'user',
-        'content': [
-          {'type': 'text', 'text': '你好'}
-        ],
-        'source': {'kind': 'user', 'rpcId': 'r1'},
-      }));
+      app.foldForTest(
+        event(1, 'user/message', {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': '你好'},
+          ],
+          'source': {'kind': 'user', 'rpcId': 'r1'},
+        }),
+      );
       expect(app.items, hasLength(1));
       expect(app.items.single.kind, ChatItemKind.user);
       expect(app.items.single.text, '你好');
@@ -27,45 +43,53 @@ void main() {
 
     test('plugin-injected user messages stay off the surface', () {
       final app = AppState();
-      app.foldForTest(event(1, 'user/message', {
-        'id': 'm1',
-        'role': 'user',
-        'content': [
-          {'type': 'text', 'text': 'context'}
-        ],
-        'source': {'kind': 'plugin', 'plugin': 'x'},
-      }));
+      app.foldForTest(
+        event(1, 'user/message', {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'context'},
+          ],
+          'source': {'kind': 'plugin', 'plugin': 'x'},
+        }),
+      );
       expect(app.items, isEmpty);
     });
 
     test('chunks accumulate and the final message replaces the stream', () {
       final app = AppState();
-      app.foldForTest(event(1, 'assistant/chunk', {
-        'turn': 1,
-        'step': 1,
-        'chunk': {'type': 'text-delta', 'index': 0, 'text': '你好'}
-      }));
-      app.foldForTest(event(2, 'assistant/chunk', {
-        'turn': 1,
-        'step': 1,
-        'chunk': {'type': 'text-delta', 'index': 0, 'text': '，世界'}
-      }));
+      app.foldForTest(
+        event(1, 'assistant/chunk', {
+          'turn': 1,
+          'step': 1,
+          'chunk': {'type': 'text-delta', 'index': 0, 'text': '你好'},
+        }),
+      );
+      app.foldForTest(
+        event(2, 'assistant/chunk', {
+          'turn': 1,
+          'step': 1,
+          'chunk': {'type': 'text-delta', 'index': 0, 'text': '，世界'},
+        }),
+      );
       expect(app.items, hasLength(1));
       expect(app.items.single.blocks.single.text, '你好，世界');
       expect(app.selectedStreaming, isTrue);
 
-      app.foldForTest(event(3, 'assistant/message', {
-        'turn': 1,
-        'step': 1,
-        'message': {
-          'id': 'a1',
-          'role': 'assistant',
-          'content': [
-            {'type': 'text', 'text': '你好，世界'}
-          ],
-          'source': {'kind': 'model'},
-        },
-      }));
+      app.foldForTest(
+        event(3, 'assistant/message', {
+          'turn': 1,
+          'step': 1,
+          'message': {
+            'id': 'a1',
+            'role': 'assistant',
+            'content': [
+              {'type': 'text', 'text': '你好，世界'},
+            ],
+            'source': {'kind': 'model'},
+          },
+        }),
+      );
       expect(app.items, hasLength(1));
       expect(app.items.single.kind, ChatItemKind.assistant);
       expect(app.items.single.blocks.single.text, '你好，世界');
@@ -74,31 +98,35 @@ void main() {
 
     test('tool call pairs with its result by callId', () {
       final app = AppState();
-      app.foldForTest(event(1, 'tool/call', {
-        'turn': 1,
-        'step': 1,
-        'callId': 'c1',
-        'name': 'bash',
-        'arguments': '{"command":"ls"}',
-      }));
-      app.foldForTest(event(2, 'tool/result', {
-        'turn': 1,
-        'step': 1,
-        'message': {
-          'id': 'r1',
-          'role': 'user',
-          'content': [
-            {
-              'type': 'tool-result',
-              'toolCallId': 'c1',
-              'content': [
-                {'type': 'text', 'text': 'file.txt'}
-              ],
-            }
-          ],
-          'source': {'kind': 'tool'},
-        },
-      }));
+      app.foldForTest(
+        event(1, 'tool/call', {
+          'turn': 1,
+          'step': 1,
+          'callId': 'c1',
+          'name': 'bash',
+          'arguments': '{"command":"ls"}',
+        }),
+      );
+      app.foldForTest(
+        event(2, 'tool/result', {
+          'turn': 1,
+          'step': 1,
+          'message': {
+            'id': 'r1',
+            'role': 'user',
+            'content': [
+              {
+                'type': 'tool-result',
+                'toolCallId': 'c1',
+                'content': [
+                  {'type': 'text', 'text': 'file.txt'},
+                ],
+              },
+            ],
+            'source': {'kind': 'tool'},
+          },
+        }),
+      );
       expect(app.items, hasLength(1));
       final tool = app.items.single;
       expect(tool.kind, ChatItemKind.tool);
@@ -110,22 +138,26 @@ void main() {
 
     test('duplicate replays at or below the watermark are dropped', () {
       final app = AppState();
-      app.foldForTest(event(5, 'user/message', {
-        'id': 'm1',
-        'role': 'user',
-        'content': [
-          {'type': 'text', 'text': 'hi'}
-        ],
-        'source': {'kind': 'user'},
-      }));
-      app.foldForTest(event(5, 'user/message', {
-        'id': 'm1',
-        'role': 'user',
-        'content': [
-          {'type': 'text', 'text': 'hi'}
-        ],
-        'source': {'kind': 'user'},
-      }));
+      app.foldForTest(
+        event(5, 'user/message', {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'hi'},
+          ],
+          'source': {'kind': 'user'},
+        }),
+      );
+      app.foldForTest(
+        event(5, 'user/message', {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'hi'},
+          ],
+          'source': {'kind': 'user'},
+        }),
+      );
       expect(app.items, hasLength(1));
     });
 
@@ -139,7 +171,7 @@ void main() {
           'id': 'm1',
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': 'hi'}
+            {'type': 'text', 'text': 'hi'},
           ],
           'source': {'kind': 'user'},
         },
@@ -149,79 +181,95 @@ void main() {
   });
 
   group('command lifecycle', () {
-    test('command/run renders echo plus pending status; command/done settles it',
-        () {
-      final app = AppState();
-      app.foldForTest(event(1, 'command/run', {
-        'commandId': 'c1',
-        'name': 'compact',
-        'source': {'kind': 'user'},
-      }));
-      expect(app.items, hasLength(2));
-      expect(app.items[0].kind, ChatItemKind.user);
-      expect(app.items[0].text, '/compact');
-      expect(app.items[1].kind, ChatItemKind.notice);
-      expect(app.items[1].pending, isTrue);
+    test(
+      'command/run renders echo plus pending status; command/done settles it',
+      () {
+        final app = AppState();
+        app.foldForTest(
+          event(1, 'command/run', {
+            'commandId': 'c1',
+            'name': 'compact',
+            'source': {'kind': 'user'},
+          }),
+        );
+        expect(app.items, hasLength(2));
+        expect(app.items[0].kind, ChatItemKind.user);
+        expect(app.items[0].text, '/compact');
+        expect(app.items[1].kind, ChatItemKind.notice);
+        expect(app.items[1].pending, isTrue);
 
-      app.foldForTest(event(2, 'command/done', {
-        'commandId': 'c1',
-        'kind': 'success',
-        'text': '已压缩 12 条消息',
-      }));
-      expect(app.items, hasLength(2));
-      expect(app.items[1].pending, isFalse);
-      expect(app.items[1].text, '已压缩 12 条消息');
-      expect(app.items[1].isError, isFalse);
-    });
+        app.foldForTest(
+          event(2, 'command/done', {
+            'commandId': 'c1',
+            'kind': 'success',
+            'text': '已压缩 12 条消息',
+          }),
+        );
+        expect(app.items, hasLength(2));
+        expect(app.items[1].pending, isFalse);
+        expect(app.items[1].text, '已压缩 12 条消息');
+        expect(app.items[1].isError, isFalse);
+      },
+    );
 
     test('command/run with args reconstructs the typed line', () {
       final app = AppState();
-      app.foldForTest(event(1, 'command/run', {
-        'commandId': 'c2',
-        'name': 'goal',
-        'args': ' 写一个应用',
-        'source': {'kind': 'user'},
-      }));
+      app.foldForTest(
+        event(1, 'command/run', {
+          'commandId': 'c2',
+          'name': 'goal',
+          'args': ' 写一个应用',
+          'source': {'kind': 'user'},
+        }),
+      );
       expect(app.items[0].text, '/goal 写一个应用');
     });
 
-    test('a composer-sent command is adopted by command/run, not duplicated',
-        () {
-      final app = AppState();
-      app.beginLocalCommand('/compact');
-      expect(app.items, hasLength(2));
-      expect(app.items[1].pending, isTrue);
+    test(
+      'a composer-sent command is adopted by command/run, not duplicated',
+      () {
+        final app = AppState();
+        app.beginLocalCommand('/compact');
+        expect(app.items, hasLength(2));
+        expect(app.items[1].pending, isTrue);
 
-      app.foldForTest(event(1, 'command/run', {
-        'commandId': 'c1',
-        'name': 'compact',
-        'source': {'kind': 'user'},
-      }));
-      expect(app.items, hasLength(2));
-      expect(app.items[0].id, 'cmdin-c1');
-      expect(app.items[1].id, 'cmdrun-c1');
-      expect(app.items[1].pending, isTrue);
+        app.foldForTest(
+          event(1, 'command/run', {
+            'commandId': 'c1',
+            'name': 'compact',
+            'source': {'kind': 'user'},
+          }),
+        );
+        expect(app.items, hasLength(2));
+        expect(app.items[0].id, 'cmdin-c1');
+        expect(app.items[1].id, 'cmdrun-c1');
+        expect(app.items[1].pending, isTrue);
 
-      app.foldForTest(event(2, 'command/done', {
-        'commandId': 'c1',
-        'kind': 'error',
-        'text': '当前正在进行压缩任务',
-      }));
-      expect(app.items, hasLength(2));
-      expect(app.items[1].pending, isFalse);
-      expect(app.items[1].isError, isTrue);
-      expect(app.items[1].text, '当前正在进行压缩任务');
-    });
+        app.foldForTest(
+          event(2, 'command/done', {
+            'commandId': 'c1',
+            'kind': 'error',
+            'text': '当前正在进行压缩任务',
+          }),
+        );
+        expect(app.items, hasLength(2));
+        expect(app.items[1].pending, isFalse);
+        expect(app.items[1].isError, isTrue);
+        expect(app.items[1].text, '当前正在进行压缩任务');
+      },
+    );
 
     test('adoption matches recordInput-less commands by name prefix', () {
       final app = AppState();
       app.beginLocalCommand('/feedback 很好用的应用');
       // /feedback sets recordInput:false, so the event carries no args.
-      app.foldForTest(event(1, 'command/run', {
-        'commandId': 'c3',
-        'name': 'feedback',
-        'source': {'kind': 'user'},
-      }));
+      app.foldForTest(
+        event(1, 'command/run', {
+          'commandId': 'c3',
+          'name': 'feedback',
+          'source': {'kind': 'user'},
+        }),
+      );
       expect(app.items, hasLength(2));
       expect(app.items[0].id, 'cmdin-c3');
       expect(app.items[0].text, '/feedback 很好用的应用');
@@ -229,27 +277,33 @@ void main() {
 
     test('command/done without a seen run renders a keyed standalone row', () {
       final app = AppState();
-      app.foldForTest(event(1, 'command/done', {
-        'commandId': 'c9',
-        'kind': 'success',
-        'text': '完成',
-      }));
+      app.foldForTest(
+        event(1, 'command/done', {
+          'commandId': 'c9',
+          'kind': 'success',
+          'text': '完成',
+        }),
+      );
       expect(app.items.single.id, 'cmddone-c9');
       expect(app.items.single.pending, isFalse);
     });
 
     test('a duplicate command/run does not duplicate the rows', () {
       final app = AppState();
-      app.foldForTest(event(1, 'command/run', {
-        'commandId': 'c1',
-        'name': 'compact',
-        'source': {'kind': 'user'},
-      }));
-      app.foldForTest(event(2, 'command/run', {
-        'commandId': 'c1',
-        'name': 'compact',
-        'source': {'kind': 'user'},
-      }));
+      app.foldForTest(
+        event(1, 'command/run', {
+          'commandId': 'c1',
+          'name': 'compact',
+          'source': {'kind': 'user'},
+        }),
+      );
+      app.foldForTest(
+        event(2, 'command/run', {
+          'commandId': 'c1',
+          'name': 'compact',
+          'source': {'kind': 'user'},
+        }),
+      );
       expect(app.items, hasLength(2));
     });
   });
@@ -272,11 +326,16 @@ void main() {
     });
 
     test('tool item survives a json roundtrip', () {
-      final item = ChatItem.tool(
-          id: 't-1', callId: 'c1', name: 'bash', arguments: '{"command":"ls"}')
-        ..resultText = 'file.txt'
-        ..resultIsError = true
-        ..completed = true;
+      final item =
+          ChatItem.tool(
+              id: 't-1',
+              callId: 'c1',
+              name: 'bash',
+              arguments: '{"command":"ls"}',
+            )
+            ..resultText = 'file.txt'
+            ..resultIsError = true
+            ..completed = true;
       final restored = chatItemFromJson(chatItemToJson(item));
       expect(restored.kind, ChatItemKind.tool);
       expect(restored.callId, 'c1');

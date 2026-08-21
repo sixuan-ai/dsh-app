@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.10';
+const kAppVersion = '1.10.11';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.11',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '会话管理:抽屉新增 会话/运行中/置顶/已归档 筛选;支持本地持久化置顶和服务端持久化归档,置顶会话优先排序'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.10',
     date: '2026-08-21',
