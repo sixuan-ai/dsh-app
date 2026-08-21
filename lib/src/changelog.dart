@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.2';
+const kAppVersion = '1.10.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.3',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.fix,
+          '修复提问/审批弹窗在网页端回答后不自动消失:现在另一端处理完会实时联动关闭,不用再重启 App'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.2',
     date: '2026-08-21',

@@ -731,16 +731,54 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Shows a non-dismissible interaction dialog (approval/question) that also
+  /// closes itself when the interaction is resolved from ANOTHER client (e.g.
+  /// answered in the web GUI): [gone] reports the pending entry has left the
+  /// state lists. The builder receives a [close] that must be used instead of
+  /// a raw Navigator pop — answering notifies the state synchronously, which
+  /// re-enters the auto-close listener, and only the latch keeps that from
+  /// popping the page under the dialog.
+  Future<void> _showInteraction({
+    required bool Function() gone,
+    required Widget Function(BuildContext context, VoidCallback close) builder,
+  }) async {
+    BuildContext? dialogContext;
+    var closed = false;
+    void close() {
+      if (closed) return;
+      closed = true;
+      final ctx = dialogContext;
+      if (ctx != null && ctx.mounted) Navigator.of(ctx).pop();
+    }
+
+    void onStateChanged() {
+      if (gone()) close();
+    }
+
+    state.addListener(onStateChanged);
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        // PopScope blocks the Android back button/gesture: a dismissed-but-
+        // unanswered interaction stayed in the state lists with its id
+        // already consumed by _shownApprovals/_shownQuestions, so it could
+        // never be answered again.
+        builder: (ctx) {
+          dialogContext = ctx;
+          return PopScope(canPop: false, child: builder(ctx, close));
+        },
+      );
+    } finally {
+      state.removeListener(onStateChanged);
+    }
+  }
+
   Future<void> _showApproval(PendingApproval approval) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      // PopScope blocks the Android back button/gesture: a dismissed-but-
-      // unanswered approval stayed in state.approvals with its id already
-      // consumed by _shownApprovals, so it could never be answered again.
-      builder: (dialogContext) => PopScope(
-        canPop: false,
-        child: AlertDialog(
+    await _showInteraction(
+      gone: () =>
+          !state.approvals.any((a) => a.approvalId == approval.approvalId),
+      builder: (dialogContext, close) => AlertDialog(
         title: const Row(
           children: [
             Icon(Icons.gpp_maybe_outlined, color: Colors.amber),
@@ -771,21 +809,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () {
+              close();
               state.answerApproval(approval, 'rejected');
-              Navigator.of(dialogContext).pop();
             },
             child: const Text('拒绝'),
           ),
           FilledButton(
             onPressed: () {
+              close();
               state.answerApproval(approval, 'allowed-once');
-              Navigator.of(dialogContext).pop();
             },
             child: const Text('允许一次'),
           ),
         ],
         ),
-      ),
     );
     // Defensive: if the route went away without an answer (teardown paths
     // PopScope cannot cover), un-mark it so the next rebuild re-shows it.
@@ -797,15 +834,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _showQuestion(PendingQuestion question) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      // Same back-button guard as the approval dialog: an unanswered
-      // question must not be dismissible by the Android back button/gesture.
-      builder: (dialogContext) => PopScope(
-        canPop: false,
-        child: QuestionDialog(state: state, pending: question),
-      ),
+    await _showInteraction(
+      gone: () => !state.questions.any((q) => q.rpcId == question.rpcId),
+      builder: (dialogContext, close) =>
+          QuestionDialog(state: state, pending: question, onClosed: close),
     );
     // Defensive re-show, mirroring _showApproval.
     if (mounted && state.questions.any((q) => q.rpcId == question.rpcId)) {
@@ -2948,10 +2980,14 @@ class _NoticeCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class QuestionDialog extends StatefulWidget {
-  const QuestionDialog({super.key, required this.state, required this.pending});
+  const QuestionDialog({super.key, required this.state, required this.pending, this.onClosed});
 
   final AppState state;
   final PendingQuestion pending;
+
+  /// Close route owned by the interaction host (_showInteraction); when set,
+  /// _submit uses it instead of a raw pop so the auto-close latch wins.
+  final VoidCallback? onClosed;
 
   @override
   State<QuestionDialog> createState() => _QuestionDialogState();
@@ -3014,8 +3050,13 @@ class _QuestionDialogState extends State<QuestionDialog> {
             'custom': _custom[_questionId(q)]!.text.trim(),
         },
     ];
+    final onClosed = widget.onClosed;
+    if (onClosed != null) {
+      onClosed();
+    } else {
+      Navigator.of(context).pop();
+    }
     widget.state.answerQuestion(widget.pending, answers);
-    Navigator.of(context).pop();
   }
 
   @override
