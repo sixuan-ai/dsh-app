@@ -20,6 +20,7 @@ import 'src/protocol.dart';
 import 'src/social.dart';
 import 'src/theme.dart';
 import 'src/updater.dart';
+import 'pet_page.dart';
 import 'social_page.dart';
 import 'state.dart';
 
@@ -734,7 +735,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      // PopScope blocks the Android back button/gesture: a dismissed-but-
+      // unanswered approval stayed in state.approvals with its id already
+      // consumed by _shownApprovals, so it could never be answered again.
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
         title: const Row(
           children: [
             Icon(Icons.gpp_maybe_outlined, color: Colors.amber),
@@ -778,17 +784,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             child: const Text('允许一次'),
           ),
         ],
+        ),
       ),
     );
+    // Defensive: if the route went away without an answer (teardown paths
+    // PopScope cannot cover), un-mark it so the next rebuild re-shows it.
+    if (mounted &&
+        state.approvals.any((a) => a.approvalId == approval.approvalId)) {
+      _shownApprovals.remove(approval.approvalId);
+      setState(() {});
+    }
   }
 
   Future<void> _showQuestion(PendingQuestion question) async {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) =>
-          QuestionDialog(state: state, pending: question),
+      // Same back-button guard as the approval dialog: an unanswered
+      // question must not be dismissible by the Android back button/gesture.
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: QuestionDialog(state: state, pending: question),
+      ),
     );
+    // Defensive re-show, mirroring _showApproval.
+    if (mounted && state.questions.any((q) => q.rpcId == question.rpcId)) {
+      _shownQuestions.remove(question.rpcId);
+      setState(() {});
+    }
   }
 
   Future<void> _renameDialog() async {
@@ -1165,6 +1188,47 @@ class _SessionDrawerState extends State<SessionDrawer> {
     ));
   }
 
+  /// Permission-mode switcher: a sheet of presets riding the host's
+  /// /permission command (the same write path as the web Access chip), with
+  /// a risk confirmation before danger-full-access.
+  Future<void> _openPermissions() async {
+    if (state.selectedSessionId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('先选择或新建一个会话')));
+      return;
+    }
+    final preset = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _PermissionSheet(
+        onPick: (preset) => Navigator.of(sheetContext).pop(preset),
+      ),
+    );
+    if (preset == null || !mounted) return;
+    if (preset == 'danger-full-access') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('开启完全访问?'),
+          content: const Text(
+              '开启后 DSH 可读写设备上所有文件,且不再弹出审批确认。仅在信任当前任务时开启,可随时切回工作区写入。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('开启'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await state.runCommand('/permission $preset');
+  }
+
   Future<void> _loadCollapsed() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getStringList('collapsedWorkspaces');
@@ -1277,6 +1341,24 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   showDragHandle: true,
                   builder: (_) => _ThemeSheet(theme: widget.theme),
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.pets, size: 20),
+              title: const Text('宠物', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const PetPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.shield_outlined, size: 20),
+              title: const Text('权限模式', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _openPermissions();
               },
             ),
             ListTile(
@@ -3116,6 +3198,10 @@ class _ComposerState extends State<Composer> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      // Without this the sheet caps at half the screen and the sheet's own
+      // column cannot scroll, so long server catalogs (e.g. /permission at
+      // the tail) were clipped away with no way to reach them.
+      isScrollControlled: true,
       builder: (sheetContext) => _CommandsSheet(
         state: widget.state,
         onRun: (command) {
@@ -4512,9 +4598,105 @@ const _slashCommands = [
   _SlashCommand('plan', Icons.map_outlined, '进入或退出计划模式'),
   _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标',
       hasInput: true),
+  _SlashCommand('permission', Icons.shield_outlined,
+      '切换权限模式(如 /permission danger-full-access)',
+      hasInput: true),
   _SlashCommand('feedback', Icons.rate_review_outlined, '记录对本会话的反馈',
       hasInput: true),
 ];
+
+/// Permission-mode sheet (drawer → 权限模式): one tap per preset; the pick
+/// rides the /permission command, so the chat shows the usual command card.
+class _PermissionSheet extends StatelessWidget {
+  const _PermissionSheet({required this.onPick});
+
+  /// Called with the chosen preset name ('workspace-write' etc.).
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('权限模式',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('控制当前会话的文件访问范围与审批策略',
+                style: TextStyle(fontSize: 12, color: P.textTertiary)),
+            const SizedBox(height: 12),
+            _PermissionOption(
+              icon: Icons.edit_note,
+              title: '工作区写入',
+              preset: 'workspace-write',
+              description: '只能写当前工作区;越权操作会先弹审批询问你',
+              onPick: onPick,
+            ),
+            const SizedBox(height: 6),
+            _PermissionOption(
+              icon: Icons.lock_open_outlined,
+              title: '完全访问',
+              preset: 'danger-full-access',
+              description: '全部文件可读写,且不再弹审批(需二次确认)',
+              onPick: onPick,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionOption extends StatelessWidget {
+  const _PermissionOption({
+    required this.icon,
+    required this.title,
+    required this.preset,
+    required this.description,
+    required this.onPick,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// Preset name passed to /permission.
+  final String preset;
+  final String description;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: P.fillSubtle,
+      borderRadius: BorderRadius.circular(14),
+      child: ListTile(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: P.brandGradient,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: P.onAccent),
+        ),
+        title: Text(title,
+            style:
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        subtitle: Text(description,
+            style: TextStyle(fontSize: 12, color: P.textSecondary)),
+        onTap: () => onPick(preset),
+      ),
+    );
+  }
+}
 
 /// Quick-command sheet opened from the composer's + button. The catalog
 /// loads live from the host (commands/list); the built-in list is the
@@ -4593,46 +4775,58 @@ class _CommandsSheetState extends State<_CommandsSheet> {
             Text('以 / 开头的消息会作为命令执行,不会发送给模型',
                 style: TextStyle(fontSize: 12, color: P.textTertiary)),
             const SizedBox(height: 12),
-            for (final command in _commands)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Material(
-                  color: P.fillSubtle,
-                  borderRadius: BorderRadius.circular(14),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        gradient: P.brandGradient,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(command.icon,
-                          size: 18, color: P.onAccent),
-                    ),
-                    title: Text('/${command.name}',
-                        style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    subtitle: Text(command.description,
-                        style: TextStyle(
-                            fontSize: 12, color: P.textSecondary)),
-                    trailing: Icon(
-                      command.hasInput
-                          ? Icons.edit_outlined
-                          : Icons.play_arrow_rounded,
-                      size: 18,
-                      color: P.textTertiary,
-                    ),
-                    onTap: () => command.hasInput
-                        ? widget.onInsert(command.name)
-                        : widget.onRun(command.name),
-                  ),
-                ),
+            // Bounded, scrollable list: the catalog comes from the server and
+            // grows over time; a fixed Column clipped past the sheet height.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
               ),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final command in _commands)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Material(
+                        color: P.fillSubtle,
+                        borderRadius: BorderRadius.circular(14),
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              gradient: P.brandGradient,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(command.icon,
+                                size: 18, color: P.onAccent),
+                          ),
+                          title: Text('/${command.name}',
+                              style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                          subtitle: Text(command.description,
+                              style: TextStyle(
+                                  fontSize: 12, color: P.textSecondary)),
+                          trailing: Icon(
+                            command.hasInput
+                                ? Icons.edit_outlined
+                                : Icons.play_arrow_rounded,
+                            size: 18,
+                            color: P.textTertiary,
+                          ),
+                          onTap: () => command.hasInput
+                              ? widget.onInsert(command.name)
+                              : widget.onRun(command.name),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

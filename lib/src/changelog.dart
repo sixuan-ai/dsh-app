@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.9.2';
+const kAppVersion = '1.10.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.0',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '新增宠物功能:领养一只专属小可爱,喂食/玩耍/洗澡照顾它,状态会随时间变化,还有成长等级(抽屉 → 宠物)'),
+      ChangelogChange(ChangelogChangeType.feature,
+          '抽屉新增「权限模式」入口:一键切换工作区写入/完全访问,完全访问带风险确认,不用再手敲 /permission 命令'),
+      ChangelogChange(ChangelogChangeType.fix,
+          '修复审批/提问弹窗可被返回键误关:关闭后不再消失,未回答时自动重新弹出,不再卡住对话'),
+      ChangelogChange(ChangelogChangeType.fix,
+          '修复快捷命令面板显示不全:命令较多时(如 /permission)可上下滑动完整浏览'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.9.2',
     date: '2026-08-21',
