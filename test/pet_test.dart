@@ -83,6 +83,18 @@ void main() {
       expect(petLevelForTokens(-5), 1);
     });
 
+    test('evolution stages map to level bands', () {
+      expect(petStageForTokens(0).name, '蛋蛋'); // Lv.1
+      expect(petStageForTokens(2 * kPetTokensPerLevel).name, '幼崽'); // Lv.3
+      expect(petStageForTokens(5 * kPetTokensPerLevel).name, '小猫'); // Lv.6
+      expect(petStageForTokens(9 * kPetTokensPerLevel).name, '猛虎'); // Lv.10
+      expect(petStageForTokens(14 * kPetTokensPerLevel).name, '神兽'); // Lv.15
+      // Just below a boundary still belongs to the previous form.
+      expect(petStageForTokens(5 * kPetTokensPerLevel - 1).name, '幼崽');
+      expect(petStageIndexForTokens(14 * kPetTokensPerLevel),
+          kPetStages.length - 1);
+    });
+
     test('rename trims and rejects blanks', () {
       final pet = Pet.newborn('小哈', 0);
       expect(pet.rename('   '), isFalse);
@@ -92,16 +104,48 @@ void main() {
     });
 
     test('face prioritizes the most urgent unmet need', () {
+      const cat = PetStage(name: '小猫', minLevel: 6, base: '🐱');
       final pet = Pet.newborn('小哈', 0);
-      expect(pet.face, '😸'); // all full
+      expect(petFace(pet, cat), '😸'); // all full
       pet.hunger = 10;
       pet.hygiene = 5;
-      expect(pet.face, '😿'); // hunger checked first
+      expect(petFace(pet, cat), '😿'); // hunger checked first
       pet.hunger = 90;
-      expect(pet.face, '🙀'); // then hygiene
+      expect(petFace(pet, cat), '🙀'); // then hygiene
       pet.hygiene = 90;
       pet.mood = 5;
-      expect(pet.face, '😾'); // then mood
+      expect(petFace(pet, cat), '😾'); // then mood
+    });
+
+    test('non-cat forms compose base emoji with mood marks', () {
+      const tiger = PetStage(name: '猛虎', minLevel: 10, base: '🐯');
+      final pet = Pet.newborn('小哈', 0);
+      expect(petFace(pet, tiger), '🐯✨');
+      pet.hunger = 10;
+      expect(petFace(pet, tiger), '🐯💦');
+      pet.hunger = 90;
+      pet.hygiene = 10;
+      expect(petFace(pet, tiger), '🐯🛁');
+      pet.hygiene = 90;
+      pet.mood = 10;
+      expect(petFace(pet, tiger), '🐯💔');
+      pet.mood = 90;
+      expect(petFace(pet, tiger), '🐯✨');
+      pet.hunger = 40;
+      pet.mood = 40;
+      pet.hygiene = 40;
+      expect(petFace(pet, tiger), '🐯'); // ok band: plain base
+      pet.hunger = 20;
+      pet.mood = 20;
+      pet.hygiene = 20;
+      expect(petFace(pet, tiger), '🐯🌧️');
+    });
+
+    test('stageSeen round-trips through JSON, absent on old saves', () {
+      final pet = Pet.newborn('小哈', 0)..stageSeen = 2;
+      final restored = Pet.fromJson(pet.toJson(), 0);
+      expect(restored.stageSeen, 2);
+      expect(Pet.fromJson(const {'name': '豆豆'}, 0).stageSeen, isNull);
     });
 
     test('JSON round-trip preserves state', () {

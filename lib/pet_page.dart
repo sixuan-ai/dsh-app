@@ -161,11 +161,23 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           ? const Center(child: CircularProgressIndicator())
           : _pet == null
               ? _AdoptView(onAdopt: _adopt)
-              : _buildPetView(context, _pet!),
+              : widget.state == null
+                  ? _buildPetView(context, _pet!)
+                  // Live tokens (and thus stage/face) come from the state.
+                  : AnimatedBuilder(
+                      animation: widget.state!,
+                      builder: (context, _) {
+                        _maybeEvolve();
+                        return _buildPetView(context, _pet!);
+                      },
+                    ),
     );
   }
 
   Widget _buildPetView(BuildContext context, Pet pet) {
+    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
+    final stage = petStageForTokens(tokens);
+    final face = _hatchHint(tokens) ?? petFace(pet, stage);
     final days =
         (DateTime.now().millisecondsSinceEpoch - pet.bornAtMs) ~/
                 Duration.millisecondsPerDay +
@@ -189,7 +201,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                   final bounce = 1 + 0.15 * (1 - _bounce.value) * _bounce.value * 4;
                   return Transform.scale(scale: breath * bounce, child: child);
                 },
-                child: Text(pet.face, style: const TextStyle(fontSize: 96)),
+                child: Text(face, style: const TextStyle(fontSize: 96)),
               ),
               const SizedBox(height: 12),
               Text(pet.name,
@@ -202,28 +214,19 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                   style: TextStyle(
                       color: P.onAccent.withValues(alpha: 0.85), fontSize: 13)),
               const SizedBox(height: 14),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: P.onAccent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text('相伴第 $days 天',
-                    style: TextStyle(color: P.onAccent, fontSize: 12)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _chip('${stage.name}期'),
+                  const SizedBox(width: 8),
+                  _chip('相伴第 $days 天'),
+                ],
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        // Live token total needs a state subscription; standalone (tests)
-        // renders the persisted sum directly.
-        widget.state == null
-            ? _growthCard(pet)
-            : AnimatedBuilder(
-                animation: widget.state!,
-                builder: (_, _) => _growthCard(pet),
-              ),
+        _growthCard(pet),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -256,11 +259,76 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     );
   }
 
+  /// Small pill on the hero card (stage name / days together).
+  Widget _chip(String text) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: P.onAccent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(text, style: TextStyle(color: P.onAccent, fontSize: 12)),
+      );
+
+  /// The egg cracks open (🐣) during the last quarter-level before hatching
+  /// into 幼崽; null for every other situation.
+  String? _hatchHint(int tokens) {
+    if (petStageIndexForTokens(tokens) != 0) return null;
+    if (petLevelForTokens(tokens) + 1 < kPetStages[1].minLevel) return null;
+    return petLevelProgressForTokens(tokens) >= 0.75 ? '🐣' : null;
+  }
+
+  /// Advances the seen evolution form: silently on first load (old saves
+  /// must not celebrate retroactively), with a dialog when tokens push the
+  /// pet into a higher form.
+  void _maybeEvolve() {
+    final pet = _pet;
+    if (pet == null) return;
+    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
+    final index = petStageIndexForTokens(tokens);
+    final seen = pet.stageSeen;
+    if (seen == index) return;
+    pet.stageSeen = index;
+    unawaited(_store.save(pet));
+    if (seen == null || seen > index) return;
+    final stage = kPetStages[index];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('🎉 进化啦!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(stage.base, style: const TextStyle(fontSize: 72)),
+              const SizedBox(height: 12),
+              Text('${pet.name} 进化成了 ${stage.name}!',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('太好了'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   /// Growth card: the level derives from cumulative cache-hit input tokens
   /// (1 M per level); the three care bars still read the pet's stats.
   Widget _growthCard(Pet pet) {
     final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
     final level = petLevelForTokens(tokens);
+    PetStage? nextStage;
+    for (final candidate in kPetStages) {
+      if (candidate.minLevel > level) {
+        nextStage = candidate;
+        break;
+      }
+    }
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -295,6 +363,15 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
             alignment: Alignment.centerRight,
             child: Text('对话每命中 1M tokens 升一级',
                 style: TextStyle(fontSize: 11, color: P.textTertiary)),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              nextStage == null
+                  ? '已是最终形态'
+                  : 'Lv.${nextStage.minLevel} 进化为 ${nextStage.name} ${nextStage.base}',
+              style: TextStyle(fontSize: 11, color: P.textTertiary),
+            ),
           ),
           const SizedBox(height: 12),
           _StatBar(

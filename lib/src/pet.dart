@@ -30,6 +30,68 @@ int petLevelForTokens(int tokens) =>
 double petLevelProgressForTokens(int tokens) =>
     (math.max(0, tokens) % kPetTokensPerLevel) / kPetTokensPerLevel;
 
+/// One evolution form of the pet, reached at [minLevel].
+class PetStage {
+  const PetStage({
+    required this.name,
+    required this.minLevel,
+    required this.base,
+  });
+
+  /// Display name (蛋蛋/幼崽/小猫/猛虎/神兽).
+  final String name;
+
+  /// First level (inclusive) of this form.
+  final int minLevel;
+
+  /// Species emoji; non-cat forms compose mood faces from it.
+  final String base;
+}
+
+/// Evolution chain, ascending by [PetStage.minLevel].
+const kPetStages = [
+  PetStage(name: '蛋蛋', minLevel: 1, base: '🥚'),
+  PetStage(name: '幼崽', minLevel: 3, base: '🐥'),
+  PetStage(name: '小猫', minLevel: 6, base: '🐱'),
+  PetStage(name: '猛虎', minLevel: 10, base: '🐯'),
+  PetStage(name: '神兽', minLevel: 15, base: '🐉'),
+];
+
+/// The evolution form for a cumulative token count.
+PetStage petStageForTokens(int tokens) {
+  final level = petLevelForTokens(tokens);
+  var stage = kPetStages.first;
+  for (final candidate in kPetStages) {
+    if (level >= candidate.minLevel) stage = candidate;
+  }
+  return stage;
+}
+
+/// Index into [kPetStages] (identity-based; used for evolution detection).
+int petStageIndexForTokens(int tokens) =>
+    kPetStages.indexOf(petStageForTokens(tokens));
+
+/// Face emoji for [pet] at [stage]: the most urgent unmet need wins,
+/// otherwise the overall average decides. The cat form keeps the expressive
+/// cat faces; other forms compose `base` with a mood mark.
+String petFace(Pet pet, PetStage stage) {
+  if (stage.base == '🐱') {
+    if (pet.hunger <= 15) return '😿'; // 饿哭了
+    if (pet.hygiene <= 15) return '🙀'; // 脏到炸毛
+    if (pet.mood <= 15) return '😾'; // 不开心
+    if (pet.overall >= 80) return '😸';
+    if (pet.overall >= 55) return '😺';
+    if (pet.overall >= 35) return '😽';
+    return '🙁';
+  }
+  if (pet.hunger <= 15) return '${stage.base}💦';
+  if (pet.hygiene <= 15) return '${stage.base}🛁';
+  if (pet.mood <= 15) return '${stage.base}💔';
+  if (pet.overall >= 80) return '${stage.base}✨';
+  if (pet.overall >= 35) return stage.base;
+  return '${stage.base}🌧️';
+}
+
 /// The pet's state. Stats are integers in `0..kPetStatMax`. All mutators
 /// clamp instead of throwing.
 class Pet {
@@ -64,12 +126,17 @@ class Pet {
         hygiene: _clampStat((json['hygiene'] as num?)?.toInt() ?? kPetStatMax),
         bornAtMs: (json['bornAtMs'] as num?)?.toInt() ?? nowMs,
         lastTickMs: (json['lastTickMs'] as num?)?.toInt() ?? nowMs,
-      );
+      )..stageSeen = (json['stageSeen'] as num?)?.toInt();
 
   String name;
   int hunger;
   int mood;
   int hygiene;
+
+  /// Evolution form (index into [kPetStages]) the user has already seen and
+  /// celebrated; null on old saves. The pet page advances it silently on
+  /// first load and pops a celebration when the stage crosses upward.
+  int? stageSeen;
 
   /// Adoption time, milliseconds since epoch.
   final int bornAtMs;
@@ -84,6 +151,7 @@ class Pet {
         'hunger': hunger,
         'mood': mood,
         'hygiene': hygiene,
+        'stageSeen': ?stageSeen,
         'bornAtMs': bornAtMs,
         'lastTickMs': lastTickMs,
       };
@@ -136,19 +204,7 @@ class Pet {
     return true;
   }
 
-  /// Face emoji for the current state: the most urgent unmet need wins,
-  /// otherwise the overall average decides.
-  String get face {
-    if (hunger <= 15) return '😿'; // 饿哭了
-    if (hygiene <= 15) return '🙀'; // 脏到炸毛
-    if (mood <= 15) return '😾'; // 不开心
-    if (overall >= 80) return '😸';
-    if (overall >= 55) return '😺';
-    if (overall >= 35) return '😽';
-    return '🙁';
-  }
-
-  /// Short status line matching [face], shown under the pet.
+  /// Short status line matching [petFace], shown under the pet.
   String get statusLine {
     if (hunger <= 15) return '肚子饿扁了,快喂我!';
     if (hygiene <= 15) return '身上脏脏的,想洗澡…';

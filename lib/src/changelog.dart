@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.4';
+const kAppVersion = '1.10.5';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.5',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '宠物进化:等级提升自动进化形态 🥚蛋蛋→🐥幼崽→🐱小猫→🐯猛虎→🐉神兽,进化时有庆祝弹窗;蛋快孵化时会提前破壳'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.4',
     date: '2026-08-21',
