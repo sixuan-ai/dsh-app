@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -277,6 +278,8 @@ class AppState extends ChangeNotifier {
   void disconnect() {
     _streamsActive = false;
     _reconnectTimer?.cancel();
+    _backoffResetTimer?.cancel();
+    _reconnectAttempts = 0;
     _saveTimer?.cancel();
     _saveTimer = null;
     unawaited(_muxSub?.cancel());
@@ -311,15 +314,30 @@ class AppState extends ChangeNotifier {
         onError: (_) => _scheduleReconnect(), onDone: _scheduleReconnect);
   }
 
+  /// Reconnect backoff: 2s doubling to a 30s cap with ±25% jitter, so a
+  /// downed tunnel does not get hammered and recovering peers do not
+  /// reconnect in lockstep. Reset after a stable minute on the wire.
+  int _reconnectAttempts = 0;
+  Timer? _backoffResetTimer;
+
   void _scheduleReconnect() {
     if (!_streamsActive || _reconnectTimer != null) return;
-    _reconnectTimer = Timer(const Duration(seconds: 3), () async {
+    final base = math.min(2000 * math.pow(2, _reconnectAttempts), 30000);
+    _reconnectAttempts++;
+    final jitter = (base * 0.25 * (math.Random().nextDouble() * 2 - 1));
+    final delay = Duration(milliseconds: (base + jitter).round());
+    _reconnectTimer = Timer(delay, () async {
       _reconnectTimer = null;
       if (!_streamsActive || _api == null) return;
       _startStreams();
       try {
         await refreshSessions();
         if (selectedSessionId != null) await loadHistory(selectedSessionId!);
+        // Connected and synced: arm the backoff reset.
+        _backoffResetTimer?.cancel();
+        _backoffResetTimer = Timer(const Duration(minutes: 1), () {
+          _reconnectAttempts = 0;
+        });
       } catch (_) {
         _scheduleReconnect();
       }

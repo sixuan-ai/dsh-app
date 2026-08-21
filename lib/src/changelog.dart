@@ -25,10 +25,22 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.8.1';
+const kAppVersion = '1.8.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.8.2',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '链路提速:历史消息经 gzip + 隧道压缩,传输量最高省 90%,加载明显更快'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '断线重连升级指数退避(2 秒起翻倍、30 秒封顶、带抖动),网络闪断后恢复更稳更省电'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '服务器侧加固:全站强制 HTTPS、安全响应头、接口限流(本版起生效)'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.8.1',
     date: '2026-08-20',
