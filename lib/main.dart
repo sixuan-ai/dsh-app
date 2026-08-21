@@ -1308,6 +1308,13 @@ class _SessionDrawerState extends State<SessionDrawer> {
     }
   }
 
+  void _openSearch() {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => SessionSearchPage(state: state)),
+    );
+  }
+
   void _openCommunity() {
     Navigator.of(context).pop();
     Navigator.of(context).push(
@@ -1548,6 +1555,21 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
             ),
             const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _openSearch,
+                  icon: const Icon(Icons.search, size: 18),
+                  label: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('搜索历史消息'),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
             SizedBox(
               height: 38,
               child: ListView(
@@ -1908,6 +1930,288 @@ class _SessionDrawerState extends State<SessionDrawer> {
         ).showSnackBar(SnackBar(content: Text('归档失败: $error')));
       }
     }
+  }
+}
+
+class SessionSearchPage extends StatefulWidget {
+  const SessionSearchPage({super.key, required this.state});
+
+  final AppState state;
+
+  @override
+  State<SessionSearchPage> createState() => _SessionSearchPageState();
+}
+
+class _SessionSearchPageState extends State<SessionSearchPage> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+  List<SessionSearchResult> _results = const [];
+  bool _loading = false;
+  bool _hasMore = false;
+  String? _error;
+  int _generation = 0;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _changed(String value) {
+    _debounce?.cancel();
+    final query = value.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _results = const [];
+        _loading = false;
+        _hasMore = false;
+        _error = null;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(query));
+  }
+
+  Future<void> _search(String query) async {
+    final generation = ++_generation;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await widget.state.searchSessions(query);
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _results = result.items;
+        _hasMore = result.hasMore;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _results = const [];
+        _loading = false;
+        _hasMore = false;
+        _error = '$error';
+      });
+    }
+  }
+
+  Future<void> _openResult(SessionSearchResult result) async {
+    await widget.state.openSession(result.sessionId);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _controller.text.trim();
+    return Scaffold(
+      appBar: AppBar(title: const Text('搜索历史消息')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+            child: SearchBar(
+              controller: _controller,
+              leading: const Icon(Icons.search),
+              hintText: '输入关键词搜索全部会话',
+              trailing: [
+                if (_controller.text.isNotEmpty)
+                  IconButton(
+                    tooltip: '清空',
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      _controller.clear();
+                      _changed('');
+                    },
+                  ),
+              ],
+              onChanged: (value) {
+                setState(() {});
+                _changed(value);
+              },
+              onSubmitted: (value) {
+                _debounce?.cancel();
+                if (value.trim().isNotEmpty) _search(value.trim());
+              },
+            ),
+          ),
+          Expanded(child: _body(query)),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(String query) {
+    if (_loading && _results.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return _SearchState(
+        icon: Icons.cloud_off_outlined,
+        title: '搜索失败',
+        subtitle: _error!,
+        action: TextButton(
+          onPressed: () => _search(query),
+          child: const Text('重试'),
+        ),
+      );
+    }
+    if (query.isEmpty) {
+      return const _SearchState(
+        icon: Icons.manage_search,
+        title: '查找过去的对话',
+        subtitle: '可以搜索用户消息和助手回复',
+      );
+    }
+    if (_results.isEmpty) {
+      return const _SearchState(
+        icon: Icons.search_off,
+        title: '没有找到相关消息',
+        subtitle: '换一个关键词试试',
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 24),
+      itemCount: _results.length + (_hasMore ? 1 : 0),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        if (index == _results.length) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              '还有更多匹配结果，请缩小搜索范围',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: P.textSecondary, fontSize: 12),
+            ),
+          );
+        }
+        return _SearchResultCard(
+          result: _results[index],
+          query: query,
+          onTap: () => _openResult(_results[index]),
+        );
+      },
+    );
+  }
+}
+
+class _SearchState extends StatelessWidget {
+  const _SearchState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 52, color: P.textTertiary),
+            const SizedBox(height: 14),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 7),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: P.textSecondary),
+            ),
+            if (action != null) ...[const SizedBox(height: 10), action!],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchResultCard extends StatelessWidget {
+  const _SearchResultCard({
+    required this.result,
+    required this.query,
+    required this.onTap,
+  });
+
+  final SessionSearchResult result;
+  final String query;
+  final VoidCallback onTap;
+
+  List<TextSpan> _highlight(String text) {
+    final spans = <TextSpan>[];
+    final lower = text.toLowerCase();
+    final needle = query.toLowerCase();
+    var start = 0;
+    while (needle.isNotEmpty) {
+      final index = lower.indexOf(needle, start);
+      if (index < 0) break;
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index)));
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(index, index + needle.length),
+          style: TextStyle(
+            color: P.accentLight,
+            fontWeight: FontWeight.bold,
+            backgroundColor: P.accent.withValues(alpha: 0.12),
+          ),
+        ),
+      );
+      start = index + needle.length;
+    }
+    if (start < text.length) spans.add(TextSpan(text: text.substring(start)));
+    return spans.isEmpty ? [TextSpan(text: text)] : spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = result.title?.isNotEmpty == true ? result.title! : '新会话';
+    final parts = result.cwd
+        ?.split('/')
+        .where((part) => part.isNotEmpty)
+        .toList();
+    final folder = parts == null || parts.isEmpty ? null : parts.last;
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+        leading: const CircleAvatar(
+          child: Icon(Icons.chat_bubble_outline, size: 18),
+        ),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 5),
+            Text.rich(
+              TextSpan(children: _highlight(result.snippet)),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: P.textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              [
+                ?folder,
+                ?result.updatedAt == null ? null : _timeAgo(result.updatedAt!),
+              ].join(' · '),
+              style: TextStyle(color: P.textTertiary, fontSize: 11.5),
+            ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
   }
 }
 

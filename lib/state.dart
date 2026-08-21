@@ -24,6 +24,30 @@ Future<String?> _ianaTimeZone() async {
   }
 }
 
+/// One global session-search hit enriched from the local session list.
+class SessionSearchResult {
+  SessionSearchResult({
+    required this.sessionId,
+    required this.snippet,
+    this.title,
+    this.cwd,
+    this.updatedAt,
+  });
+
+  final String sessionId;
+  final String snippet;
+  final String? title;
+  final String? cwd;
+  final int? updatedAt;
+}
+
+class SessionSearchResults {
+  SessionSearchResults({required this.items, required this.hasMore});
+
+  final List<SessionSearchResult> items;
+  final bool hasMore;
+}
+
 /// One row in the session list.
 class SessionRow {
   SessionRow({
@@ -1073,6 +1097,37 @@ class AppState extends ChangeNotifier {
       loadingWorkspaces = false;
       notifyListeners();
     }
+  }
+
+  /// Searches visible session content and enriches hits with list metadata.
+  Future<SessionSearchResults> searchSessions(String query) async {
+    final api = _api;
+    final normalized = query.trim();
+    if (api == null || normalized.isEmpty) {
+      return SessionSearchResults(items: const [], hasMore: false);
+    }
+    final value =
+        await api.call('session.search', {'query': normalized})
+            as Map<String, dynamic>;
+    final results = <SessionSearchResult>[];
+    for (final raw in (value['items'] as List? ?? const [])) {
+      final map = (raw as Map).cast<String, dynamic>();
+      final id = map['sessionId'] as String;
+      final row = _rowOf(id);
+      results.add(
+        SessionSearchResult(
+          sessionId: id,
+          snippet: map['snippet'] as String? ?? '',
+          title: row?.title,
+          cwd: row?.cwd,
+          updatedAt: row?.updatedAt,
+        ),
+      );
+    }
+    return SessionSearchResults(
+      items: results,
+      hasMore: value['hasMore'] == true,
+    );
   }
 
   Future<void> renameSession(String sessionId, String title) async {

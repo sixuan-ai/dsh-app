@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.11.0';
+const kAppVersion = '1.12.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.12.0',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '消息搜索:支持搜索全部可见会话、关键词高亮、会话标题/目录/更新时间展示和点击跳转'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.11.0',
     date: '2026-08-21',
