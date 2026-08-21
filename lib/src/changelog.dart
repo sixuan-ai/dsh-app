@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.8';
+const kAppVersion = '1.10.9';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.9',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '训练家匹配赛:人机匹配对战(宝可梦风昵称/段位/胜率),新增段位系统 青铜🥉→王者👑,胜负影响段位分(胜+25/败-15)'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.8',
     date: '2026-08-21',

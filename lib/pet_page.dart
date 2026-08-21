@@ -182,6 +182,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     final species = petSpeciesById(pet.speciesId);
     final stageIndex = petStageIndexForTokens(tokens);
     final stage = species.stages[stageIndex];
+    final rank = petRankForScore(pet.pkScore);
     final face = _hatchHint(tokens) ?? petFace(pet, stage);
     final days =
         (DateTime.now().millisecondsSinceEpoch - pet.bornAtMs) ~/
@@ -230,6 +231,8 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                   ],
                   const SizedBox(width: 8),
                   _chip('相伴第 $days 天'),
+                  const SizedBox(width: 8),
+                  _chip('${rank.emoji}${rank.name}·${pet.pkScore}'),
                 ],
               ),
             ],
@@ -270,7 +273,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           width: double.infinity,
           child: FilledButton.tonal(
             onPressed: _openBattle,
-            child: const Text('⚔️ 宠物对战 · 胜者赢取 0.2M tokens'),
+            child: const Text('⚔️ 训练家匹配赛 · 胜者赢取 0.2M tokens'),
           ),
         ),
       ],
@@ -289,10 +292,17 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     );
   }
 
-  /// Settles the battle stake into the bonus pool and refreshes totals so
-  /// the growth card (and any level-up evolution) react immediately.
-  Future<void> _settleBattle(int delta) async {
-    final total = await _tokenStore.addBonus(delta);
+  /// Settles a finished battle: moves the PK score, settles the token stake
+  /// into the bonus pool, and refreshes totals so the growth card (and any
+  /// level-up evolution) react immediately.
+  Future<void> _settleBattle(bool playerWon) async {
+    final pet = _pet;
+    if (pet == null) return;
+    pet.pkScore = math.max(
+        0, pet.pkScore + (playerWon ? kPetPkScoreWin : kPetPkScoreLose));
+    await _store.save(pet);
+    final total = await _tokenStore
+        .addBonus(playerWon ? kPetBattleStake : -kPetBattleStake);
     await widget.state?.refreshPetTokens();
     if (mounted) setState(() => _tokensTotal = total);
   }
@@ -595,9 +605,10 @@ class _AdoptViewState extends State<_AdoptView> {  final _controller = TextEditi
   }
 }
 
-/// Pet battle dialog: the battle is pre-simulated via [simulatePetBattle],
-/// then the rounds are revealed one at a time over the HP bars and the log.
-/// Settling happens once per battle through [onSettle].
+/// Trainer match dialog: a short matchmaking beat reveals a bot opponent
+/// (nickname/rank/win-rate), then the pre-simulated [PetBattleResult] rounds
+/// are revealed one at a time. Settling happens once per battle through
+/// [onSettle].
 class _BattleDialog extends StatefulWidget {
   const _BattleDialog({
     required this.pet,
@@ -608,8 +619,8 @@ class _BattleDialog extends StatefulWidget {
   final Pet pet;
   final int tokens;
 
-  /// Applies the stake delta (+/- [kPetBattleStake]) and refreshes totals.
-  final Future<void> Function(int delta) onSettle;
+  /// Applies score and token-stake changes for the finished battle.
+  final Future<void> Function(bool playerWon) onSettle;
 
   @override
   State<_BattleDialog> createState() => _BattleDialogState();
@@ -622,10 +633,16 @@ class _BattleDialogState extends State<_BattleDialog> {
   late Pet _wild;
   late int _wildTokens;
   late PetBattleResult _result;
+  late String _botNick;
+  late PetRank _botRank;
+  late int _botWinRate;
+  bool _matching = true;
+  int _dots = 0;
   int _revealed = 0;
   Timer? _timer;
   bool _settled = false;
 
+  static const _matchDelay = Duration(milliseconds: 1400);
   static const _roundDelay = Duration(milliseconds: 650);
 
   @override
@@ -653,15 +670,39 @@ class _BattleDialogState extends State<_BattleDialog> {
       wildTokens: _wildTokens,
       random: _rng,
     );
+    // Bot persona: a trainer near the player's rank with a plausible record.
+    _botNick = kPetBotNicknames[_rng.nextInt(kPetBotNicknames.length)];
+    _botRank =
+        petRankForScore(math.max(0, widget.pet.pkScore + _rng.nextInt(201) - 100));
+    _botWinRate = 40 + _rng.nextInt(26);
     _timer?.cancel();
     setState(() {
+      _matching = true;
       _revealed = 0;
       _settled = false;
     });
+    var elapsed = 0;
+    _timer = Timer.periodic(const Duration(milliseconds: 350), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      elapsed += 350;
+      setState(() => _dots = (_dots + 1) % 3);
+      if (elapsed >= _matchDelay.inMilliseconds) {
+        timer.cancel();
+        setState(() => _matching = false);
+        _startRounds();
+      }
+    });
+  }
+
+  void _startRounds() {
     _timer = Timer.periodic(_roundDelay, (_) {
       if (!mounted) return;
       setState(() {
         _revealed++;
+        _dots = (_dots + 1) % 4;
         if (_revealed >= _result.rounds.length) {
           _timer?.cancel();
           unawaited(_finish());
@@ -676,8 +717,7 @@ class _BattleDialogState extends State<_BattleDialog> {
   Future<void> _finish() async {
     if (_settled) return;
     _settled = true;
-    await widget
-        .onSettle(_result.playerWon ? kPetBattleStake : -kPetBattleStake);
+    await widget.onSettle(_result.playerWon);
   }
 
   @override
@@ -686,17 +726,20 @@ class _BattleDialogState extends State<_BattleDialog> {
         petSpeciesById(widget.pet.speciesId).stageForTokens(widget.tokens);
     final wildStage =
         petSpeciesById(_wild.speciesId).stageForTokens(_wildTokens);
-    final done = _revealed >= _result.rounds.length;
-    final playerHp =
-        _revealed == 0 ? 100 : _result.rounds[_revealed - 1].playerHp;
-    final wildHp = _revealed == 0 ? 100 : _result.rounds[_revealed - 1].wildHp;
+    final done = !_matching && _revealed >= _result.rounds.length;
+    final playerHp = _matching || _revealed == 0
+        ? 100
+        : _result.rounds[_revealed - 1].playerHp;
+    final wildHp = _matching || _revealed == 0
+        ? 100
+        : _result.rounds[_revealed - 1].wildHp;
     return Dialog(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('宠物对战',
+            const Text('训练家匹配赛',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Row(
@@ -705,7 +748,8 @@ class _BattleDialogState extends State<_BattleDialog> {
                   child: _fighter(
                     face: petFace(widget.pet, myStage),
                     name: widget.pet.name,
-                    level: petLevelForTokens(widget.tokens),
+                    subtitle:
+                        '${petRankForScore(widget.pet.pkScore).emoji} Lv.${petLevelForTokens(widget.tokens)}',
                     hp: playerHp,
                     color: P.accentLight,
                   ),
@@ -715,31 +759,47 @@ class _BattleDialogState extends State<_BattleDialog> {
                   child: Text('⚔️', style: TextStyle(fontSize: 24)),
                 ),
                 Expanded(
-                  child: _fighter(
-                    face: petFace(_wild, wildStage),
-                    name: _wild.name,
-                    level: petLevelForTokens(_wildTokens),
-                    hp: wildHp,
-                    color: P.danger,
-                  ),
+                  child: _matching
+                      ? _fighter(
+                          face: '❓',
+                          name: '匹配中…',
+                          subtitle: '',
+                          hp: 100,
+                          color: P.danger,
+                        )
+                      : _fighter(
+                          face: petFace(_wild, wildStage),
+                          name: '$_botNick的${_wild.name.replaceFirst('野生的', '')}',
+                          subtitle:
+                              '${_botRank.emoji}${_botRank.name} · 胜率$_botWinRate%',
+                          hp: wildHp,
+                          color: P.danger,
+                        ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             SizedBox(
               height: 120,
-              child: ListView.builder(
-                controller: _logScroll,
-                itemCount: _revealed,
-                itemBuilder: (_, i) => _logLine(_result.rounds[i]),
-              ),
+              child: _matching
+                  ? Center(
+                      child: Text(
+                        '正在匹配训练家${'.' * (_dots + 1)}  ',
+                        style: TextStyle(fontSize: 13, color: P.textSecondary),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _logScroll,
+                      itemCount: _revealed,
+                      itemBuilder: (_, i) => _logLine(_result.rounds[i]),
+                    ),
             ),
             if (done) ...[
               const SizedBox(height: 10),
               Text(
                 _result.playerWon
-                    ? '🎉 赢了! +0.2M tokens'
-                    : '💨 惜败… 被对方拿走了 0.2M tokens',
+                    ? '🎉 赢了! +0.2M tokens,段位 +$kPetPkScoreWin'
+                    : '💨 惜败… 被拿走 0.2M tokens,段位 $kPetPkScoreLose',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: _result.playerWon ? P.success : P.danger,
@@ -756,14 +816,14 @@ class _BattleDialogState extends State<_BattleDialog> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _startBattle,
-                    child: const Text('再来一局'),
+                    child: const Text('再匹配一局'),
                   ),
                 ],
               ),
             ] else
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text('战斗中…',
+                child: Text(_matching ? '' : '战斗中…',
                     style: TextStyle(fontSize: 12, color: P.textTertiary)),
               ),
           ],
@@ -775,7 +835,7 @@ class _BattleDialogState extends State<_BattleDialog> {
   Widget _fighter({
     required String face,
     required String name,
-    required int level,
+    required String subtitle,
     required int hp,
     required Color color,
   }) {
@@ -784,10 +844,15 @@ class _BattleDialogState extends State<_BattleDialog> {
       children: [
         Text(face, style: const TextStyle(fontSize: 44)),
         const SizedBox(height: 4),
-        Text('$name Lv.$level',
+        Text(name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        if (subtitle.isNotEmpty)
+          Text(subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10, color: P.textTertiary)),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),

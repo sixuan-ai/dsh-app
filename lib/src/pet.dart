@@ -133,6 +133,62 @@ String randomPetSpeciesId() =>
 /// Tokens the battle winner takes from the player's PK bonus pool.
 const kPetBattleStake = 200000;
 
+/// Starting PK score for every pet (白银).
+const kPetPkScoreStart = 1000;
+
+/// PK score deltas: a win is worth more than a loss costs.
+const kPetPkScoreWin = 25;
+const kPetPkScoreLose = -15;
+
+/// A PK rank tier reached at [minScore].
+class PetRank {
+  const PetRank({
+    required this.name,
+    required this.minScore,
+    required this.emoji,
+  });
+
+  final String name;
+  final int minScore;
+  final String emoji;
+}
+
+/// Rank ladder, ascending by [PetRank.minScore].
+const kPetRanks = [
+  PetRank(name: '青铜', minScore: 0, emoji: '🥉'),
+  PetRank(name: '白银', minScore: 1000, emoji: '🥈'),
+  PetRank(name: '黄金', minScore: 1200, emoji: '🥇'),
+  PetRank(name: '铂金', minScore: 1400, emoji: '💠'),
+  PetRank(name: '钻石', minScore: 1600, emoji: '💎'),
+  PetRank(name: '王者', minScore: 1800, emoji: '👑'),
+];
+
+/// Rank for a PK score.
+PetRank petRankForScore(int score) {
+  var rank = kPetRanks.first;
+  for (final candidate in kPetRanks) {
+    if (score >= candidate.minScore) rank = candidate;
+  }
+  return rank;
+}
+
+/// 宝可梦/洛克王国-style bot trainer nicknames: matched battles draw from
+/// this pool while the community is small (swap for real matchmaking later).
+const kPetBotNicknames = [
+  '精灵大师阿伟',
+  '口袋收藏家',
+  '洛克老玩家',
+  '训练家小明',
+  '喵喵教教主',
+  '肝帝本帝',
+  '欧皇附体',
+  '非酋本酋',
+  '幼儿园园长',
+  '神兽捕捉员',
+  '进化狂魔',
+  '遛弯的皮卡',
+];
+
 /// One revealed attack round.
 class BattleRound {
   const BattleRound({
@@ -313,7 +369,8 @@ class Pet {
         hygiene: _clampStat((json['hygiene'] as num?)?.toInt() ?? kPetStatMax),
         bornAtMs: (json['bornAtMs'] as num?)?.toInt() ?? nowMs,
         lastTickMs: (json['lastTickMs'] as num?)?.toInt() ?? nowMs,
-      )..stageSeen = (json['stageSeen'] as num?)?.toInt();
+      )..stageSeen = (json['stageSeen'] as num?)?.toInt()
+      ..pkScore = (json['pkScore'] as num?)?.toInt() ?? kPetPkScoreStart;
 
   String name;
 
@@ -330,6 +387,10 @@ class Pet {
   /// crosses upward.
   int? stageSeen;
 
+  /// Trainer PK score (starts at [kPetPkScoreStart]); matched battles move
+  /// it by [kPetPkScoreWin]/[kPetPkScoreLose].
+  int pkScore = kPetPkScoreStart;
+
   /// Adoption time, milliseconds since epoch.
   final int bornAtMs;
 
@@ -345,6 +406,7 @@ class Pet {
         'mood': mood,
         'hygiene': hygiene,
         'stageSeen': ?stageSeen,
+        'pkScore': pkScore,
         'bornAtMs': bornAtMs,
         'lastTickMs': lastTickMs,
       };

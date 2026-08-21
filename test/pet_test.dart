@@ -120,8 +120,27 @@ void main() {
       expect(Pet.fromJson(const {'name': '豆豆'}, 0).speciesId, 'spirit');
     });
 
-    test('species counter wheel is cyclic in registry order', () {
-      for (var i = 0; i < kPetSpecies.length; i++) {
+    test('rank ladder bands and pkScore persistence', () {
+      expect(petRankForScore(0).name, '青铜');
+      expect(petRankForScore(kPetPkScoreStart).name, '白银');
+      expect(petRankForScore(1199).name, '白银');
+      expect(petRankForScore(1200).name, '黄金');
+      expect(petRankForScore(1400).name, '铂金');
+      expect(petRankForScore(1600).name, '钻石');
+      expect(petRankForScore(9999).name, '王者');
+      // New pets start at 白银; the score round-trips through JSON.
+      final pet = Pet.newborn('小哈', 0);
+      expect(pet.pkScore, kPetPkScoreStart);
+      pet.pkScore = 1234;
+      expect(Pet.fromJson(pet.toJson(), 0).pkScore, 1234);
+      // Old saves default to the starting score.
+      expect(Pet.fromJson(const {'name': '豆豆'}, 0).pkScore, kPetPkScoreStart);
+      // The bot nickname pool is usable.
+      expect(kPetBotNicknames.length, greaterThanOrEqualTo(8));
+      expect(kPetBotNicknames.every((n) => n.isNotEmpty), isTrue);
+    });
+
+    test('species counter wheel is cyclic in registry order', () {      for (var i = 0; i < kPetSpecies.length; i++) {
         final attacker = kPetSpecies[i].id;
         final prey = kPetSpecies[(i + 1) % kPetSpecies.length].id;
         expect(petSpeciesCounters(attacker, prey), isTrue,
