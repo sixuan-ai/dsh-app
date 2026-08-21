@@ -8,11 +8,18 @@ import 'package:flutter/material.dart';
 
 import 'src/pet.dart';
 import 'src/theme.dart';
+import 'state.dart';
 
 /// Virtual-pet raising page. Owns the [PetStore] round-trips: every mutation
 /// saves immediately, and a 1-minute timer applies time decay while open.
+/// The growth level derives from the app's cumulative cache-hit input tokens
+/// (live via [state] when provided, else the persisted total).
 class PetPage extends StatefulWidget {
-  const PetPage({super.key});
+  const PetPage({super.key, this.state});
+
+  /// App state feeding the live token total; null in tests falls back to the
+  /// persisted [PetTokenStore] sum.
+  final AppState? state;
 
   @override
   State<PetPage> createState() => _PetPageState();
@@ -20,7 +27,11 @@ class PetPage extends StatefulWidget {
 
 class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   final _store = PetStore();
+  final _tokenStore = PetTokenStore();
   Pet? _pet;
+
+  /// Persisted token total, used when no live [AppState] is attached.
+  int _tokensTotal = 0;
 
   /// Null until the first load finishes (distinguishes "loading" from
   /// "no pet yet").
@@ -56,10 +67,13 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   }
 
   Future<void> _load() async {
+    widget.state?.ensurePetTokensLoaded();
     final pet = await _store.load();
+    final tokens = await _tokenStore.total();
     if (!mounted) return;
     setState(() {
       _pet = pet;
+      _tokensTotal = tokens;
       _loaded = true;
     });
     if (pet != null) unawaited(_store.save(pet));
@@ -202,50 +216,14 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: P.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: P.fillLight),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text('成长 Lv.${pet.level}',
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  Text('${pet.growth % kPetGrowthPerLevel}/$kPetGrowthPerLevel',
-                      style: TextStyle(fontSize: 12, color: P.textTertiary)),
-                ],
+        // Live token total needs a state subscription; standalone (tests)
+        // renders the persisted sum directly.
+        widget.state == null
+            ? _growthCard(pet)
+            : AnimatedBuilder(
+                animation: widget.state!,
+                builder: (_, _) => _growthCard(pet),
               ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: pet.levelProgress,
-                  minHeight: 8,
-                  backgroundColor: P.fillMedium,
-                  valueColor: AlwaysStoppedAnimation(P.accentLight),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _StatBar(
-                  icon: '🍖', label: '饱腹', value: pet.hunger,
-                  color: const Color(0xFFFF9F43)),
-              const SizedBox(height: 12),
-              _StatBar(
-                  icon: '⚽', label: '心情', value: pet.mood,
-                  color: const Color(0xFFFF6B9D)),
-              const SizedBox(height: 12),
-              _StatBar(
-                  icon: '🛁', label: '清洁', value: pet.hygiene,
-                  color: const Color(0xFF54A0FF)),
-            ],
-          ),
-        ),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -275,6 +253,63 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           ],
         ),
       ],
+    );
+  }
+
+  /// Growth card: the level derives from cumulative cache-hit input tokens
+  /// (1 M per level); the three care bars still read the pet's stats.
+  Widget _growthCard(Pet pet) {
+    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
+    final level = petLevelForTokens(tokens);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: P.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: P.fillLight),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text('成长 Lv.$level',
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text('已命中 ${(tokens / kPetTokensPerLevel).toStringAsFixed(2)} M tokens',
+                  style: TextStyle(fontSize: 12, color: P.textTertiary)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: petLevelProgressForTokens(tokens),
+              minHeight: 8,
+              backgroundColor: P.fillMedium,
+              valueColor: AlwaysStoppedAnimation(P.accentLight),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text('对话每命中 1M tokens 升一级',
+                style: TextStyle(fontSize: 11, color: P.textTertiary)),
+          ),
+          const SizedBox(height: 12),
+          _StatBar(
+              icon: '🍖', label: '饱腹', value: pet.hunger,
+              color: const Color(0xFFFF9F43)),
+          const SizedBox(height: 12),
+          _StatBar(
+              icon: '⚽', label: '心情', value: pet.mood,
+              color: const Color(0xFFFF6B9D)),
+          const SizedBox(height: 12),
+          _StatBar(
+              icon: '🛁', label: '清洁', value: pet.hygiene,
+              color: const Color(0xFF54A0FF)),
+        ],
+      ),
     );
   }
 }

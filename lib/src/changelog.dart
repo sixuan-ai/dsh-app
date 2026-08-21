@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.10.0';
+const kAppVersion = '1.10.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.10.1',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '宠物成长改为按对话 tokens 计算:每命中 1M tokens 升一级,喂食/玩耍/洗澡只管饱腹/心情/清洁'),
+      ChangelogChange(ChangelogChangeType.fix,
+          '修复浅色主题下发送按钮隐形(点原位置仍可发出):HyperOS 上 Ink+渐变不绘制,已换成 Container 实现'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.10.0',
     date: '2026-08-21',

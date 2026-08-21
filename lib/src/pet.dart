@@ -1,7 +1,9 @@
 /// Virtual pet: a local-only companion with decaying care stats (饱腹/心情/
-/// 清洁), a growth counter fed by care actions, and SharedPreferences
-/// persistence. All time math goes through [Pet.applyElapsed], so background
-/// time decays the pet exactly once per load regardless of app uptime.
+/// 清洁) and a growth level derived from the user's cumulative cache-hit
+/// input tokens (1 M tokens per level). Care stats persist in
+/// SharedPreferences; all time math goes through [Pet.applyElapsed], so
+/// background time decays the pet exactly once per load regardless of app
+/// uptime.
 library;
 
 import 'dart:convert';
@@ -17,35 +19,42 @@ const kPetHungerDecayPerHour = 6.0;
 const kPetMoodDecayPerHour = 4.0;
 const kPetHygieneDecayPerHour = 3.0;
 
-/// Growth points needed per level; level N starts at (N-1) × this.
-const kPetGrowthPerLevel = 100;
+/// Cache-hit input tokens per pet level: every 1 M levels the pet up once.
+const kPetTokensPerLevel = 1000000;
 
-/// The pet's state. Stats are integers in `0..kPetStatMax`; [growth] only
-/// ever increases. All mutators clamp instead of throwing.
+/// Current growth level for a cumulative token count (1-based).
+int petLevelForTokens(int tokens) =>
+    math.max(0, tokens) ~/ kPetTokensPerLevel + 1;
+
+/// Fraction (0..1) of tokens within the current level.
+double petLevelProgressForTokens(int tokens) =>
+    (math.max(0, tokens) % kPetTokensPerLevel) / kPetTokensPerLevel;
+
+/// The pet's state. Stats are integers in `0..kPetStatMax`. All mutators
+/// clamp instead of throwing.
 class Pet {
   Pet({
     required this.name,
     required this.hunger,
     required this.mood,
     required this.hygiene,
-    required this.growth,
     required this.bornAtMs,
     required this.lastTickMs,
   });
 
-  /// A freshly adopted pet with full stats and no growth.
+  /// A freshly adopted pet with full stats.
   factory Pet.newborn(String name, int nowMs) => Pet(
         name: name,
         hunger: kPetStatMax,
         mood: kPetStatMax,
         hygiene: kPetStatMax,
-        growth: 0,
         bornAtMs: nowMs,
         lastTickMs: nowMs,
       );
 
   /// Restores a pet from its persisted JSON (missing keys fall back to a
-  /// newborn's values so older saves keep loading).
+  /// newborn's values so older saves keep loading; the retired `growth` key
+  /// from v1.10.0 saves is ignored — growth now derives from tokens).
   factory Pet.fromJson(Map<String, dynamic> json, int nowMs) => Pet(
         name: (json['name'] as String?)?.trim().isNotEmpty == true
             ? (json['name'] as String).trim()
@@ -53,7 +62,6 @@ class Pet {
         hunger: _clampStat((json['hunger'] as num?)?.toInt() ?? kPetStatMax),
         mood: _clampStat((json['mood'] as num?)?.toInt() ?? kPetStatMax),
         hygiene: _clampStat((json['hygiene'] as num?)?.toInt() ?? kPetStatMax),
-        growth: math.max(0, (json['growth'] as num?)?.toInt() ?? 0),
         bornAtMs: (json['bornAtMs'] as num?)?.toInt() ?? nowMs,
         lastTickMs: (json['lastTickMs'] as num?)?.toInt() ?? nowMs,
       );
@@ -62,7 +70,6 @@ class Pet {
   int hunger;
   int mood;
   int hygiene;
-  int growth;
 
   /// Adoption time, milliseconds since epoch.
   final int bornAtMs;
@@ -77,17 +84,9 @@ class Pet {
         'hunger': hunger,
         'mood': mood,
         'hygiene': hygiene,
-        'growth': growth,
         'bornAtMs': bornAtMs,
         'lastTickMs': lastTickMs,
       };
-
-  /// Current level, 1-based; [levelProgress] is the fraction toward the next.
-  int get level => growth ~/ kPetGrowthPerLevel + 1;
-
-  /// Fraction (0..1) of growth within the current level.
-  double get levelProgress =>
-      (growth % kPetGrowthPerLevel) / kPetGrowthPerLevel;
 
   /// Mean of the three care stats; drives the overall face.
   double get overall => (hunger + mood + hygiene) / 3;
@@ -107,11 +106,10 @@ class Pet {
     lastTickMs = nowMs;
   }
 
-  /// Feeds the pet: restores 饱腹, small 心情 comfort, grants growth.
+  /// Feeds the pet: restores 饱腹, small 心情 comfort.
   void feed() {
     hunger = _clampStat(hunger + 30);
     mood = _clampStat(mood + 2);
-    growth += 5;
   }
 
   /// Plays with the pet: big 心情 boost at a 饱腹/清洁 cost. Refused when the
@@ -121,15 +119,13 @@ class Pet {
     mood = _clampStat(mood + 25);
     hunger = _clampStat(hunger - 8);
     hygiene = _clampStat(hygiene - 5);
-    growth += 6;
     return true;
   }
 
-  /// Bathes the pet: restores 清洁, small 心情 lift, grants growth.
+  /// Bathes the pet: restores 清洁, small 心情 lift.
   void clean() {
     hygiene = _clampStat(hygiene + 35);
     mood = _clampStat(mood + 3);
-    growth += 4;
   }
 
   /// Renames the pet; blank names are ignored (returns false).
@@ -176,7 +172,9 @@ class PetStore {
     if (raw == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     try {
-      final pet = Pet.fromJson((jsonDecode(raw) as Map).cast<String, dynamic>(), now);
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) throw const FormatException('pet state not a map');
+      final pet = Pet.fromJson(decoded.cast<String, dynamic>(), now);
       pet.applyElapsed(now);
       return pet;
     } on FormatException {
@@ -194,5 +192,49 @@ class PetStore {
     } else {
       await prefs.setString(_key, jsonEncode(pet.toJson()));
     }
+  }
+}
+
+/// Cumulative cache-hit input tokens per session, persisted across launches.
+/// The server's tokenUsage projection is cumulative per session, so each
+/// session contributes only its max observed value; the pet's growth total
+/// is the sum across sessions.
+class PetTokenStore {
+  static const _key = 'petTokenTotals';
+
+  /// Reads the persisted per-session map (empty on corruption).
+  Future<Map<String, int>> _read() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) throw const FormatException('token map not a map');
+      return {
+        for (final entry in decoded.entries)
+          if (entry.key is String && entry.value is num)
+            entry.key as String: (entry.value as num).toInt(),
+      };
+    } on FormatException {
+      await prefs.remove(_key);
+      return {};
+    }
+  }
+
+  /// Global total across all recorded sessions.
+  Future<int> total() async =>
+      (await _read()).values.fold<int>(0, (sum, v) => sum + v);
+
+  /// Records one session's cumulative hit-token observation (max wins) and
+  /// returns the global total.
+  Future<int> record(String sessionId, int tokens) async {
+    final map = await _read();
+    final previous = map[sessionId] ?? 0;
+    if (tokens > previous) {
+      map[sessionId] = tokens;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_key, jsonEncode(map));
+    }
+    return map.values.fold<int>(0, (sum, v) => sum + v);
   }
 }

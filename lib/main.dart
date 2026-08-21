@@ -1349,7 +1349,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const PetPage()),
+                  MaterialPageRoute<void>(
+                      builder: (_) => PetPage(state: state)),
                 );
               },
             ),
@@ -3280,7 +3281,7 @@ class _ComposerState extends State<Composer> {
               if (widget.state.selectedRunning)
                 Padding(
                   padding: const EdgeInsets.only(right: 6, bottom: 2),
-                  child: Ink(
+                  child: Container(
                     decoration: BoxDecoration(
                       color: P.danger.withValues(alpha: 0.16),
                       shape: BoxShape.circle,
@@ -3297,7 +3298,11 @@ class _ComposerState extends State<Composer> {
                 ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
-                child: Ink(
+                // Container, not Ink: on Xiaomi HyperOS the Ink+gradient
+                // decoration silently fails to paint, leaving the white
+                // (onAccent) arrow on a white card — an invisible but still
+                // tappable send button (v1.10.0 field report).
+                child: Container(
                   decoration: BoxDecoration(
                     gradient: canSend ? P.brandGradient : null,
                     color: canSend ? null : P.fillLight,

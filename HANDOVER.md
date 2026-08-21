@@ -67,6 +67,7 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **split-per-abi versionCode 偏移**:arm64 +2000。publish.sh 已用 aapt 读真实值,勿改回读 pubspec
 - `bool.fromEnvironment('X')` 只认值 `true`(不是 `1`)
 - **Xiaomi HyperOS/Impeller**:Transform 包裹的 Image 渲染全黑 —— 用 CustomPaint+drawImageRect(见头像裁剪页)
+- **Xiaomi HyperOS/Impeller 其二**:Ink+BoxDecoration 渐变不绘制(无异常,静默跳过)——浅色主题下白箭头落在白卡片上=按钮隐形但可点(v1.10.0 发送按钮悬案)。圆形按钮一律用 Container+IconButton,别用 Ink
 - MIUI 禁止 `adb shell input` 注入;真机验证用 logcat print + screencap 像素分析
 - 修改 main.dart 字符串补丁要用 edit 工具,python/sed 曾两次毁文件(可用 `git checkout` 恢复)
 - analyzer 约定:null-aware 元素 `'k': ?v`、无 `Colors.white45`、CardThemeData/DialogThemeData

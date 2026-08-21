@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'src/localstore.dart';
+import 'src/pet.dart';
 import 'src/protocol.dart';
 
 /// Device IANA zone for prompt attribution; falls back to omission (valid
@@ -174,6 +175,37 @@ class AppState extends ChangeNotifier {
   /// contextPressure, …), kept under the higher-seq-wins rule.
   final Map<String, Map<String, ProjectionCell>> projections = {};
 
+  /// Global cumulative cache-hit input tokens across sessions; feeds the
+  /// pet's growth level (1 M tokens per level).
+  int petTokensTotal = 0;
+  final PetTokenStore _petTokens = PetTokenStore();
+
+  /// Folds one tokenUsage projection into the pet-growth total (per-session
+  /// max wins; the projection is cumulative).
+  void _trackPetTokens(String sessionId, Object? value) {
+    if (value is! Map) return;
+    final hit = (value['cacheReadTokens'] as num?)?.toInt();
+    if (hit == null) return;
+    unawaited(_petTokens.record(sessionId, hit).then((total) {
+      if (total != petTokensTotal) {
+        petTokensTotal = total;
+        notifyListeners();
+      }
+    }));
+  }
+
+  /// Seeds [petTokensTotal] from the persisted per-session maxima; the pet
+  /// page calls this on open (idempotent, and test-safe — plain unit tests
+  /// without a binding never construct the read).
+  void ensurePetTokensLoaded() {
+    unawaited(_petTokens.total().then((total) {
+      if (total != petTokensTotal) {
+        petTokensTotal = total;
+        notifyListeners();
+      }
+    }));
+  }
+
   /// Model catalog of the selected session, loaded on demand.
   SessionModelsData? models;
   bool loadingModels = false;
@@ -197,6 +229,7 @@ class AppState extends ChangeNotifier {
     }
     final title = values['title'] as String?;
     if (title != null) _rowOf(sessionId)?.title = title;
+    _trackPetTokens(sessionId, values['tokenUsage']);
   }
 
   /// In-flight assistant streams keyed by 'turn:step'.
@@ -987,6 +1020,7 @@ class AppState extends ChangeNotifier {
             table[key] = ProjectionCell(p['value'], seq);
           }
           if (key == 'title') _rowOf(sessionId)?.title = p['value'] as String?;
+          if (key == 'tokenUsage') _trackPetTokens(sessionId, p['value']);
         }
       case 'approval/requested':
         approvals.add(PendingApproval(

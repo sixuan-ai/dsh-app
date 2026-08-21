@@ -1347,7 +1347,9 @@ class _FriendChatPageState extends State<FriendChatPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Ink(
+                  // Container, not Ink: Ink+gradient paint fails on Xiaomi
+                  // HyperOS, hiding the button (see the composer send fix).
+                  Container(
                     decoration: BoxDecoration(
                         gradient: P.brandGradient,
                         shape: BoxShape.circle),

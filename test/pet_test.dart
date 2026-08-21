@@ -1,5 +1,6 @@
-/// Unit tests for the virtual-pet model: time decay, care actions, growth,
-/// face priority, and JSON round-trip; plus a widget smoke test of the page.
+/// Unit tests for the virtual-pet model: time decay, care actions,
+/// token-driven growth, face priority, and JSON round-trip; plus a widget
+/// smoke test of the page.
 library;
 
 import 'package:dsh_mobile/pet_page.dart';
@@ -12,14 +13,11 @@ const hour = Duration.millisecondsPerHour;
 
 void main() {
   group('Pet model', () {
-    test('newborn starts with full stats and level 1', () {
+    test('newborn starts with full stats', () {
       final pet = Pet.newborn('小哈', 1000);
       expect(pet.hunger, kPetStatMax);
       expect(pet.mood, kPetStatMax);
       expect(pet.hygiene, kPetStatMax);
-      expect(pet.growth, 0);
-      expect(pet.level, 1);
-      expect(pet.levelProgress, 0);
     });
 
     test('applyElapsed decays stats proportionally to elapsed hours', () {
@@ -44,12 +42,11 @@ void main() {
       expect(pet.hunger, hunger);
     });
 
-    test('feed restores hunger, clamps at max, and grants growth', () {
+    test('feed restores hunger and clamps at max', () {
       final pet = Pet.newborn('小哈', 0);
       pet.applyElapsed(5 * hour); // hunger 100-30=70
       pet.feed();
       expect(pet.hunger, 100);
-      expect(pet.growth, 5);
     });
 
     test('play is refused when too hungry', () {
@@ -58,7 +55,6 @@ void main() {
       final mood = pet.mood;
       expect(pet.play(), isFalse);
       expect(pet.mood, mood);
-      expect(pet.growth, 0);
     });
 
     test('play boosts mood at a hunger/hygiene cost', () {
@@ -68,22 +64,23 @@ void main() {
       expect(pet.mood, 100); // 92+25 clamps
       expect(pet.hunger, 80);
       expect(pet.hygiene, 89);
-      expect(pet.growth, 6);
     });
 
-    test('clean restores hygiene and grants growth', () {
+    test('clean restores hygiene', () {
       final pet = Pet.newborn('小哈', 0);
       pet.applyElapsed(10 * hour); // hygiene 70
       pet.clean();
       expect(pet.hygiene, 100);
-      expect(pet.growth, 4);
     });
 
-    test('growth drives level and progress', () {
-      final pet = Pet.newborn('小哈', 0)
-        ..growth = kPetGrowthPerLevel + 40;
-      expect(pet.level, 2);
-      expect(pet.levelProgress, closeTo(0.4, 1e-9));
+    test('token totals drive level and progress (1 M per level)', () {
+      expect(petLevelForTokens(0), 1);
+      expect(petLevelProgressForTokens(0), 0);
+      expect(petLevelForTokens(kPetTokensPerLevel + 400000), 2);
+      expect(petLevelProgressForTokens(kPetTokensPerLevel + 400000),
+          closeTo(0.4, 1e-9));
+      // Negative input is clamped, never a sub-1 level.
+      expect(petLevelForTokens(-5), 1);
     });
 
     test('rename trims and rejects blanks', () {
@@ -116,7 +113,6 @@ void main() {
       expect(restored.hunger, pet.hunger);
       expect(restored.mood, pet.mood);
       expect(restored.hygiene, pet.hygiene);
-      expect(restored.growth, pet.growth);
       expect(restored.bornAtMs, pet.bornAtMs);
       expect(restored.lastTickMs, pet.lastTickMs);
     });
@@ -126,6 +122,13 @@ void main() {
       expect(pet.name, '豆豆');
       expect(pet.hunger, kPetStatMax);
       expect(pet.bornAtMs, 5000);
+    });
+
+    test('fromJson ignores the retired v1.10.0 growth key', () {
+      final pet = Pet.fromJson(
+          const {'name': '豆豆', 'growth': 42}, 5000);
+      expect(pet.name, '豆豆');
+      expect(pet.toJson().containsKey('growth'), isFalse);
     });
   });
 
@@ -141,6 +144,20 @@ void main() {
       expect(loaded!.name, '小哈');
       await store.save(null);
       expect(await store.load(), isNull);
+    });
+  });
+
+  group('PetTokenStore', () {
+    test('keeps the per-session max and sums across sessions', () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = PetTokenStore();
+      expect(await store.total(), 0);
+      expect(await store.record('s1', 1500000), 1500000);
+      // A lower re-observation (e.g. replay from an older snapshot) loses.
+      expect(await store.record('s1', 900000), 1500000);
+      expect(await store.record('s2', 500000), 2000000);
+      // A fresh instance reads the persisted map.
+      expect(await PetTokenStore().total(), 2000000);
     });
   });
 
