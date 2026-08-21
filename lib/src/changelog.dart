@@ -25,10 +25,18 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.9.0';
+const kAppVersion = '1.9.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.9.1',
+    date: '2026-08-21',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '升级弹窗全新设计:渐变头部+更新日志卡片+全宽渐变按钮;下载进度改为大圆环+实时网速,失败可一键重试'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.9.0',
     date: '2026-08-21',

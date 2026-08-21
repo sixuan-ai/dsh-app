@@ -579,9 +579,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('需要安装权限'),
-          content: const Text(
-              '首次使用应用内更新,需要允许本应用"安装未知来源应用"。\n\n去设置打开后返回,会自动继续下载。'),
+          backgroundColor: P.cardAlt,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.install_mobile_outlined,
+                    size: 18, color: Colors.amber),
+              ),
+              const SizedBox(width: 10),
+              const Text('需要安装权限', style: TextStyle(fontSize: 16)),
+            ],
+          ),
+          content: Text(
+              '首次使用应用内更新,需要允许本应用"安装未知来源应用"。\n\n去设置打开后返回,会自动继续下载。',
+              style: TextStyle(
+                  fontSize: 13.5, height: 1.55, color: P.textSecondary)),
           actions: [
             TextButton(
               onPressed: () {
@@ -595,6 +615,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 Navigator.of(dialogContext).pop();
                 checker.requestInstallPermission();
               },
+              style: FilledButton.styleFrom(
+                  backgroundColor: P.accent,
+                  foregroundColor: P.onAccent,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12))),
               child: const Text('去设置'),
             ),
           ],
@@ -652,51 +677,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _showUpdateDialog(UpdateChecker checker, UpdateInfo info) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.system_update_alt, color: P.success),
-            SizedBox(width: 10),
-            Text('发现新版本'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('v${info.version}',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
-            if (info.size != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(_fmtBytes(info.size!),
-                    style: TextStyle(
-                        fontSize: 12, color: P.textTertiary)),
-              ),
-            if (info.notes != null && info.notes!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(info.notes!,
-                    style: TextStyle(
-                        fontSize: 13, height: 1.5, color: P.textSecondary)),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('稍后'),
-          ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _startUpdate(checker, info);
-            },
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text('立即更新'),
-          ),
-        ],
+      builder: (dialogContext) => _UpdateAvailableDialog(
+        info: info,
+        onUpdate: () {
+          Navigator.of(dialogContext).pop();
+          _startUpdate(checker, info);
+        },
       ),
     );
   }
@@ -4159,6 +4145,153 @@ String _fmtBytes(int bytes) {
 // Update download
 // ---------------------------------------------------------------------------
 
+/// Branded update-available dialog: gradient hero, version/size chips, and a
+/// scrollable release-notes card above a full-width gradient CTA.
+class _UpdateAvailableDialog extends StatelessWidget {
+  const _UpdateAvailableDialog({required this.info, required this.onUpdate});
+
+  final UpdateInfo info;
+  final VoidCallback onUpdate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: P.cardAlt,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // gradient hero
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            decoration: BoxDecoration(gradient: P.brandGradient),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: P.onAccent.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.system_update_alt_rounded,
+                      size: 28, color: P.onAccent),
+                ),
+                const SizedBox(height: 10),
+                Text('发现新版本',
+                    style: TextStyle(
+                        color: P.onAccent,
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text('v${info.version}',
+                    style: TextStyle(
+                        color: P.onAccent.withValues(alpha: 0.85),
+                        fontSize: 13)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (info.size != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: P.fillSubtle,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.save_alt_rounded,
+                            size: 13, color: P.textTertiary),
+                        const SizedBox(width: 5),
+                        Text('安装包 ${_fmtBytes(info.size!)}',
+                            style: TextStyle(
+                                fontSize: 11.5, color: P.textTertiary)),
+                      ],
+                    ),
+                  ),
+                if (info.notes != null && info.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: P.fillSubtle,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        info.notes!,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.55,
+                            color: P.textSecondary),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                // gradient CTA
+                Container(
+                  width: double.infinity,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: P.brandGradient,
+                    borderRadius: BorderRadius.circular(23),
+                    boxShadow: [P.brandGlow],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(23),
+                      onTap: onUpdate,
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.download_rounded,
+                                size: 18, color: P.onAccent),
+                            const SizedBox(width: 6),
+                            Text('立即更新',
+                                style: TextStyle(
+                                    color: P.onAccent,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('稍后',
+                        style:
+                            TextStyle(color: P.textTertiary, fontSize: 13.5)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Modal download-progress dialog; on completion it hands the APK to the
 /// system installer and closes itself.
 class _UpdateDownloadDialog extends StatefulWidget {
@@ -4176,13 +4309,40 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
   int? _total;
   String? _error;
 
+  /// Smoothed download speed (bytes/s), sampled from progress callbacks.
+  double? _speed;
+  int _lastSampled = 0;
+  int _lastSampleTime = 0;
+
   @override
   void initState() {
     super.initState();
     _start();
   }
 
+  void _sampleSpeed(int received) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastSampleTime == 0) {
+      _lastSampleTime = now;
+      _lastSampled = received;
+      return;
+    }
+    final dt = now - _lastSampleTime;
+    if (dt < 500) return;
+    final instant = (received - _lastSampled) / (dt / 1000);
+    _speed = _speed == null ? instant : _speed! * 0.6 + instant * 0.4;
+    _lastSampleTime = now;
+    _lastSampled = received;
+  }
+
   Future<void> _start() async {
+    setState(() {
+      _error = null;
+      _received = 0;
+      _total = null;
+      _speed = null;
+      _lastSampleTime = 0;
+    });
     try {
       final file = await widget.checker.downloadApk(
         widget.info,
@@ -4191,6 +4351,7 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
             setState(() {
               _received = received;
               _total = total;
+              _sampleSpeed(received);
             });
           }
         },
@@ -4207,39 +4368,123 @@ class _UpdateDownloadDialogState extends State<_UpdateDownloadDialog> {
   Widget build(BuildContext context) {
     final total = _total;
     final progress = total != null && total > 0 ? _received / total : null;
-    return AlertDialog(
-      title: Text('下载 v${widget.info.version}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_error != null)
-            Text(_error!,
+    return Dialog(
+      backgroundColor: P.cardAlt,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('正在下载更新',
                 style:
-                    TextStyle(color: P.danger, fontSize: 13))
-          else ...[
-            LinearProgressIndicator(value: progress),
-            const SizedBox(height: 10),
-            Text(
-              total != null
-                  ? '${_fmtBytes(_received)} / ${_fmtBytes(total)}'
-                  : '${_fmtBytes(_received)} 已下载',
-              style: TextStyle(fontSize: 12.5, color: P.textSecondary),
-            ),
-            if (progress != null)
-              Text('${(progress * 100).toStringAsFixed(0)}%',
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 3),
+            Text('v${widget.info.version}',
+                style: TextStyle(fontSize: 12.5, color: P.textTertiary)),
+            const SizedBox(height: 22),
+            if (_error != null) ...[
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: P.danger.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.cloud_off_outlined,
+                    size: 26, color: P.danger),
+              ),
+              const SizedBox(height: 12),
+              Text('下载失败',
                   style: TextStyle(
-                      fontSize: 12.5, color: P.textSecondary)),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: P.danger)),
+              const SizedBox(height: 6),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12, height: 1.5, color: P.textTertiary),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('关闭',
+                        style: TextStyle(color: P.textTertiary)),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    onPressed: _start,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('重试'),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: P.accent,
+                        foregroundColor: P.onAccent,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                  ),
+                ],
+              ),
+            ] else ...[
+              SizedBox(
+                width: 108,
+                height: 108,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 108,
+                      height: 108,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 7,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: P.fillLight,
+                        valueColor: AlwaysStoppedAnimation(P.accent),
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          progress != null
+                              ? '${(progress * 100).toStringAsFixed(0)}%'
+                              : '…',
+                          style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w700,
+                              color: P.text),
+                        ),
+                        if (_speed != null)
+                          Text(
+                            '${_fmtBytes(_speed!.round())}/s',
+                            style: TextStyle(
+                                fontSize: 10.5, color: P.textTertiary),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                total != null
+                    ? '${_fmtBytes(_received)} / ${_fmtBytes(total)}'
+                    : '已下载 ${_fmtBytes(_received)}',
+                style: TextStyle(fontSize: 12, color: P.textSecondary),
+              ),
+              const SizedBox(height: 4),
+              Text('完成后将自动打开安装界面',
+                  style: TextStyle(fontSize: 11, color: P.textTertiary)),
+            ],
           ],
-        ],
+        ),
       ),
-      actions: [
-        if (_error != null)
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
-          ),
-      ],
     );
   }
 }
