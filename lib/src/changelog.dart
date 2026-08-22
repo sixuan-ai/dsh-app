@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.12.0';
+const kAppVersion = '1.12.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.12.1',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '面向普通用户重构连接文案：使用“在家连接/远程连接”，增加适用场景、安全边界、友好错误提示和风险提醒'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '官网新增连接方式说明与安全基线，不再要求普通用户理解 FRP、反向代理等技术术语'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.12.0',
     date: '2026-08-22',

@@ -281,6 +281,24 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
         .replaceAll(RegExp(r'/$'), '');
   }
 
+  String _friendlyConnectionError(String error) {
+    final lower = error.toLowerCase();
+    if (lower.contains('401') || lower.contains('unauthorized')) {
+      return '账号或密码没有通过验证，请检查后重试。';
+    }
+    if (lower.contains('timed out') || lower.contains('timeout')) {
+      return _connectionMode == 'lan'
+          ? '连接超时。请确认手机和电脑在同一 Wi-Fi，并检查电脑地址和防火墙。'
+          : '连接超时。请确认电脑在线，并检查公网服务或隧道是否正常。';
+    }
+    if (lower.contains('socket') || lower.contains('connection refused')) {
+      return _connectionMode == 'lan'
+          ? '没有找到电脑服务。请先在电脑启动 DSH，再检查 IP 地址和 3080 端口。'
+          : '暂时无法连接你的电脑。请确认电脑已开机并保持 DSH 在线。';
+    }
+    return '暂时无法连接，请检查电脑是否在线或打开配置教程自查。';
+  }
+
   void _showConnectionGuide([String? initialMode]) {
     showModalBottomSheet<void>(
       context: context,
@@ -338,7 +356,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '连接到你的 DeepSeek Harness',
+                          '用手机安全连接并操作你自己的电脑',
+                          textAlign: TextAlign.center,
                           style: TextStyle(color: P.textSecondary),
                         ),
                         const SizedBox(height: 32),
@@ -359,12 +378,12 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                   ButtonSegment(
                                     value: 'public',
                                     icon: Icon(Icons.public),
-                                    label: Text('官网连接'),
+                                    label: Text('远程连接'),
                                   ),
                                   ButtonSegment(
                                     value: 'lan',
                                     icon: Icon(Icons.wifi),
-                                    label: Text('局域网'),
+                                    label: Text('在家连接'),
                                   ),
                                 ],
                                 selected: {_connectionMode},
@@ -394,8 +413,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     Expanded(
                                       child: Text(
                                         _connectionMode == 'lan'
-                                            ? '手机和电脑连接同一 Wi-Fi，速度快且不经过公网'
-                                            : '不在家也能连接，由官网自动匹配你的电脑实例',
+                                            ? '适合在家使用：手机和电脑同一 Wi-Fi，速度快，但离开家后不可用'
+                                            : '适合外出使用：由官网找到你的电脑，安全要求更高，电脑需要保持在线',
                                         style: TextStyle(
                                           color: P.textSecondary,
                                           fontSize: 12.5,
@@ -404,12 +423,45 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     ),
                                     TextButton(
                                       onPressed: () => _showConnectionGuide(),
-                                      child: const Text('配置教程'),
+                                      child: const Text('怎么配置？'),
                                     ),
                                   ],
                                 ),
                               ),
                               if (_connectionMode == 'lan') ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: P.danger.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: P.danger.withValues(alpha: 0.24),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.shield_outlined,
+                                        size: 18,
+                                        color: P.danger,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Text(
+                                          '当前在家连接适合可信家庭网络。不要在酒店、商场或公共 Wi-Fi 使用，也不要把电脑端口直接开放到互联网。',
+                                          style: TextStyle(
+                                            fontSize: 12.2,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 TextField(
                                   controller: _lanUrl,
@@ -466,7 +518,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                         child: Text(
                                           _preError != null
                                               ? _preError!
-                                              : '连接失败: $error',
+                                              : _friendlyConnectionError(error),
                                           style: TextStyle(
                                             color: P.danger,
                                             fontSize: 12.5,
@@ -619,7 +671,7 @@ class QuickStartSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '欢迎使用 xHarmess',
+                '第一次使用？先看这四步',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -686,14 +738,14 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '电脑端连接配置',
+                _mode == 'public' ? '远程连接：让官网帮你找到电脑' : '在家连接：手机直连电脑',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               Text(
-                '选择适合你的连接方式，完成后回到登录页连接。',
+                '先看适合谁、需要准备什么，再按步骤完成。高级命令可直接点按复制。',
                 style: TextStyle(color: P.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -718,21 +770,24 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
               if (_mode == 'public') ...[
                 const _GuideStep(
                   number: 1,
-                  title: '在电脑安装并启动 Harness',
-                  detail: '电脑需要保持开机，并运行 dsh web。',
+                  title: '准备一台保持在线的电脑',
+                  detail: '这台电脑就是你的 AI 工作电脑，需要安装并运行 DSH。',
                   code: 'dsh web --no-open',
                 ),
                 const _GuideStep(
                   number: 2,
-                  title: '配置公网代理',
-                  detail: '将电脑上的 dsh web 通过反向代理或隧道安全映射到 HTTPS 域名，并配置登录账号。',
+                  title: '申请远程连接服务',
+                  detail:
+                      '目前需要管理员为你的电脑配置安全域名、HTTPS、登录保护和网络隧道。普通用户不需要自己开放路由器端口。',
                 ),
                 const _GuideStep(
                   number: 3,
-                  title: '在官网登记账号路由',
-                  detail: '管理员将用户名绑定到你的实例域名。App 登录后会自动找到该电脑。',
+                  title: '使用官网账号登录',
+                  detail: '管理员绑定完成后，你只需要输入账号和密码，App 会自动找到你的电脑。',
                 ),
-                const _GuideTip(text: '适合外出使用。必须使用 HTTPS，并为入口开启身份认证。'),
+                const _GuideTip(
+                  text: '安全说明：远程连接必须使用 HTTPS 和身份认证。配对码与设备密钥方案仍在规划中，当前不会声称已经支持。',
+                ),
               ] else ...[
                 const _GuideStep(
                   number: 1,
@@ -741,8 +796,8 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                 ),
                 const _GuideStep(
                   number: 2,
-                  title: '启动局域网服务',
-                  detail: '在电脑终端运行下面的命令，并保持窗口开启。',
+                  title: '让电脑只在家里可见',
+                  detail: '在可信家庭网络中启动局域网服务，并保持窗口开启。不要把这个端口转发到公网。',
                   code: 'dsh web --host 0.0.0.0 --port 3080 --no-open',
                 ),
                 const _GuideStep(
@@ -755,10 +810,11 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                 const _GuideStep(
                   number: 4,
                   title: '在 App 填写电脑地址',
-                  detail: '填写 http://电脑IP:3080，并使用电脑端配置的用户名和密码。',
+                  detail: '填写 http://电脑IP:3080。当前直连模式的账号保护取决于电脑前是否配置认证代理。',
                 ),
                 const _GuideTip(
-                  text: '局域网连接速度更快，但离开该 Wi-Fi 后将无法连接。请只在可信网络使用 HTTP。',
+                  text:
+                      '安全说明：只在可信家庭网络使用。离开 Wi-Fi 后不可用；不要在公共网络使用，也不要把 3080 端口开放到互联网。',
                 ),
               ],
               const SizedBox(height: 8),
@@ -1793,8 +1849,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
         actions: [
           _MoreAction(
             icon: Icons.alt_route,
-            label: '连接教程',
-            caption: '公网 / 局域网',
+            label: '连接与安全',
+            caption: '在家 / 远程',
             onTap: () {
               Navigator.of(sheetContext).pop();
               showModalBottomSheet<void>(

@@ -40,9 +40,9 @@ void main() {
   testWidgets('login offers public and LAN connection modes', (tester) async {
     final app = AppState();
     await tester.pumpWidget(MaterialApp(home: ServerSetupPage(state: app)));
-    expect(find.text('官网连接'), findsOneWidget);
-    expect(find.text('局域网'), findsOneWidget);
-    await tester.tap(find.text('局域网'));
+    expect(find.text('远程连接'), findsOneWidget);
+    expect(find.text('在家连接'), findsOneWidget);
+    await tester.tap(find.text('在家连接'));
     await tester.pump();
     expect(find.byIcon(Icons.lan_outlined), findsOneWidget);
     expect(find.textContaining('电脑地址'), findsOneWidget);
@@ -50,7 +50,7 @@ void main() {
 
   testWidgets('quick start sheet explains core actions', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: QuickStartSheet()));
-    expect(find.text('欢迎使用 xHarmess'), findsOneWidget);
+    expect(find.text('第一次使用？先看这四步'), findsOneWidget);
     expect(find.text('新建会话'), findsOneWidget);
     expect(find.text('处理确认'), findsOneWidget);
   });
