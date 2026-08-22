@@ -244,7 +244,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     if (_connectionMode == 'lan') {
       serverUrl = _normalizeServerUrl(_lanUrl.text);
       if (serverUrl.isEmpty) {
-        setState(() => _preError = '请输入电脑的局域网地址');
+        setState(() => _preError = '请输入电脑的本地网络地址');
         return;
       }
     } else {
@@ -383,7 +383,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                   ButtonSegment(
                                     value: 'lan',
                                     icon: Icon(Icons.wifi),
-                                    label: Text('在家连接'),
+                                    label: Text('本地连接'),
                                   ),
                                 ],
                                 selected: {_connectionMode},
@@ -452,7 +452,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                       const SizedBox(width: 8),
                                       const Expanded(
                                         child: Text(
-                                          '当前在家连接适合可信家庭网络。不要在酒店、商场或公共 Wi-Fi 使用，也不要把电脑端口直接开放到互联网。',
+                                          '当前本地连接适合可信家庭网络。不要在酒店、商场或公共 Wi-Fi 使用，也不要把电脑端口直接开放到互联网。',
                                           style: TextStyle(
                                             fontSize: 12.2,
                                             height: 1.4,
@@ -738,7 +738,7 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _mode == 'public' ? '远程连接：让官网帮你找到电脑' : '在家连接：手机直连电脑',
+                _mode == 'public' ? '远程连接：让官网帮你找到电脑' : '本地连接：手机直连电脑',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -754,12 +754,12 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                   ButtonSegment(
                     value: 'public',
                     icon: Icon(Icons.public),
-                    label: Text('官网连接'),
+                    label: Text('远程连接'),
                   ),
                   ButtonSegment(
                     value: 'lan',
                     icon: Icon(Icons.wifi),
-                    label: Text('局域网连接'),
+                    label: Text('本地连接'),
                   ),
                 ],
                 selected: {_mode},
@@ -791,7 +791,7 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
               ] else ...[
                 const _GuideStep(
                   number: 1,
-                  title: '让手机和电脑连接同一 Wi-Fi',
+                  title: '让手机和电脑连接同一可信网络',
                   detail: '访客网络或开启 AP 隔离的 Wi-Fi 可能无法互相访问。',
                 ),
                 const _GuideStep(

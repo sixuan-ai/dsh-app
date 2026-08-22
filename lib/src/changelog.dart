@@ -25,16 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.12.1';
+const kAppVersion = '1.12.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.12.2',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement,
+          '统一连接术语为“远程连接/本地连接”，避免把本地网络误解为只能在家使用'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.12.1',
     date: '2026-08-22',
     changes: [
       ChangelogChange(ChangelogChangeType.improvement,
-          '面向普通用户重构连接文案：使用“在家连接/远程连接”，增加适用场景、安全边界、友好错误提示和风险提醒'),
+          '面向普通用户重构连接文案：使用“本地连接/远程连接”，增加适用场景、安全边界、友好错误提示和风险提醒'),
       ChangelogChange(ChangelogChangeType.improvement,
           '官网新增连接方式说明与安全基线，不再要求普通用户理解 FRP、反向代理等技术术语'),
     ],
@@ -44,7 +52,7 @@ const kChangelog = [
     date: '2026-08-22',
     changes: [
       ChangelogChange(ChangelogChangeType.feature,
-          '连接引导:登录页支持官网与局域网连接选择，提供电脑端分步配置教程、命令复制和首次使用快速上手弹窗'),
+          '连接引导:登录页支持远程与本地连接选择，提供电脑端分步配置教程、命令复制和首次使用快速上手弹窗'),
       ChangelogChange(ChangelogChangeType.improvement,
           '记住上次连接方式和局域网地址，并可从“更多功能”随时重新查看连接教程'),
     ],

@@ -41,8 +41,8 @@ void main() {
     final app = AppState();
     await tester.pumpWidget(MaterialApp(home: ServerSetupPage(state: app)));
     expect(find.text('远程连接'), findsOneWidget);
-    expect(find.text('在家连接'), findsOneWidget);
-    await tester.tap(find.text('在家连接'));
+    expect(find.text('本地连接'), findsOneWidget);
+    await tester.tap(find.text('本地连接'));
     await tester.pump();
     expect(find.byIcon(Icons.lan_outlined), findsOneWidget);
     expect(find.textContaining('电脑地址'), findsOneWidget);
