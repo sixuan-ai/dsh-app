@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.11.0';
+const kAppVersion = '1.12.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.12.0',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '连接引导:登录页支持官网与局域网连接选择，提供电脑端分步配置教程、命令复制和首次使用快速上手弹窗'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '记住上次连接方式和局域网地址，并可从“更多功能”随时重新查看连接教程'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.11.0',
     date: '2026-08-21',

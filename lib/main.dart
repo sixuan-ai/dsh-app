@@ -72,7 +72,12 @@ class _DshAppState extends State<DshApp> {
       _hasCreds = true;
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
-      final serverUrl = prefs.getString('serverUrl') ?? kDefaultServerUrl;
+      final mode = prefs.getString('connectionMode') ?? 'public';
+      final serverUrl = mode == 'lan'
+          ? (prefs.getString('lanServerUrl') ??
+                prefs.getString('serverUrl') ??
+                kDefaultServerUrl)
+          : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
       unawaited(appState.connect(serverUrl, username: user, password: pass));
     }
     if (mounted) setState(() => _restored = true);
@@ -199,6 +204,8 @@ class ServerSetupPage extends StatefulWidget {
 class _ServerSetupPageState extends State<ServerSetupPage> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
+  final _lanUrl = TextEditingController();
+  String _connectionMode = 'public';
 
   @override
   void initState() {
@@ -209,13 +216,20 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
   Future<void> _prefill() async {
     final prefs = await SharedPreferences.getInstance();
     final user = prefs.getString('authUser');
-    if (user != null && mounted) setState(() => _user.text = user);
+    if (!mounted) return;
+    setState(() {
+      if (user != null) _user.text = user;
+      _connectionMode = prefs.getString('connectionMode') ?? 'public';
+      _lanUrl.text =
+          prefs.getString('lanServerUrl') ?? 'http://192.168.1.100:3080';
+    });
   }
 
   @override
   void dispose() {
     _user.dispose();
     _pass.dispose();
+    _lanUrl.dispose();
     super.dispose();
   }
 
@@ -226,24 +240,55 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     final pass = _pass.text;
     if (user.isEmpty || pass.isEmpty) return;
     setState(() => _preError = null);
-    // Resolve which instance this user belongs to through the central
-    // directory; a network-side directory failure falls back to the default
-    // server (single-instance back-compat), while a credential rejection is
-    // shown immediately without touching the instance.
     var serverUrl = kDefaultServerUrl;
-    try {
-      serverUrl = await directoryLogin(kDefaultServerUrl, user, pass);
-    } on DshError catch (error) {
-      if (error.code == 'directory-auth') {
-        setState(() => _preError = '用户名或密码错误');
+    if (_connectionMode == 'lan') {
+      serverUrl = _normalizeServerUrl(_lanUrl.text);
+      if (serverUrl.isEmpty) {
+        setState(() => _preError = '请输入电脑的局域网地址');
         return;
+      }
+    } else {
+      // Public login resolves the account's instance through the central directory.
+      try {
+        serverUrl = await directoryLogin(kDefaultServerUrl, user, pass);
+      } on DshError catch (error) {
+        if (error.code == 'directory-auth') {
+          setState(() => _preError = '用户名或密码错误');
+          return;
+        }
       }
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('authUser', user);
     await prefs.setString('authPass', pass);
+    await prefs.setString('connectionMode', _connectionMode);
+    if (_connectionMode == 'lan') {
+      await prefs.setString('lanServerUrl', serverUrl);
+    }
     await prefs.setString('serverUrl', serverUrl);
     await widget.state.connect(serverUrl, username: user, password: pass);
+  }
+
+  String _normalizeServerUrl(String raw) {
+    var value = raw.trim();
+    if (value.isEmpty) return '';
+    if (!value.contains('://')) value = 'http://$value';
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) return '';
+    return uri
+        .replace(path: '', query: null, fragment: null)
+        .toString()
+        .replaceAll(RegExp(r'/$'), '');
+  }
+
+  void _showConnectionGuide([String? initialMode]) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) =>
+          ConnectionGuideSheet(initialMode: initialMode ?? _connectionMode),
+    );
   }
 
   @override
@@ -309,6 +354,73 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                           ),
                           child: Column(
                             children: [
+                              SegmentedButton<String>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: 'public',
+                                    icon: Icon(Icons.public),
+                                    label: Text('官网连接'),
+                                  ),
+                                  ButtonSegment(
+                                    value: 'lan',
+                                    icon: Icon(Icons.wifi),
+                                    label: Text('局域网'),
+                                  ),
+                                ],
+                                selected: {_connectionMode},
+                                onSelectionChanged: (selection) => setState(() {
+                                  _connectionMode = selection.first;
+                                  _preError = null;
+                                }),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: P.fillLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _connectionMode == 'lan'
+                                          ? Icons.speed
+                                          : Icons.cloud_outlined,
+                                      size: 18,
+                                      color: P.accentLight,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _connectionMode == 'lan'
+                                            ? '手机和电脑连接同一 Wi-Fi，速度快且不经过公网'
+                                            : '不在家也能连接，由官网自动匹配你的电脑实例',
+                                        style: TextStyle(
+                                          color: P.textSecondary,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _showConnectionGuide(),
+                                      child: const Text('配置教程'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_connectionMode == 'lan') ...[
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _lanUrl,
+                                  keyboardType: TextInputType.url,
+                                  decoration: _loginDecoration(
+                                    '电脑地址，例如 192.168.1.100:3080',
+                                    Icons.lan_outlined,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 12),
                               TextField(
                                 controller: _user,
                                 autofillHints: const [AutofillHints.username],
@@ -486,6 +598,299 @@ class _GradientButton extends StatelessWidget {
   }
 }
 
+class QuickStartSheet extends StatelessWidget {
+  const QuickStartSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (Icons.add_comment_outlined, '新建会话', '点击右上角或侧边栏“新建会话”，选择电脑上的工作目录。'),
+      (Icons.chat_bubble_outline, '发送任务', '像聊天一样描述需求；可以发送文字和图片，也可以用 / 打开快捷命令。'),
+      (Icons.approval_outlined, '处理确认', '涉及文件和命令时，App 会弹出审批或问题，请确认后任务才会继续。'),
+      (Icons.menu, '管理与更多功能', '左上角菜单可切换会话、查看宠物、连接教程、权限模式和更新。'),
+    ];
+    return Material(
+      color: P.bg,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '欢迎使用 xHarmess',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '四步快速上手，之后可在“更多功能 → 连接教程”重新查看配置。',
+                style: TextStyle(color: P.textSecondary),
+              ),
+              const SizedBox(height: 18),
+              for (final (icon, title, detail) in items)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: P.accent.withValues(alpha: 0.12),
+                    child: Icon(icon, color: P.accentLight),
+                  ),
+                  title: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(detail),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('开始使用'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ConnectionGuideSheet extends StatefulWidget {
+  const ConnectionGuideSheet({super.key, this.initialMode = 'public'});
+
+  final String initialMode;
+
+  @override
+  State<ConnectionGuideSheet> createState() => _ConnectionGuideSheetState();
+}
+
+class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
+  late String _mode = widget.initialMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '电脑端连接配置',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '选择适合你的连接方式，完成后回到登录页连接。',
+                style: TextStyle(color: P.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'public',
+                    icon: Icon(Icons.public),
+                    label: Text('官网连接'),
+                  ),
+                  ButtonSegment(
+                    value: 'lan',
+                    icon: Icon(Icons.wifi),
+                    label: Text('局域网连接'),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (value) =>
+                    setState(() => _mode = value.first),
+              ),
+              const SizedBox(height: 18),
+              if (_mode == 'public') ...[
+                const _GuideStep(
+                  number: 1,
+                  title: '在电脑安装并启动 Harness',
+                  detail: '电脑需要保持开机，并运行 dsh web。',
+                  code: 'dsh web --no-open',
+                ),
+                const _GuideStep(
+                  number: 2,
+                  title: '配置公网代理',
+                  detail: '将电脑上的 dsh web 通过反向代理或隧道安全映射到 HTTPS 域名，并配置登录账号。',
+                ),
+                const _GuideStep(
+                  number: 3,
+                  title: '在官网登记账号路由',
+                  detail: '管理员将用户名绑定到你的实例域名。App 登录后会自动找到该电脑。',
+                ),
+                const _GuideTip(text: '适合外出使用。必须使用 HTTPS，并为入口开启身份认证。'),
+              ] else ...[
+                const _GuideStep(
+                  number: 1,
+                  title: '让手机和电脑连接同一 Wi-Fi',
+                  detail: '访客网络或开启 AP 隔离的 Wi-Fi 可能无法互相访问。',
+                ),
+                const _GuideStep(
+                  number: 2,
+                  title: '启动局域网服务',
+                  detail: '在电脑终端运行下面的命令，并保持窗口开启。',
+                  code: 'dsh web --host 0.0.0.0 --port 3080 --no-open',
+                ),
+                const _GuideStep(
+                  number: 3,
+                  title: '查找电脑局域网 IP',
+                  detail:
+                      'Linux/macOS 可运行 hostname -I 或在网络设置查看，例如 192.168.1.100。',
+                  code: 'hostname -I',
+                ),
+                const _GuideStep(
+                  number: 4,
+                  title: '在 App 填写电脑地址',
+                  detail: '填写 http://电脑IP:3080，并使用电脑端配置的用户名和密码。',
+                ),
+                const _GuideTip(
+                  text: '局域网连接速度更快，但离开该 Wi-Fi 后将无法连接。请只在可信网络使用 HTTP。',
+                ),
+              ],
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('我知道了'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideStep extends StatelessWidget {
+  const _GuideStep({
+    required this.number,
+    required this.title,
+    required this.detail,
+    this.code,
+  });
+
+  final int number;
+  final String title;
+  final String detail;
+  final String? code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: P.accent,
+            foregroundColor: P.onAccent,
+            child: Text(
+              '$number',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  style: TextStyle(color: P.textSecondary, height: 1.4),
+                ),
+                if (code != null) ...[
+                  const SizedBox(height: 7),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: code!));
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(const SnackBar(content: Text('命令已复制')));
+                    },
+                    borderRadius: BorderRadius.circular(9),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: P.fillLight,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              code!,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.copy, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideTip extends StatelessWidget {
+  const _GuideTip({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: P.accent.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: P.accent.withValues(alpha: 0.25)),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.tips_and_updates_outlined, color: P.accentLight),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: P.textSecondary, fontSize: 12.5),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Home
 // ---------------------------------------------------------------------------
@@ -531,6 +936,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowWhatsNew();
+      _maybeShowQuickStart();
       _checkForUpdate();
     });
     // Silent re-check every 30 minutes; a find raises the green dot.
@@ -773,6 +1179,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => const WhatsNewDialog(),
+    );
+  }
+
+  Future<void> _maybeShowQuickStart() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('quickStartShown') == true || !mounted) return;
+    await prefs.setBool('quickStartShown', true);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const QuickStartSheet(),
     );
   }
 
@@ -1372,6 +1791,20 @@ class _SessionDrawerState extends State<SessionDrawer> {
       showDragHandle: true,
       builder: (sheetContext) => _MoreSheet(
         actions: [
+          _MoreAction(
+            icon: Icons.alt_route,
+            label: '连接教程',
+            caption: '公网 / 局域网',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                showDragHandle: true,
+                builder: (_) => const ConnectionGuideSheet(),
+              );
+            },
+          ),
           _MoreAction(
             icon: Icons.palette_outlined,
             label: '主题',
