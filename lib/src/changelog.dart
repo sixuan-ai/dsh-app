@@ -25,21 +25,21 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.16.0';
+const kAppVersion = '1.16.1';
 
 /// Release notes, newest first.
 const kChangelog = [
   ChangelogRelease(
-    version: '1.16.0',
+    version: '1.16.1',
     date: '2026-08-23',
     changes: [
       ChangelogChange(
-        ChangelogChangeType.feature,
-        '更多功能新增 AI 新闻：联网聚合 Anthropic、OpenAI、DeepSeek 官方 RSS，网络不可用时显示精选内容',
+        ChangelogChangeType.fix,
+        'AI 新闻和知识学习改为由 xHarness 网站统一整理发布，App 不再直接请求第三方新闻源',
       ),
       ChangelogChange(
         ChangelogChangeType.feature,
-        '新增 AI 知识学习：提供 Claude Code、Codex CLI、Pi、OpenClaw、DeepSeek、Hermes Agent 的定位、发布时间、安装和快速开始教程',
+        'AI 内容支持网站统一版本、刷新和本地缓存，断网时继续阅读上次成功同步的内容',
       ),
     ],
   ),

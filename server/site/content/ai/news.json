@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-23T00:00:00Z",
+  "items": [
+    {
+      "id": "agent-ecosystem-2026-08",
+      "title": "AI Agent 工具生态持续扩展",
+      "summary": "Claude Code、Codex CLI、Pi、OpenClaw 与 Hermes Agent 分别覆盖编码、自动化和多渠道助手场景。",
+      "content": "AI Agent 正从单一的代码生成工具，扩展到代码仓库、浏览器、消息渠道、知识检索和长期任务。选择工具时应先确认模型来源、文件权限和自动执行范围。",
+      "category": "Agent",
+      "tags": ["Agent", "开发工具", "自动化"],
+      "sourceName": "xHarness AI 观察",
+      "sourceUrl": "https://dsh.ainotex.com/app/",
+      "publishedAt": "2026-08-23T00:00:00Z"
+    },
+    {
+      "id": "deepseek-agent-integration-2026-08",
+      "title": "DeepSeek API 继续服务 Agent 集成",
+      "summary": "DeepSeek 可作为模型后端接入终端 Agent 和自建工具系统，使用时应单独配置模型权限与本地工具权限。",
+      "content": "DeepSeek 是模型和 API 提供方。将它接入终端 Agent 时，需要分别检查 API 密钥、模型能力、工具权限、上下文管理和提示词注入防护。",
+      "category": "模型平台",
+      "tags": ["DeepSeek", "API", "集成"],
+      "sourceName": "DeepSeek API 文档",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/",
+      "publishedAt": "2026-08-23T00:00:00Z"
+    },
+    {
+      "id": "personal-agent-workflows-2026-08",
+      "title": "从终端编码到个人助手",
+      "summary": "AI Agent 的使用边界正在从代码仓库扩展到浏览器、消息渠道、知识检索和长期任务。",
+      "content": "不同 Agent 的定位并不相同：终端编码工具适合仓库任务，个人助手平台适合长期会话和多渠道自动化，模型 API 则适合作为其他 Agent 的推理后端。",
+      "category": "实践",
+      "tags": ["工作流", "选型", "自动化"],
+      "sourceName": "xHarness AI 观察",
+      "sourceUrl": "https://openclaw.ai/",
+      "publishedAt": "2026-08-23T00:00:00Z"
+    }
+  ]
+}
