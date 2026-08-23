@@ -96,7 +96,7 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
 - **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
 
-## 7. 当前状态快照(v1.16.1)
+## 7. 当前状态快照(v1.17.0)
 
 App 功能:登录(远程/本地连接选择、无需退出的一键切换、本地 DSH 健康检测、directory 路由/实例记忆、电脑端配置教程、安全提醒、友好错误提示、首次快速上手)、会话(含 assistant 生成图片回显、持久附件加载和全屏预览)(分组/折叠/重命名/新建继承 cwd/运行中与归档筛选/本地置顶/服务端归档)、图片消息(相册/拍照/压缩/图文发送/历史附件读取/预览)、
 对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
@@ -124,4 +124,4 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 ## 9. 给新对话的开场白(用户可直接粘贴)
 
 > 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarness 项目。
-> 当前版本 v1.16.1,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+> 当前版本 v1.17.0,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。

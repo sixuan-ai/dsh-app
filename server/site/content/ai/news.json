@@ -1,39 +1,50 @@
 {
-  "version": 1,
-  "updatedAt": "2026-08-23T00:00:00Z",
+  "version": 2,
+  "updatedAt": "2026-08-23T06:30:00Z",
   "items": [
     {
-      "id": "agent-ecosystem-2026-08",
-      "title": "AI Agent 工具生态持续扩展",
-      "summary": "Claude Code、Codex CLI、Pi、OpenClaw 与 Hermes Agent 分别覆盖编码、自动化和多渠道助手场景。",
-      "content": "AI Agent 正从单一的代码生成工具，扩展到代码仓库、浏览器、消息渠道、知识检索和长期任务。选择工具时应先确认模型来源、文件权限和自动执行范围。",
-      "category": "Agent",
-      "tags": ["Agent", "开发工具", "自动化"],
-      "sourceName": "xHarness AI 观察",
-      "sourceUrl": "https://dsh.ainotex.com/app/",
-      "publishedAt": "2026-08-23T00:00:00Z"
+      "id": "deepseek-v4-flash-vision-exp-2026-08-21",
+      "title": "DeepSeek 发布 V4-Flash-Vision-Exp，多模态 API 上线",
+      "summary": "DeepSeek 推出 V4-Flash-Vision-Exp 实验模型，为 API 增加图像理解等多模态能力。",
+      "content": "这次更新的重点是把视觉输入能力带到 DeepSeek V4 Flash 系列。开发者可以通过官方 API 文档查看模型名称、输入格式、价格、速率限制和当前实验阶段的使用说明。实验模型可能继续调整，生产接入前应核对最新兼容性。",
+      "category": "新模型",
+      "tags": ["DeepSeek", "V4", "多模态", "视觉模型"],
+      "sourceName": "DeepSeek API 官方文档",
+      "sourceUrl": "https://api-docs.deepseek.com/news/news260821/",
+      "publishedAt": "2026-08-21T00:00:00Z"
     },
     {
-      "id": "deepseek-agent-integration-2026-08",
-      "title": "DeepSeek API 继续服务 Agent 集成",
-      "summary": "DeepSeek 可作为模型后端接入终端 Agent 和自建工具系统，使用时应单独配置模型权限与本地工具权限。",
-      "content": "DeepSeek 是模型和 API 提供方。将它接入终端 Agent 时，需要分别检查 API 密钥、模型能力、工具权限、上下文管理和提示词注入防护。",
-      "category": "模型平台",
-      "tags": ["DeepSeek", "API", "集成"],
-      "sourceName": "DeepSeek API 文档",
-      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/",
-      "publishedAt": "2026-08-23T00:00:00Z"
+      "id": "deepseek-v4-pro-ga-2026-08-13",
+      "title": "DeepSeek V4-Pro 正式发布",
+      "summary": "DeepSeek 宣布 V4-Pro 进入正式可用阶段，面向高质量推理、代码与复杂任务。",
+      "content": "V4-Pro 从预览阶段进入 GA，意味着模型进入正式服务阶段。关注重点包括正式模型标识、上下文能力、工具调用表现、API 定价和迁移说明。已经使用预览版的项目应根据官方公告检查模型别名与兼容性。",
+      "category": "新模型",
+      "tags": ["DeepSeek", "V4-Pro", "推理", "代码"],
+      "sourceName": "DeepSeek API 官方文档",
+      "sourceUrl": "https://api-docs.deepseek.com/news/news260813/",
+      "publishedAt": "2026-08-13T00:00:00Z"
     },
     {
-      "id": "personal-agent-workflows-2026-08",
-      "title": "从终端编码到个人助手",
-      "summary": "AI Agent 的使用边界正在从代码仓库扩展到浏览器、消息渠道、知识检索和长期任务。",
-      "content": "不同 Agent 的定位并不相同：终端编码工具适合仓库任务，个人助手平台适合长期会话和多渠道自动化，模型 API 则适合作为其他 Agent 的推理后端。",
-      "category": "实践",
-      "tags": ["工作流", "选型", "自动化"],
-      "sourceName": "xHarness AI 观察",
-      "sourceUrl": "https://openclaw.ai/",
-      "publishedAt": "2026-08-23T00:00:00Z"
+      "id": "openai-gpt-5-6-sol-luna-2026-08",
+      "title": "OpenAI 更新 GPT-5.6 Sol，并扩大 Luna 使用范围",
+      "summary": "OpenAI 改进 GPT-5.6 Sol 在 ChatGPT 中的表现，同时让更多用户可以使用 GPT-5.6 Luna。",
+      "content": "本次更新聚焦 GPT-5.6 系列在 ChatGPT 中的可用性和体验。Sol 面向更高质量的复杂任务，Luna 更强调普及和快速使用。具体模型入口、用户范围和产品限制应以 OpenAI 官方公告与 ChatGPT 模型选择器为准。",
+      "category": "模型更新",
+      "tags": ["OpenAI", "GPT-5.6", "Sol", "Luna"],
+      "sourceName": "OpenAI 官方公告",
+      "sourceUrl": "https://openai.com/index/improving-gpt-5-6-sol-in-chatgpt/",
+      "publishedAt": "2026-08-07T00:00:00Z"
+    },
+    {
+      "id": "anthropic-claude-opus-5-2026",
+      "title": "Anthropic 推出 Claude Opus 5",
+      "summary": "Anthropic 发布 Claude Opus 5，继续强化复杂推理、编码和长任务 Agent 能力。",
+      "content": "Claude Opus 5 面向高难度知识工作、软件工程和 Agent 工作流。使用前应查看官方公告中的模型可用渠道、API 模型名称、上下文限制、价格以及不同地区和账户的开放情况。",
+      "category": "新模型",
+      "tags": ["Anthropic", "Claude", "Opus 5", "Agent"],
+      "sourceName": "Anthropic 官方公告",
+      "sourceUrl": "https://www.anthropic.com/news/claude-opus-5",
+      "publishedAt": "2026-08-01T00:00:00Z"
     }
   ]
 }

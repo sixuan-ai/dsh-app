@@ -3,6 +3,23 @@ import 'package:flutter/material.dart';
 import 'ai_content.dart';
 import 'theme.dart';
 
+/// Returns the local calendar date portion used to group website news.
+String aiNewsDateKey(String publishedAt) {
+  final parsed = DateTime.tryParse(publishedAt)?.toLocal();
+  if (parsed == null) return '';
+  final month = parsed.month.toString().padLeft(2, '0');
+  final day = parsed.day.toString().padLeft(2, '0');
+  return '${parsed.year}-$month-$day';
+}
+
+/// Selects news published on one local calendar date.
+List<AiNewsItem> aiNewsOnDate(List<AiNewsItem> items, DateTime date) {
+  final key = aiNewsDateKey(date.toIso8601String());
+  return items.where((item) => aiNewsDateKey(item.publishedAt) == key).toList();
+}
+
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
 /// Website-backed AI news page with cached offline fallback.
 class AiNewsPage extends StatefulWidget {
   const AiNewsPage({super.key});
@@ -17,11 +34,22 @@ class _AiNewsPageState extends State<AiNewsPage> {
   bool _loading = true;
   bool _fromCache = false;
   String? _error;
+  final PageController _pageController = PageController(initialPage: 3650);
+  final DateTime _today = _dateOnly(DateTime.now());
+  int _page = 3650;
+
+  DateTime get _selectedDate => _today.add(Duration(days: _page - 3650));
 
   @override
   void initState() {
     super.initState();
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -72,7 +100,46 @@ class _AiNewsPageState extends State<AiNewsPage> {
             Text(_error!, style: TextStyle(color: P.textSecondary)),
           ],
           const SizedBox(height: 12),
-          for (final item in _items) _NewsCard(item: item),
+          _NewsDateToolbar(
+            date: _selectedDate,
+            isToday: _page == 3650,
+            onToday: () => _pageController.animateToPage(
+              3650,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOut,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 520,
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (page) => setState(() => _page = page),
+              itemBuilder: (_, page) {
+                final date = _today.add(Duration(days: page - 3650));
+                final todayItems = aiNewsOnDate(_items, date);
+                final yesterdayItems = aiNewsOnDate(
+                  _items,
+                  date.subtract(const Duration(days: 1)),
+                );
+                return ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    _NewsSection(
+                      title: '${_formatDate(date)} 最新',
+                      items: todayItems,
+                    ),
+                    const SizedBox(height: 10),
+                    _NewsSection(
+                      title:
+                          '${_formatDate(date.subtract(const Duration(days: 1)))} 昨日回顾',
+                      items: yesterdayItems,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ],
       ),
     ),
@@ -240,6 +307,74 @@ class _ContentStatus extends StatelessWidget {
         ),
       ],
     ),
+  );
+}
+
+String _formatDate(DateTime date) => '${date.month}月${date.day}日';
+
+class _NewsDateToolbar extends StatelessWidget {
+  const _NewsDateToolbar({
+    required this.date,
+    required this.isToday,
+    required this.onToday,
+  });
+  final DateTime date;
+  final bool isToday;
+  final VoidCallback onToday;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      const Icon(Icons.swipe_outlined, size: 17),
+      const SizedBox(width: 7),
+      Expanded(
+        child: Text(
+          '${_formatDate(date)} · 左右滑动切换日期',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      if (!isToday) TextButton(onPressed: onToday, child: const Text('回到今天')),
+    ],
+  );
+}
+
+class _NewsSection extends StatelessWidget {
+  const _NewsSection({required this.title, required this.items});
+  final String title;
+  final List<AiNewsItem> items;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: P.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      if (items.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: P.fillSubtle,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '这一天暂时没有发布新闻',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: P.textTertiary, fontSize: 12.5),
+          ),
+        )
+      else
+        for (final item in items) _NewsCard(item: item),
+    ],
   );
 }
 
