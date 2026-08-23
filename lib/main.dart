@@ -1765,6 +1765,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             actions: [
               if (sessionId != null && state.subagents.isNotEmpty)
                 _SubagentStatusButton(state: state),
+              if (sessionId != null && state.hasQueuedTasks)
+                TaskQueueButton(state: state),
               if (sessionId != null)
                 IconButton(
                   tooltip: '切换模型',
@@ -4715,15 +4717,6 @@ class _ComposerState extends State<Composer> {
     );
   }
 
-  void _openQueue() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => _TaskQueueSheet(state: widget.state),
-    );
-  }
-
   Future<void> _pickImage() async {
     if (_picking || _images.length >= 4) return;
     final source = await showModalBottomSheet<ImageSource>(
@@ -4916,19 +4909,6 @@ class _ComposerState extends State<Composer> {
                       onPressed: enabled ? _openCommands : null,
                     ),
                   ),
-                  if (widget.state.hasQueuedTasks)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Badge(
-                        label: Text('${widget.state.pendingTaskCount}'),
-                        child: IconButton(
-                          tooltip: '任务队列',
-                          icon: const Icon(Icons.playlist_play_rounded),
-                          color: P.accentLight,
-                          onPressed: enabled ? _openQueue : null,
-                        ),
-                      ),
-                    ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
@@ -6622,6 +6602,31 @@ class _PermissionOption extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: P.textSecondary),
         ),
         onTap: () => onPick(preset),
+      ),
+    );
+  }
+}
+
+/// Opens the server-authoritative pending task list from the top bar.
+class TaskQueueButton extends StatelessWidget {
+  const TaskQueueButton({super.key, required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Badge(
+      label: Text('${state.pendingTaskCount}'),
+      child: IconButton(
+        tooltip: '任务队列',
+        icon: const Icon(Icons.playlist_play_rounded),
+        color: P.accentLight,
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          isScrollControlled: true,
+          builder: (_) => _TaskQueueSheet(state: state),
+        ),
       ),
     );
   }

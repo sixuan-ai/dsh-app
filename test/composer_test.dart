@@ -64,7 +64,7 @@ void main() {
     expect(find.text('完全访问'), findsOneWidget);
   });
 
-  testWidgets('composer shows the task queue button when tasks are queued', (
+  testWidgets('top bar task queue button opens queued contents', (
     tester,
   ) async {
     final app = AppState();
@@ -78,7 +78,7 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: Composer(state: app))),
+      MaterialApp(home: Scaffold(body: TaskQueueButton(state: app))),
     );
 
     expect(find.byTooltip('任务队列'), findsOneWidget);
