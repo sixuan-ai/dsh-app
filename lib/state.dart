@@ -303,11 +303,46 @@ class AppState extends ChangeNotifier {
 
   bool get hasQueuedTasks => queuedTasks.isNotEmpty;
 
-  int get queuedTaskCount => queuedTasks
-      .where((task) => task.placement == 'queued')
-      .length;
+  int get queuedTaskCount =>
+      queuedTasks.where((task) => task.placement == 'queued').length;
 
   int get pendingTaskCount => queuedTasks.length;
+
+  /// Replaces the text of one still-pending, text-only queued task. The queue
+  /// snapshot remains authoritative and updates through `session/queue`.
+  Future<bool> updateQueuedTask(String itemId, String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+    return _mutateQueuedTask(itemId, {
+      'kind': 'edit',
+      'content': [
+        {'type': 'text', 'text': trimmed},
+      ],
+    });
+  }
+
+  /// Removes one still-pending queued task.
+  Future<bool> removeQueuedTask(String itemId) =>
+      _mutateQueuedTask(itemId, {'kind': 'remove'});
+
+  Future<bool> _mutateQueuedTask(
+    String itemId,
+    Map<String, dynamic> action,
+  ) async {
+    final api = _api;
+    final sessionId = selectedSessionId;
+    if (api == null || sessionId == null || itemId.isEmpty) return false;
+    try {
+      await api.call('session.updateQueue', {
+        'sessionId': sessionId,
+        'itemId': itemId,
+        'action': action,
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   bool loadingHistory = false;
   bool hasMoreHistory = false;

@@ -1,7 +1,7 @@
 # xHarness 项目交接文档
 
 > 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
-> 最后更新：2026-08-23（v1.22.5+66；App 发布提交以 main 最新为准）
+> 最后更新：2026-08-23（v1.22.6+67；App 发布提交以 main 最新为准）
 
 ## 0. 三十秒速览
 
@@ -10,10 +10,10 @@
 当前最新正式版：
 
 ```text
-版本: v1.22.5
-versionCode: 2066
-APK: https://dsh.ainotex.com/releases/dsh-app-1.22.5.apk
-SHA-256: ad2bc6aa60f17210cfe8fb3b40bc79fab480fabad4d12c908d5bd79df4827131
+版本: v1.22.6
+versionCode: 2067
+APK: https://dsh.ainotex.com/releases/dsh-app-1.22.6.apk
+SHA-256: 42b306cb9dce70dfde8d928d60d7af1086ac45d00b4afb6237011d0441a57c1c
 Git: 以 main 最新发布提交为准
 ```
 
@@ -143,6 +143,12 @@ export PATH="/home/x/flutter/bin:$PATH"
 - Android 使用正式签名，签名文件只在本地，不在 Git 仓库。
 
 ## 3. 最近版本记录
+
+### v1.22.6
+
+- 排队中的纯文字任务支持编辑。
+- 排队任务支持删除，删除前需要确认。
+- 编辑和删除调用 DSH 原生 `session.updateQueue`，状态由 `session/queue` 快照同步。
 
 ### v1.22.5
 
@@ -350,7 +356,7 @@ curl -fsS https://dsh.ainotex.com/app/content/ai/agents.json | python3 -m json.t
 
 ```text
 请先阅读 /home/x/code/pd02/dsh_mobile/HANDOVER.md，接手 xHarness。
-当前最新版本是 v1.22.5+66；交接文档以仓库 main 分支最新内容为准。
+当前最新版本是 v1.22.6+67；交接文档以仓库 main 分支最新内容为准。
 先不要改 DSH Web 进程，也不要重启 127.0.0.1:3080。
 我希望继续处理：____。
 ```

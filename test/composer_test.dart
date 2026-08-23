@@ -48,7 +48,9 @@ void main() {
     final app = AppState();
     app.selectedSessionId = 's1';
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: Composer(state: app))),
+      MaterialApp(
+        home: Scaffold(body: Composer(state: app)),
+      ),
     );
 
     await tester.tap(find.byTooltip('快捷命令'));
@@ -78,7 +80,9 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: TaskQueueButton(state: app))),
+      MaterialApp(
+        home: Scaffold(body: TaskQueueButton(state: app)),
+      ),
     );
 
     expect(find.byTooltip('任务队列'), findsOneWidget);
@@ -88,6 +92,10 @@ void main() {
     expect(find.text('任务队列'), findsOneWidget);
     expect(find.text('待处理 1 个'), findsOneWidget);
     expect(find.text('继续处理'), findsOneWidget);
+    await tester.tap(find.byTooltip('任务操作'));
+    await tester.pumpAndSettle();
+    expect(find.text('编辑任务'), findsOneWidget);
+    expect(find.text('删除任务'), findsOneWidget);
   });
 
   testWidgets('login offers public and LAN connection modes', (tester) async {

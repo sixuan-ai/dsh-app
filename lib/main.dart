@@ -6633,17 +6633,93 @@ class TaskQueueButton extends StatelessWidget {
 }
 
 /// Server-authoritative pending task list for the selected session.
-class _TaskQueueSheet extends StatelessWidget {
+class _TaskQueueSheet extends StatefulWidget {
   const _TaskQueueSheet({required this.state});
 
   final AppState state;
 
   @override
+  State<_TaskQueueSheet> createState() => _TaskQueueSheetState();
+}
+
+class _TaskQueueSheetState extends State<_TaskQueueSheet> {
+  String? _busyId;
+
+  Future<void> _edit(QueuedTask task) async {
+    final controller = TextEditingController(text: task.text);
+    final text = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('编辑排队任务'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 5,
+          decoration: const InputDecoration(hintText: '输入任务内容'),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || text == null || text.trim().isEmpty) return;
+    setState(() => _busyId = task.id);
+    final accepted = await widget.state.updateQueuedTask(task.id, text);
+    if (!mounted) return;
+    setState(() => _busyId = null);
+    if (!accepted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('编辑任务失败，请稍后重试')));
+    }
+  }
+
+  Future<void> _remove(QueuedTask task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除排队任务?'),
+        content: const Text('删除后，这个任务不会再交给 AI 处理。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    setState(() => _busyId = task.id);
+    final accepted = await widget.state.removeQueuedTask(task.id);
+    if (!mounted) return;
+    setState(() => _busyId = null);
+    if (!accepted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('删除任务失败，请稍后重试')));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: state,
+      animation: widget.state,
       builder: (context, _) {
-        final tasks = state.queuedTasks;
+        final tasks = widget.state.queuedTasks;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -6656,13 +6732,12 @@ class _TaskQueueSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '任务队列',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     Text(
-                      '待处理 ${state.pendingTaskCount} 个',
+                      '待处理 ${widget.state.pendingTaskCount} 个',
                       style: TextStyle(color: P.textSecondary, fontSize: 12),
                     ),
                   ],
@@ -6702,6 +6777,7 @@ class _TaskQueueSheet extends StatelessWidget {
                                   ? '[${task.imageCount} 张图片]'
                                   : '无文字任务')
                             : task.text;
+                        final busy = _busyId == task.id;
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -6765,6 +6841,42 @@ class _TaskQueueSheet extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              if (task.placement == 'queued')
+                                PopupMenuButton<String>(
+                                  tooltip: '任务操作',
+                                  enabled: !busy,
+                                  icon: busy
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.more_vert),
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      unawaited(_edit(task));
+                                    } else if (value == 'remove') {
+                                      unawaited(_remove(task));
+                                    }
+                                  },
+                                  itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                      value: 'edit',
+                                      enabled: task.imageCount == 0,
+                                      child: Text(
+                                        task.imageCount == 0
+                                            ? '编辑任务'
+                                            : '含图片任务暂不支持编辑',
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'remove',
+                                      child: Text('删除任务'),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         );

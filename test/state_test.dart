@@ -414,46 +414,56 @@ void main() {
   });
 
   group('task queue', () {
-    test('session queue snapshot exposes queued task text and image counts', () {
+    test('queued task mutation helpers reject unavailable state', () async {
       final app = AppState();
       app.selectedSessionId = 's1';
-      app.muxFrameForTest(
-        ServerFrame(
-          rpcId: 'queue-1',
-          method: 'events.mux',
-          payload: {
-            'type': 'session/queue',
-            'sessionId': 's1',
-            'items': [
-              {
-                'id': 'm1',
-                'placement': 'queued',
-                'message': {
-                  'content': [
-                    {'type': 'text', 'text': '继续整理测试'},
-                    {'type': 'image', 'mediaType': 'image/png', 'data': 'x'},
-                  ],
-                },
-              },
-              {
-                'id': 'm2',
-                'placement': 'context',
-                'message': {
-                  'content': [
-                    {'type': 'text', 'text': '隐藏上下文'},
-                  ],
-                },
-              },
-            ],
-          },
-        ),
-      );
-
-      expect(app.queuedTaskCount, 1);
-      expect(app.queuedTasks, hasLength(1));
-      expect(app.queuedTasks.single.text, '继续整理测试');
-      expect(app.queuedTasks.single.imageCount, 1);
+      expect(await app.updateQueuedTask('q1', '   '), isFalse);
+      expect(await app.removeQueuedTask('q1'), isFalse);
     });
+
+    test(
+      'session queue snapshot exposes queued task text and image counts',
+      () {
+        final app = AppState();
+        app.selectedSessionId = 's1';
+        app.muxFrameForTest(
+          ServerFrame(
+            rpcId: 'queue-1',
+            method: 'events.mux',
+            payload: {
+              'type': 'session/queue',
+              'sessionId': 's1',
+              'items': [
+                {
+                  'id': 'm1',
+                  'placement': 'queued',
+                  'message': {
+                    'content': [
+                      {'type': 'text', 'text': '继续整理测试'},
+                      {'type': 'image', 'mediaType': 'image/png', 'data': 'x'},
+                    ],
+                  },
+                },
+                {
+                  'id': 'm2',
+                  'placement': 'context',
+                  'message': {
+                    'content': [
+                      {'type': 'text', 'text': '隐藏上下文'},
+                    ],
+                  },
+                },
+              ],
+            },
+          ),
+        );
+
+        expect(app.queuedTaskCount, 1);
+        expect(app.queuedTasks, hasLength(1));
+        expect(app.queuedTasks.single.text, '继续整理测试');
+        expect(app.queuedTasks.single.imageCount, 1);
+      },
+    );
 
     test('empty queue snapshot clears the selected session queue', () {
       final app = AppState();

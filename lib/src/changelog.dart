@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.5';
+const kAppVersion = '1.22.6';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.6',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '排队任务支持编辑和删除，修改通过服务端队列实时同步',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '删除排队任务前增加确认提示，避免误操作',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.5',
     date: '2026-08-23',
