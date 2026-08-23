@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.15.1';
+const kAppVersion = '1.15.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.15.2',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '右上角三点菜单新增“检查更新”入口，可在会话页面快速检查并安装新版本',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.15.1',
     date: '2026-08-23',

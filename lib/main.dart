@@ -1776,6 +1776,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       _renameDialog();
                     case 'refresh':
                       state.refreshSessions();
+                    case 'update':
+                      _checkForUpdate(manual: true);
                     case 'logout':
                       _logout();
                   }
@@ -1798,6 +1800,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
+                  if (defaultTargetPlatform == TargetPlatform.android)
+                    const PopupMenuItem(
+                      value: 'update',
+                      child: ListTile(
+                        leading: Icon(Icons.system_update_alt_outlined),
+                        title: Text('检查更新'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   const PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
