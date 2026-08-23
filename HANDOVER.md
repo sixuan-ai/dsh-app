@@ -1,127 +1,339 @@
 # xHarness 项目交接文档
 
-> 写给下一段对话的 agent：读这份文档 + `server/OPERATIONS.md` 即可无缝接手。
-> 最后更新：2026-08-21（v1.9.2+28，main `42e5fc3`）
+> 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
+> 最后更新：2026-08-23（v1.22.1+62，main `5ad6f11`）
 
 ## 0. 三十秒速览
 
-**xHarness** 是一个 Flutter Android App，通过公网链路连接用户的 DeepSeek Harness(dsh)
-实例，替代/增强 dsh 网页 GUI(http://127.0.0.1:3080)。已有：完整对话体验、四套主题、
-社区社交、OTA 自更新、多实例登录。基础设施（Cloudflare + HK nginx + frp + systemd)
-已完成速度/稳定性/安全性加固。
+**xHarness** 是 DeepSeek Harness 的 Flutter 手机客户端，通过公网链路连接用户的 DSH 实例。当前已经不是原型：对话、图片、权限、子代理、宠物、社区、AI 日报、OTA、本地缓存、断线恢复和多实例登录都已可用。
 
-**下一步大方向（用户尚未拍板，开工前先问）**:Phase 1 核心体验补全 ——
-图片消息(1.1)→ 会话管理(1.2)→ 消息搜索(1.3)→ 子代理可视化(1.4)→ 会话导出(1.5)。
-详见 §6。
+当前最新正式版：
+
+```text
+版本: v1.22.1
+versionCode: 2062
+APK: https://dsh.ainotex.com/releases/dsh-app-1.22.1.apk
+SHA-256: 728e3215cecf71a27086c19c7ed715a8d067b42166f58387887df6dc284e0509
+Git: 5ad6f11
+```
+
+当前最重要的下一件事：**如果长对话恢复仍然慢，需要给 DSH 服务端 `session.history` 增加 `afterSeq` 增量接口**。App 侧已经改成游标判断 + 小尾部合并 + 后台补齐缺口，剩余瓶颈在服务端历史读取。
 
 ## 1. 代码与路径
 
 | 内容 | 路径 |
 |---|---|
-| Flutter App 仓库(主战场) | `~/code/pd02/dsh_mobile`(git: `git@github.com:zhaojiaxiang370711/dsh-app.git`) |
-| dsh 实现源码(查协议/行为用) | `~/code/pd02/deepseek-harness`(master ≈ 线上 rc.8) |
-| 线上实际运行的 dsh 包 | `/home/x/.npm/_npx/73d55d6bf82710ec/`(`dsh web` 进程,**绝不重启**) |
-| 运维手册(链路/操作/排障) | `server/OPERATIONS.md`(仓库内,先读) |
-| 发布脚本 | `tool/publish.sh`(SSH 密钥认证,用法见 §4) |
-| 社交后端(部署在 HK) | `server/social-server.py` → HK `/opt/dsh-social/` |
+| Flutter App 仓库 | `/home/x/code/pd02/dsh_mobile` |
+| App GitHub | `git@github.com:zhaojiaxiang370711/dsh-app.git` |
+| DSH 源码参考 | `/home/x/code/pd02/deepseek-harness` |
+| 当前 DSH 配置 | `/home/x/.dsh/settings.yaml` |
+| 运维手册 | `/home/x/code/pd02/dsh_mobile/server/OPERATIONS.md` |
+| 发布脚本 | `/home/x/code/pd02/dsh_mobile/tool/publish.sh` |
+| AI 日报内容 | `/home/x/code/pd02/dsh_mobile/server/site/content/ai/news.json` |
+| Agent 学习内容 | `/home/x/code/pd02/dsh_mobile/server/site/content/ai/agents.json` |
+| 本地图片生成工具 | `/home/x/code/pd01/tools/image-gen/gen-image` |
 
-Flutter SDK:`/home/x/flutter/bin`(每次 `export PATH`);Android build-tools 37(aapt 在
-`$ANDROID_HOME/build-tools/`);测试手机 Xiaomi/HyperOS adb id `e516d50e`(时连时断)。
-
-## 2. 访问与凭证(只记位置)
-
-| 凭证 | 位置 |
-|---|---|
-| HK SSH(47.239.235.154) | **仅密钥**,本机 `~/.ssh/id_ed25519` 已在 authorized_keys,直接 `ssh root@...` |
-| Cloudflare API 令牌 + zone id | `~/.bashrc` 的 `CF_API_TOKEN` / `CF_ZONE_AINOTEX`(权限 600) |
-| Basic 认证(x 用户,网页/App/OTA/社交共用) | 明文存于 HK `/etc/dsh-directory/users.json`;htpasswd 在 `/etc/nginx/.htpasswd-dsh` |
-| directory 用户表(x/mac → 各自实例子域) | 同上 users.json |
-| auth-proxy 的 AUTH_* env | 本机 `systemctl cat dsh-web-auth.service` |
-| frp token | 本机 `/etc/frp/frpc-*.toml` 与 HK `/root/app/frpc/frps.toml` |
-| App 正式签名(v1.10.4 起) | keystore `android/app/dsh-release.jks` + 密码 `android/key.properties`(均 gitignore 不入库,**务必离线备份**;丢了永远无法同签名更新)。证书 SHA-256 `b7fa2a09…22d06d1`,MD5 `8a8a64f89ab9311f607a2b80c41fc222`(备案用) |
-
-**注意**:多份凭证曾出现在旧聊天记录,轮换清单见 OPERATIONS.md §6。
-
-## 3. 链路拓扑(详图见 OPERATIONS.md §1)
-
-```
-手机 → Cloudflare 边缘(APK 缓存,SSL Full strict)
-     → HK nginx :443(强制 HTTPS/HSTS/gzip/限流)
-     → frp QUIC 隧道(TLS+压缩+心跳)
-     → 本机 auth-proxy :3081 → dsh web :3080
-双实例:directory 服务(HK:3085)按用户名路由 x→主域 / mac→mac.dsh.ainotex.com
-集中后端(只在主域):/releases/(OTA)、/app/(官网)、/social/(社交)、/directory/
-```
-
-## 4. 开发工作流(每个版本都走这套)
+Flutter SDK：
 
 ```bash
-export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
-# 1. 改代码 → flutter analyze(必须零问题) → flutter test(当前 19 个)
-# 2. pubspec.yaml version 加一 + lib/src/changelog.dart 加条目(kAppVersion 同步)
-# 3. NOTES='更新摘要' tool/publish.sh   # 构建+上传 OTA,密钥认证免密
-# 4. git add -A && git commit && git push
+export PATH="/home/x/flutter/bin:$PATH"
 ```
 
-关键坑(都踩过,别再踩):
+不要把 `/home/x/code/pd02/deepseek-harness` 当作 App 仓库；App 改动都在 `dsh_mobile`。
 
-- **split-per-abi versionCode 偏移**:arm64 +2000。publish.sh 已用 aapt 读真实值,勿改回读 pubspec
-- `bool.fromEnvironment('X')` 只认值 `true`(不是 `1`)
-- **Xiaomi HyperOS/Impeller**:Transform 包裹的 Image 渲染全黑 —— 用 CustomPaint+drawImageRect(见头像裁剪页)
-- **Xiaomi HyperOS/Impeller 其二**:Ink+BoxDecoration 渐变不绘制(无异常,静默跳过)——浅色主题下白箭头落在白卡片上=按钮隐形但可点(v1.10.0 发送按钮悬案)。圆形按钮一律用 Container+IconButton,别用 Ink
-- MIUI 禁止 `adb shell input` 注入;真机验证用 logcat print + screencap 像素分析
-- 修改 main.dart 字符串补丁要用 edit 工具,python/sed 曾两次毁文件(可用 `git checkout` 恢复)
-- analyzer 约定:null-aware 元素 `'k': ?v`、无 `Colors.white45`、CardThemeData/DialogThemeData
+## 2. 当前功能全景
 
-## 5. dsh 协议要点(已实测验证)
+### 对话与同步
 
-- 一元 RPC:`POST /api/<method>`,信封 `{type:'client-request',rpcId,method,payload}`
-  → `{type:'server-response',rpcId,result:{ok,value}|{ok:false,error}}`
-- WS 下行:`/api/events.mux`(会话事件)+ `/api/events.host`(会话生命周期);应答 `/api/respond`
-- **斜杠命令**:`session.prompt` 不解析 `/`;走 `commands/execute`,
-  payload `{args:{agentId:<sessionId>, line:'/compact', images:[]}}`;
-  目录 `commands/list` 同参;生命周期事件 `command/run`+`command/done`(按 commandId 配对,
-  App 已折叠为"回声气泡+进行中→结果")
-- 提问/审批:server-request 经 mux 推送,`/api/respond` 应答;
-  **respond 返回 accepted=false 表示已失效**(v1.9.2 起 App 有提示)
-- session.history 分页:10 条首批/15 条翻页,beforeSeq 对齐
-- 未用但存在的 RPC(Phase 1 素材):`session.attachment`(图片)、`session.search`、
-  `workspace.archiveSession/delete`、`subagent.list/history`
+- 会话创建、选择、重命名、置顶、归档筛选、本地缓存。
+- Markdown、流式回复、工具调用卡片、图片结果、长按复制、时间分隔、回到底部。
+- 本地 SQLite 保存会话列表、聊天内容、历史分页位置：`oldestSeq` / `latestSeq` / `hasMore`。
+- 锁屏恢复后立即重建 WebSocket，不再等超时。
+- 使用 `session/subscribed.lastSeq` 判断是否需要同步。
+- 有更新时只拉最新 3 条消息组并合并到本地历史，不清空聊天。
+- 如果锁屏期间产生大量新消息，先显示最新进度，再后台补齐中间历史。
+- 审批和提问重连重放时按 ID 去重。
+- AppBar 可显示：
+  - `正在同步最新进度…`
+  - `正在补齐中间历史…`
+  - `正在生成…`
 
-## 6. 路线图(用户已认可框架,优先级未定)
+### 权限
 
-- **Phase 1 核心体验补全**(App 完全替代网页版):1.1 图片消息(服务器 session.attachment
-  已支持)→ 1.2 会话删除/归档/置顶 → 1.3 消息搜索 → 1.4 子代理可视化 → 1.5 会话导出
-- **Phase 2 社区深化**:帖子图片/评论、私聊图片、社交多用户化(mac 用户当前 /social/ 401)
-- **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
-- **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
+- 输入框旁有盾牌按钮，可在当前会话直接切换：
+  - `workspace-write`
+  - `danger-full-access`
+- 开启完全访问前有中文风险确认。
+- 与网页版一致，实际写入仍通过：
+  ```text
+  /permission danger-full-access
+  /permission workspace-write
+  ```
 
-## 7. 当前状态快照(v1.22.1)
+### 子代理
 
-App 功能:登录(远程/本地连接选择、无需退出的一键切换、本地 DSH 健康检测、directory 路由/实例记忆、电脑端配置教程、安全提醒、友好错误提示、首次快速上手)、会话(含 assistant 生成图片回显、持久附件加载和全屏预览)(分组/折叠/重命名/新建继承 cwd/运行中与归档筛选/本地置顶/服务端归档)、图片消息(相册/拍照/压缩/图文发送/历史附件读取/预览)、
-对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
-(⊕ 面板+实时目录+进度反馈,面板已修:命令多时可滚动)、模型切换(含推理强度)、
-统计栏、四套主题(暗夜蓝/纯净白/护眼绿/樱花粉)、社区(动态/好友码/私聊/等级/
-头像裁剪)、**宠物(领养/喂食/玩耍/洗澡,状态随时间衰减;成长按累计缓存命中 tokens 计,1M/级,五物种神秘蛋进化(哈灵/雷光猫/苍月狼/焚天炎龙/九天凤凰,宝可梦风命名)+庆祝弹窗+破壳彩蛋,宠物对战赢取代币,人机匹配+段位系统,原创Q版矢量精灵立绘)**、
-抽屉权限模式入口(工作区写入/完全访问+风险确认)、抽屉底部仅社区+「更多功能」九宫格
-(主题/宠物/权限/更新/日志/退出,红点透传)、
-系统通知、OTA 自更新(美化弹窗+圆环进度+网速+重试)、更新日志、断线指数退避重连。
-审批/提问弹窗:PopScope 防返回键误关+未回答自动重弹+他端回答后联动关闭(双端同步);
-发送/私聊圆形按钮 Ink→Container(HyperOS 渐变不绘制导致隐形,见 §4 坑)。
+- 子代理内部会话不会出现在左侧工作区列表。
+- 判断规则与 Web 一致：
+  - `origin == 'subagent'`
+  - 或 `projections.values.subagent != null`
+- 普通 fork 不会仅因 `parentSessionId` 被隐藏。
+- 当前主会话右上角有子代理状态按钮。
+- 有运行中的子代理时显示绿色角标和数量。
+- 点击后显示任务名称、运行中/已完成、单次/可继续、是否包含下级代理。
+- 数据来自 `subagent.list`。
 
-基础设施:全部 systemd 化(HK frps/dsh-social/dsh-directory,本机 frpc×2/dsh-web-auth);
-nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATIONS.md 运维手册。
+### 图片
 
-## 8. 未决事项 / 风险
+- 支持相册/拍照上传图片。
+- 支持用户消息、assistant 消息、工具结果中的图片。
+- 图片附件按需通过 `session.attachment` 加载。
+- 全屏预览支持缩放。
+- 全屏预览右上角有下载按钮，保存到系统相册。
+- 使用 `gal` 包保存图片；iOS `Info.plist` 已补相册写入说明。
 
-1. 会话管理已支持筛选/置顶/归档;当前 host 仅暴露 `workspace.archiveSession`,没有删除或取消归档 RPC,因此这两项必须等协议补齐,不能只删手机缓存伪装成功
-2. Mac 实例的 dsh web 平时不在跑(唤醒即用);mac 用户社交 401(待社交多用户化)
-3. 本机两个隧道 sshd(22022/22023)仍是裸进程,可 systemd 化
-4. 凭证轮换清单未执行(OPERATIONS.md §6)
-5. dsh web(3080)是某段对话的 GUI,**任何时候都不要重启它**
-6. 用户手机需要退出重登一次才会走 directory 路由(v1.9.0+)
+### 模型与图片输入
 
-## 9. 给新对话的开场白(用户可直接粘贴)
+- 当前模型 `kimiqx / kimi-k3` 已在 `/home/x/.dsh/settings.yaml` 声明：
+  ```yaml
+  input:
+    - text
+    - image
+  ```
+- 因此当前会话可以正常使用 `read_image`。
+- GPT-5.6 Sol/Terra/Luna 也声明了图片输入。
+- 本地 `gen-image` CLI 只支持 Gemini 图像模型：
+  - `nano-banana-2`
+  - `nano-banana`
+  - `nano-banana-pro`
+- 用户的 OpenAI 兼容中转还列出：
+  - `gpt-image-1.5`
+  - `gpt-image-2`
+- 高质量宣传图已改为直接调用 `/v1/images/generations` 的 `gpt-image-2`，没有修改 Go 项目。
 
-> 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarness 项目。
-> 当前版本 v1.22.1,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+### AI 日报与 AI 知识学习
+
+- App 不直接抓第三方 RSS，只读取本站 JSON 并缓存。
+- 新闻日按北京时间 10:00 切分：
+  ```text
+  前一天 10:00（含）→ 当天 10:00（不含）
+  ```
+- 当前 AI 日报内容：
+  ```text
+  version: 4
+  items: 19
+  updatedAt: 2026-08-23T17:31:16+08:00
+  ```
+- 线上接口：
+  ```text
+  https://dsh.ainotex.com/app/content/ai/news.json
+  https://dsh.ainotex.com/app/content/ai/agents.json
+  ```
+- 最近一次内容提交：`abb8282 扩充 AI 日报模型新闻内容`。
+
+### 宠物与社区
+
+- 宠物领养、喂食、玩耍、洗澡、状态衰减、token 成长、五物种进化、破壳彩蛋、对战、人机匹配、段位。
+- 社区动态、好友码、私聊、头像裁剪、等级。
+- 社交后端集中在主域 `/social/`。
+
+### OTA 与更新
+
+- App 内检查更新。
+- 更新弹窗有防重复打开逻辑。
+- Android 使用正式签名，签名文件只在本地，不在 Git 仓库。
+
+## 3. 最近版本记录
+
+### v1.22.1
+
+- 长对话锁屏恢复时，最新进度优先显示。
+- 中间缺失历史后台自动补齐。
+- 补齐过程不覆盖本地已缓存内容。
+
+### v1.22.0
+
+- 锁屏恢复后立即重建实时连接。
+- 使用 `session/subscribed.lastSeq` 做游标判断。
+- 长对话恢复不再清空本地历史。
+- 只拉取并合并最新几条消息。
+- 修复重连后审批/提问重复出现。
+
+### v1.21.0
+
+- 已加载历史完整保存到手机本地。
+- 再次打开优先本地显示。
+- “加载更多”只从本地缺口继续请求。
+
+### v1.20.1
+
+- 图片全屏预览新增下载按钮。
+- 保存到系统相册，并提供权限失败提示。
+
+### v1.20.0
+
+- 新增子代理运行状态入口。
+- 显示运行数量、任务名称和完成状态。
+
+### v1.19.0
+
+- 输入框新增完全访问快捷键。
+- 修复子代理内部会话混入工作区列表。
+
+## 4. 同步与缓存设计要点
+
+当前 App 侧恢复路径：
+
+```text
+App resumed
+  → 立即替换 mux/host WebSocket
+  → 接收 session/subscribed.lastSeq
+  → lastSeq <= 本地 latestSeq：不请求历史
+  → lastSeq > 本地 latestSeq：session.history(maxMessages: 3)
+  → 按 ChatItem id 与 seq 合并最新尾部
+  → 如果发现中间缺口，后台 beforeSeq 分页补齐
+  → SQLite 保存 items + oldestSeq + latestSeq + hasMore
+```
+
+关键实现文件：
+
+- `lib/state.dart`
+  - `_startStreams`
+  - `_replaceStreams`
+  - `resyncAfterResume`
+  - `syncTail`
+  - `_fillHistoryGap`
+  - `_mergeTailItems`
+  - `_loadLocalHistory`
+  - `_saveSnapshot`
+- `lib/main.dart`
+  - `didChangeAppLifecycleState`
+  - AppBar 同步状态文案
+- `test/state_test.dart`
+  - seq gap 缓冲测试
+  - tail merge 测试
+  - 中间历史插入测试
+
+重要限制：DSH 服务端 `session.history` 当前仍会从完整事件日志中取页。App 已减少请求次数和传输量，但如果未来仍慢，应该在 DSH 增加：
+
+```text
+session.history({ sessionId, afterSeq, maxMessages })
+```
+
+让服务器直接从本地游标之后增量返回。
+
+## 5. 开发与发布流程
+
+每次 App 版本：
+
+```bash
+cd /home/x/code/pd02/dsh_mobile
+export PATH="/home/x/flutter/bin:$PATH"
+
+flutter analyze
+flutter test
+
+# 修改版本
+# pubspec.yaml: version: x.y.z+code
+# lib/src/changelog.dart: kAppVersion + 新条目
+# HANDOVER.md: 当前版本
+
+NOTES='更新摘要' tool/publish.sh
+
+git add -A
+git commit -m "版本说明"
+git push
+```
+
+发布脚本会上传 APK 和 `latest.json` 到生产站点。
+
+## 6. AI 内容发布流程
+
+编辑：
+
+```bash
+server/site/content/ai/news.json
+server/site/content/ai/agents.json
+```
+
+要求：
+
+- `version` 单调递增。
+- `updatedAt` 更新。
+- 每条新闻必须有官方来源链接。
+- 优先记录“哪个公司发布了什么模型/更新”。
+- 只有日期没有精确时间时，正文说明“官方页面只确认到日期”。
+
+校验：
+
+```bash
+python3 -m json.tool server/site/content/ai/news.json >/dev/null
+python3 -m json.tool server/site/content/ai/agents.json >/dev/null
+flutter test test/ai_content_test.dart
+```
+
+上传：
+
+```bash
+scp -r server/site/content/ai root@47.239.235.154:/var/www/dsh-site/content/
+ssh root@47.239.235.154 'chmod 644 /var/www/dsh-site/content/ai/news.json /var/www/dsh-site/content/ai/agents.json'
+```
+
+验证：
+
+```bash
+curl -fsS https://dsh.ainotex.com/app/content/ai/news.json | python3 -m json.tool
+curl -fsS https://dsh.ainotex.com/app/content/ai/agents.json | python3 -m json.tool
+```
+
+注意：直接用 Python `urllib` 不带 User-Agent 访问线上内容曾返回 403；用 `curl` 或带 User-Agent 验证。
+
+## 7. 基础设施与凭证位置
+
+| 凭证/资源 | 位置 |
+|---|---|
+| HK SSH | 本机 `~/.ssh/id_ed25519`，服务器 `47.239.235.154` |
+| Cloudflare API | `~/.bashrc` 的 `CF_API_TOKEN` / `CF_ZONE_AINOTEX` |
+| Basic 用户 | HK `/etc/dsh-directory/users.json` |
+| nginx htpasswd | HK `/etc/nginx/.htpasswd-dsh` |
+| frp token | 本机 `/etc/frp/frpc-*.toml`，HK `/root/app/frpc/frps.toml` |
+| App 签名 | `android/app/dsh-release.jks` + `android/key.properties`，均在 gitignore |
+
+不要在文档或聊天记录里输出真实密钥。
+
+## 8. 重要坑位
+
+1. **不要重启当前 DSH Web 进程**：`http://127.0.0.1:3080` 是正在使用的 GUI。
+2. Xiaomi/HyperOS 上不要用 `Ink + BoxDecoration` 做圆形渐变按钮，可能静默不绘制；用 `Container + IconButton`。
+3. Xiaomi/HyperOS 上 `Transform` 包裹图片可能黑屏；图片裁剪页使用 `CustomPaint + drawImageRect`。
+4. split-per-abi APK 的 versionCode 有偏移；`tool/publish.sh` 已用 aapt 读取真实值。
+5. `bool.fromEnvironment` 只认字符串 `true`。
+6. 修改 `main.dart` 大段内容优先用 `edit` 工具，避免脚本替换损坏文件。
+7. App 侧图片附件不要把 base64 全部写入 SQLite；只存引用，按需通过 `session.attachment` 取。
+8. 子代理会话绝不能进普通侧边栏；普通 fork 不能误隐藏。
+
+## 9. 当前未决事项
+
+1. DSH 服务端 `session.history` 还没有 `afterSeq`，极端长对话恢复仍可能受服务端全量日志读取影响。
+2. `session.list` 对长 attached session 也有全量事件遍历风险；后续可考虑把 `lastSeq` 加进 `SessionSummary`。
+3. 当前后台补齐中间历史每次恢复最多补 8 页；极端长缺口可能要多轮恢复才完全补齐。
+4. Mac 实例社交仍有 401，需要社交多用户化。
+5. 凭证轮换清单未执行，见 `server/OPERATIONS.md`。
+6. iOS 还未正式发布，只是项目结构和权限说明已逐步补齐。
+7. 宣传图本地临时文件在 `/tmp/dsh-images/`，重启后可能丢失；需要长期保存时应复制到仓库或对象存储。
+
+## 10. 给下一段对话的开场白
+
+直接粘贴：
+
+```text
+请先阅读 /home/x/code/pd02/dsh_mobile/HANDOVER.md，接手 xHarness。
+当前最新版本是 v1.22.1+62，Git 提交 5ad6f11。
+先不要改 DSH Web 进程，也不要重启 127.0.0.1:3080。
+我希望继续处理：____。
+```
+
+如果继续优化长对话同步，补上：
+
+```text
+重点看 HANDOVER.md 第 4 节。App 侧已经做了 lastSeq、tail merge 和后台补齐；下一步考虑给 DSH session.history 增加 afterSeq。
+```
