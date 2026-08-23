@@ -54,6 +54,24 @@ class SessionRow {
 }
 
 /// Image bytes submitted as part of a prompt.
+class SubagentRow {
+  const SubagentRow({
+    required this.id,
+    required this.mode,
+    required this.activity,
+    required this.hasChildren,
+    this.label,
+  });
+
+  final String id;
+  final String mode;
+  final String activity;
+  final bool hasChildren;
+  final String? label;
+
+  bool get running => activity == 'running';
+}
+
 class PromptImage {
   PromptImage({
     required this.mediaType,
@@ -295,6 +313,10 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Subagent children published for the selected parent session.
+  List<SubagentRow> subagents = const [];
+  bool loadingSubagents = false;
 
   /// Model catalog of the selected session, loaded on demand.
   SessionModelsData? models;
@@ -573,6 +595,40 @@ class AppState extends ChangeNotifier {
     unawaited(_saveSessionList());
   }
 
+  /// Refreshes the selected session's durable subagent catalog.
+  Future<void> refreshSubagents() async {
+    final api = _api;
+    final parentSessionId = selectedSessionId;
+    if (api == null || parentSessionId == null || loadingSubagents) return;
+    loadingSubagents = true;
+    notifyListeners();
+    try {
+      final value =
+          await api.call('subagent.list', {'parentSessionId': parentSessionId})
+              as Map<String, dynamic>;
+      if (selectedSessionId != parentSessionId) return;
+      subagents = [
+        for (final raw
+            in (value['entries'] as List? ?? const []).whereType<Map>().map(
+              (entry) => entry.cast<String, dynamic>(),
+            ))
+          if (raw['kind'] == 'child')
+            SubagentRow(
+              id: raw['id'] as String,
+              mode: raw['mode'] as String,
+              activity: raw['activity'] as String,
+              hasChildren: raw['hasChildren'] == true,
+              label: raw['label'] as String?,
+            ),
+      ];
+    } catch (_) {
+      if (selectedSessionId == parentSessionId) subagents = const [];
+    } finally {
+      loadingSubagents = false;
+      notifyListeners();
+    }
+  }
+
   /// Restores the cached session list and prompt counter from SQLite.
   Future<void> _restoreLocalSnapshot() async {
     final store = _store;
@@ -653,6 +709,7 @@ class AppState extends ChangeNotifier {
       _itemCache[previous] = List.of(items);
     }
     selectedSessionId = sessionId;
+    subagents = const [];
     items.clear();
     final cached = _itemCache[sessionId];
     if (cached != null) items.addAll(cached);
@@ -681,6 +738,7 @@ class AppState extends ChangeNotifier {
       if (selectedSessionId != sessionId) return; // user moved on
     }
     await loadHistory(sessionId);
+    unawaited(refreshSubagents());
   }
 
   Future<List<ChatItem>> _loadLocalItems(String sessionId) async {
@@ -1288,6 +1346,7 @@ class AppState extends ChangeNotifier {
         if (p['origin'] == 'subagent' ||
             projectionValues?['subagent'] != null) {
           sessions.removeWhere((row) => row.sessionId == id);
+          unawaited(refreshSubagents());
           return;
         }
         if (_rowOf(id) == null) {
@@ -1305,7 +1364,11 @@ class AppState extends ChangeNotifier {
       case 'host/session-removed':
         sessions.removeWhere((row) => row.sessionId == p['sessionId']);
       case 'host/session-status':
-        final row = _rowOf(p['sessionId'] as String);
+        final statusId = p['sessionId'] as String;
+        final row = _rowOf(statusId);
+        if (subagents.any((entry) => entry.id == statusId)) {
+          unawaited(refreshSubagents());
+        }
         if (row != null) {
           row.running = p['running'] == true;
           if (row.running) {

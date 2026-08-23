@@ -1759,6 +1759,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: Divider(height: 0.5, color: P.divider),
             ),
             actions: [
+              if (sessionId != null && state.subagents.isNotEmpty)
+                _SubagentStatusButton(state: state),
               if (sessionId != null)
                 IconButton(
                   tooltip: '切换模型',
@@ -4474,6 +4476,114 @@ class _ImagePreviewPage extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Composer
 // ---------------------------------------------------------------------------
+
+class _SubagentStatusButton extends StatelessWidget {
+  const _SubagentStatusButton({required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final running = state.subagents.where((entry) => entry.running).length;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          tooltip: running > 0 ? '$running 个子代理正在工作' : '查看子代理',
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            showDragHandle: true,
+            builder: (_) => _SubagentSheet(state: state),
+          ),
+          icon: Icon(
+            Icons.account_tree_outlined,
+            color: running > 0 ? P.success : P.textSecondary,
+          ),
+        ),
+        if (running > 0)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              width: 17,
+              height: 17,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: P.success,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$running',
+                style: TextStyle(
+                  color: P.onAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SubagentSheet extends StatelessWidget {
+  const _SubagentSheet({required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '子代理运行状态',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                tooltip: '刷新',
+                onPressed: state.loadingSubagents
+                    ? null
+                    : state.refreshSubagents,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final agent in state.subagents)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                agent.running
+                    ? Icons.autorenew_rounded
+                    : Icons.check_circle_outline,
+                color: agent.running ? P.success : P.textTertiary,
+              ),
+              title: Text(
+                agent.label?.isNotEmpty == true ? agent.label! : '子代理',
+              ),
+              subtitle: Text(
+                '${agent.mode == 'continuable' ? '可继续' : '单次任务'}${agent.hasChildren ? ' · 包含下级代理' : ''}',
+              ),
+              trailing: Text(
+                agent.running ? '工作中' : '已完成',
+                style: TextStyle(
+                  color: agent.running ? P.success : P.textTertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
 
 class Composer extends StatefulWidget {
   const Composer({super.key, required this.state});

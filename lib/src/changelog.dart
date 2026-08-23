@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.19.0';
+const kAppVersion = '1.20.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.20.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '会话右上角新增子代理状态入口，运行时显示绿色标记和正在工作的子代理数量',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '子代理面板可查看任务名称、工作状态、会话类型以及是否包含下级代理',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.19.0',
     date: '2026-08-23',
