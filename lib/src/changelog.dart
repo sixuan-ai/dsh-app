@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.15.0';
+const kAppVersion = '1.15.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.15.1',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复检查更新时重复弹窗：更新检查、安装权限和下载流程现在只会按顺序显示一次',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.15.0',
     date: '2026-08-23',

@@ -975,6 +975,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// versionCode already auto-prompted this run; 稍后 then stays quiet
   /// (the green dot remains) until the next launch.
   int _updateDialogShownFor = -1;
+  bool _updateCheckInFlight = false;
+  bool _updateDialogOpen = false;
+  bool _updateFlowActive = false;
   Timer? _updateTimer;
 
   /// Social message poller state; watermarks persist per peer so a message
@@ -1259,6 +1262,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final pending = _pendingUpdate;
       if (pending != null) {
         _pendingUpdate = null;
+        _updateFlowActive = false;
         _startUpdate(pending.checker, pending.info);
       }
     }
@@ -1267,8 +1271,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// Starts the update flow: guides the one-time install-unknown-apps grant
   /// first when needed, then opens the download dialog.
   Future<void> _startUpdate(UpdateChecker checker, UpdateInfo info) async {
+    if (_updateFlowActive) return;
+    _updateFlowActive = true;
     if (!await checker.canInstall()) {
-      if (!mounted) return;
+      if (!mounted) {
+        _updateFlowActive = false;
+        return;
+      }
       _pendingUpdate = (checker: checker, info: info);
       await showDialog<void>(
         context: context,
@@ -1308,6 +1317,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             TextButton(
               onPressed: () {
                 _pendingUpdate = null;
+                _updateFlowActive = false;
                 Navigator.of(dialogContext).pop();
               },
               child: const Text('取消'),
@@ -1331,18 +1341,37 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
       return;
     }
-    if (!mounted) return;
-    showDialog<void>(
+    if (!mounted) {
+      _updateFlowActive = false;
+      return;
+    }
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _UpdateDownloadDialog(checker: checker, info: info),
     );
+    _updateFlowActive = false;
   }
 
   /// Polls the release manifest once per home-page lifetime; [manual] checks
   /// (drawer entry) always run and report every outcome. Android-only: iOS
   /// distribution must go through the App Store / TestFlight (guideline 2.5.2).
   Future<void> _checkForUpdate({bool manual = false}) async {
+    if (defaultTargetPlatform != TargetPlatform.android ||
+        _updateCheckInFlight ||
+        _updateFlowActive ||
+        _updateDialogOpen) {
+      return;
+    }
+    _updateCheckInFlight = true;
+    try {
+      await _performUpdateCheck(manual: manual);
+    } finally {
+      _updateCheckInFlight = false;
+    }
+  }
+
+  Future<void> _performUpdateCheck({bool manual = false}) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     final checker = UpdateChecker(
       username: state.authUsername,
@@ -1371,7 +1400,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Auto-checks prompt once per version per run; manual always prompts.
     if (manual || _updateDialogShownFor != info.versionCode) {
       _updateDialogShownFor = info.versionCode;
-      _showUpdateDialog(checker, info);
+      await _showUpdateDialog(checker, info);
     }
   }
 
@@ -1381,17 +1410,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  void _showUpdateDialog(UpdateChecker checker, UpdateInfo info) {
-    showDialog<void>(
+  Future<void> _showUpdateDialog(UpdateChecker checker, UpdateInfo info) async {
+    if (_updateDialogOpen || _updateFlowActive) return;
+    _updateDialogOpen = true;
+    var startUpdate = false;
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) => _UpdateAvailableDialog(
         info: info,
         onUpdate: () {
+          startUpdate = true;
           Navigator.of(dialogContext).pop();
-          _startUpdate(checker, info);
         },
       ),
     );
+    _updateDialogOpen = false;
+    if (startUpdate && mounted) await _startUpdate(checker, info);
   }
 
   /// Shows the release notes once per app version after an update.
