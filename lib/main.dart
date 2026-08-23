@@ -264,6 +264,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     await prefs.setString('connectionMode', _connectionMode);
     if (_connectionMode == 'lan') {
       await prefs.setString('lanServerUrl', serverUrl);
+    } else {
+      await prefs.setString('remoteServerUrl', serverUrl);
     }
     await prefs.setString('serverUrl', serverUrl);
     await widget.state.connect(serverUrl, username: user, password: pass);
@@ -984,6 +986,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// resumed lifecycle restarts it automatically.
   ({UpdateChecker checker, UpdateInfo info})? _pendingUpdate;
 
+  bool _checkingLocal = false;
+  bool _localAvailable = false;
+  String? _localUrl;
+  String _connectionMode = 'public';
+  String? _remoteUrl;
+
   AppState get state => widget.state;
 
   @override
@@ -1006,6 +1014,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       (_) => _pollSocial(),
     );
     Timer(const Duration(seconds: 8), _pollSocial);
+    Timer(const Duration(seconds: 2), _checkLocalConnection);
   }
 
   @override
@@ -1014,6 +1023,164 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _socialTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _checkLocalConnection() async {
+    if (_checkingLocal || !mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final localUrl = prefs.getString('lanServerUrl');
+    final mode = prefs.getString('connectionMode') ?? 'public';
+    final remoteUrl = prefs.getString('remoteServerUrl');
+    if (localUrl == null || localUrl.isEmpty) {
+      if (mounted) setState(() => _localAvailable = false);
+      return;
+    }
+    setState(() {
+      _checkingLocal = true;
+      _localUrl = localUrl;
+      _connectionMode = mode;
+      _remoteUrl = remoteUrl;
+    });
+    final available = await state.probeServer(
+      localUrl,
+      username: state.authUsername,
+      password: state.authPassword,
+    );
+    if (!mounted) return;
+    setState(() {
+      _checkingLocal = false;
+      _localAvailable = available;
+    });
+  }
+
+  Future<void> _switchConnection(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    var target = mode == 'lan' ? _localUrl : _remoteUrl;
+    if (mode == 'public' && (target == null || target.isEmpty)) {
+      final user = state.authUsername;
+      final pass = state.authPassword;
+      if (user != null && pass != null) {
+        try {
+          target = await directoryLogin(kDefaultServerUrl, user, pass);
+          await prefs.setString('remoteServerUrl', target);
+        } catch (_) {
+          target = null;
+        }
+      }
+    }
+    if (target == null || target.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有可用的连接地址，请先完成连接配置')));
+      return;
+    }
+    final previousMode = _connectionMode;
+    final ok = await state.switchConnection(target);
+    if (!mounted) return;
+    if (ok) {
+      await prefs.setString('connectionMode', mode);
+      await prefs.setString('serverUrl', target);
+      if (!mounted) return;
+      setState(() => _connectionMode = mode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mode == 'lan' ? '已切换到本地连接' : '已切换到远程连接')),
+      );
+    } else {
+      setState(() => _connectionMode = previousMode);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('切换失败，已保持原来的连接')));
+    }
+  }
+
+  void _showConnectionCenter() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: P.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '连接中心',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '切换连接不会退出账号。正在生成内容时建议等待完成后再切换。',
+                style: TextStyle(color: P.textSecondary),
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.cloud_outlined),
+                title: const Text('远程连接'),
+                subtitle: Text(
+                  _connectionMode == 'public' ? '当前正在使用' : '通过官网连接，适合外出使用',
+                ),
+                trailing: _connectionMode == 'public'
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : FilledButton.tonal(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _switchConnection('public');
+                        },
+                        child: const Text('切换'),
+                      ),
+              ),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.lan_outlined),
+                title: const Text('本地连接'),
+                subtitle: Text(
+                  _connectionMode == 'lan'
+                      ? '当前正在使用'
+                      : _checkingLocal
+                      ? '正在检查电脑…'
+                      : _localAvailable
+                      ? '本地电脑可用，通常速度更快'
+                      : '当前未检测到本地电脑',
+                ),
+                trailing: _connectionMode == 'lan'
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : FilledButton.tonal(
+                        onPressed: _localAvailable
+                            ? () {
+                                Navigator.pop(sheetContext);
+                                _switchConnection('lan');
+                              }
+                            : null,
+                        child: const Text('切换'),
+                      ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _checkLocalConnection();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重新检测本地连接'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Polls social conversations and raises a system notification for new
@@ -1088,6 +1255,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
+      unawaited(_checkLocalConnection());
       final pending = _pendingUpdate;
       if (pending != null) {
         _pendingUpdate = null;
@@ -1526,6 +1694,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onLogout: _logout,
             onNewSession: _showNewSessionSheet,
             onCheckUpdate: () => _checkForUpdate(manual: true),
+            onConnectionCenter: _showConnectionCenter,
+            connectionMode: _connectionMode,
+            localAvailable: _localAvailable,
             updateAvailable: _availableUpdate != null,
           ),
           appBar: AppBar(
@@ -1730,6 +1901,9 @@ class SessionDrawer extends StatefulWidget {
     required this.onLogout,
     required this.onNewSession,
     required this.onCheckUpdate,
+    required this.onConnectionCenter,
+    required this.connectionMode,
+    required this.localAvailable,
     required this.updateAvailable,
   });
 
@@ -1742,6 +1916,9 @@ class SessionDrawer extends StatefulWidget {
 
   /// Runs a manual update check (HomePage owns the context).
   final VoidCallback onCheckUpdate;
+  final VoidCallback onConnectionCenter;
+  final String connectionMode;
+  final bool localAvailable;
 
   /// A newer release exists; shows a green dot on 检查更新.
   final bool updateAvailable;
@@ -1850,7 +2027,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
           _MoreAction(
             icon: Icons.alt_route,
             label: '连接与安全',
-            caption: '在家 / 远程',
+            caption: '本地 / 远程',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              widget.onConnectionCenter();
+            },
+          ),
+          _MoreAction(
+            icon: Icons.menu_book_outlined,
+            label: '连接教程',
+            caption: '电脑配置',
             onTap: () {
               Navigator.of(sheetContext).pop();
               showModalBottomSheet<void>(

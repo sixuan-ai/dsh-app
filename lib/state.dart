@@ -344,6 +344,42 @@ class AppState extends ChangeNotifier {
 
   bool get connected => _api != null && connectionError == null;
 
+  /// Probes a server without changing the active connection.
+  Future<bool> probeServer(
+    String url, {
+    String? username,
+    String? password,
+  }) async {
+    try {
+      final api = DshApi(url, username: username, password: password);
+      try {
+        await api.call('host.describe', {}).timeout(const Duration(seconds: 3));
+        return true;
+      } finally {
+        api.close();
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Switches after the target passes a real DSH health check. If activation
+  /// fails, reconnects the previous route with the same credentials.
+  Future<bool> switchConnection(String url) async {
+    final username = authUsername;
+    final password = authPassword;
+    final previousUrl = serverUrl;
+    if (!await probeServer(url, username: username, password: password)) {
+      return false;
+    }
+    await connect(url, username: username, password: password);
+    if (connected) return true;
+    if (previousUrl.isNotEmpty && previousUrl != url) {
+      await connect(previousUrl, username: username, password: password);
+    }
+    return false;
+  }
+
   bool _sessionRunning(String? sessionId) {
     if (sessionId == null) return false;
     for (final row in sessions) {

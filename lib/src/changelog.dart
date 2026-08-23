@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.12.2';
+const kAppVersion = '1.13.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.13.0',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '连接中心：无需退出登录即可检测本地电脑，并在远程连接与本地连接之间一键切换'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '本地检测使用真实 DSH 健康检查，失败时保持原连接；回到 App 前台后会自动重新检测'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.12.2',
     date: '2026-08-22',
