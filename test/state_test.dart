@@ -51,6 +51,39 @@ void main() {
       expect(app.items.single.images.single.width, 640);
     });
 
+    test(
+      'assistant image references are preserved for authenticated loading',
+      () {
+        final app = AppState();
+        app.foldForTest(
+          event(1, 'assistant/message', {
+            'turn': 1,
+            'step': 1,
+            'message': {
+              'content': [
+                {'type': 'text', 'text': '生成完成'},
+                {
+                  'type': 'image',
+                  'attachment': {
+                    'attachmentId': 'generated-1',
+                    'mediaType': 'image/png',
+                    'bytes': 2048,
+                    'width': 1200,
+                    'height': 800,
+                    'name': 'poster.png',
+                  },
+                },
+              ],
+            },
+          }),
+        );
+        expect(app.items.single.kind, ChatItemKind.assistant);
+        expect(app.items.single.blocks.single.text, '生成完成');
+        expect(app.items.single.images.single.attachmentId, 'generated-1');
+        expect(app.items.single.images.single.mediaType, 'image/png');
+      },
+    );
+
     test('user message with user source renders a user bubble', () {
       final app = AppState();
       app.foldForTest(

@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.13.0';
+const kAppVersion = '1.14.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.14.0',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(ChangelogChangeType.feature,
+          '生成图片回显：支持显示 DSH assistant 消息中的持久图片附件，复用网页端 session.attachment 鉴权接口'),
+      ChangelogChange(ChangelogChangeType.improvement,
+          '生成图片支持历史恢复、点击全屏预览、缩放与加载失败重试，无需修改 DSH'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.13.0',
     date: '2026-08-22',

@@ -3236,7 +3236,7 @@ class ChatItemView extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget body = switch (item.kind) {
       ChatItemKind.user => _UserBubble(state: state, item: item),
-      ChatItemKind.assistant => _AssistantMessage(item: item),
+      ChatItemKind.assistant => _AssistantMessage(state: state, item: item),
       ChatItemKind.tool => ToolCard(item: item),
       ChatItemKind.notice => _NoticeCard(item: item),
     };
@@ -3363,8 +3363,9 @@ void _showCopyMenu(BuildContext context, Offset position, String text) {
 
 /// Full-width assistant message with avatar and markdown body.
 class _AssistantMessage extends StatelessWidget {
-  const _AssistantMessage({required this.item});
+  const _AssistantMessage({required this.state, required this.item});
 
+  final AppState state;
   final ChatItem item;
 
   bool get _streaming => item.id.startsWith('stream-');
@@ -3372,6 +3373,10 @@ class _AssistantMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
+    if (item.images.isNotEmpty) {
+      children.add(_ImageStrip(state: state, images: item.images));
+      children.add(const SizedBox(height: 8));
+    }
     for (final block in item.blocks) {
       if (block.type == 'reasoning') {
         children.add(_ReasoningCard(text: block.text, streaming: _streaming));

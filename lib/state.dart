@@ -94,6 +94,7 @@ class ChatItem {
   ChatItem.assistant({
     required this.id,
     required this.blocks,
+    this.images = const [],
     this.usage,
     this.interrupted = false,
   }) : kind = ChatItemKind.assistant,
@@ -1444,6 +1445,7 @@ class AppState extends ChangeNotifier {
         final content =
             (data['message'] as Map?)?['content'] as List? ?? const [];
         final blocks = <AssistantBlock>[];
+        final images = <ChatImage>[];
         for (final block in content.whereType<Map>()) {
           if (block['type'] == 'text') {
             blocks.add(AssistantBlock('text', block['text'] as String? ?? ''));
@@ -1451,13 +1453,32 @@ class AppState extends ChangeNotifier {
             blocks.add(
               AssistantBlock('reasoning', block['text'] as String? ?? ''),
             );
+          } else if (block['type'] == 'image') {
+            final ref = (block['attachment'] as Map?)?.cast<String, dynamic>();
+            if (ref != null &&
+                ref['attachmentId'] is String &&
+                ref['mediaType'] is String) {
+              images.add(
+                ChatImage(
+                  attachmentId: ref['attachmentId'] as String,
+                  mediaType: ref['mediaType'] as String,
+                  bytes: (ref['bytes'] as num?)?.toInt(),
+                  width: (ref['width'] as num?)?.toInt(),
+                  height: (ref['height'] as num?)?.toInt(),
+                  name: ref['name'] as String?,
+                ),
+              );
+            }
           }
         }
-        if (blocks.isNotEmpty || data['interrupted'] == true) {
+        if (blocks.isNotEmpty ||
+            images.isNotEmpty ||
+            data['interrupted'] == true) {
           target.add(
             ChatItem.assistant(
               id: 'a-$seq',
               blocks: blocks,
+              images: images,
               usage: (data['usage'] as Map?)?.cast<String, dynamic>(),
               interrupted: data['interrupted'] == true,
             ),
@@ -1741,6 +1762,17 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
             AssistantBlock(
               (block as Map)['type'] as String? ?? 'text',
               block['text'] as String? ?? '',
+            ),
+        ],
+        images: [
+          for (final raw in (json['images'] as List? ?? const []))
+            ChatImage(
+              attachmentId: (raw as Map)['attachmentId'] as String,
+              mediaType: raw['mediaType'] as String,
+              bytes: (raw['bytes'] as num?)?.toInt(),
+              width: (raw['width'] as num?)?.toInt(),
+              height: (raw['height'] as num?)?.toInt(),
+              name: raw['name'] as String?,
             ),
         ],
         usage: (json['usage'] as Map?)?.cast<String, dynamic>(),
