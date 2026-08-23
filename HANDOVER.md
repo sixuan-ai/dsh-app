@@ -1,7 +1,7 @@
 # xHarness 项目交接文档
 
 > 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
-> 最后更新：2026-08-23（v1.22.1+62，main `5ad6f11`）
+> 最后更新：2026-08-23（v1.22.1+62；App 发布提交 `5ad6f11`，文档以 main 最新为准）
 
 ## 0. 三十秒速览
 
@@ -14,7 +14,7 @@
 versionCode: 2062
 APK: https://dsh.ainotex.com/releases/dsh-app-1.22.1.apk
 SHA-256: 728e3215cecf71a27086c19c7ed715a8d067b42166f58387887df6dc284e0509
-Git: 5ad6f11
+Git: 5ad6f11（App 发布提交；交接文档本身以后续 docs 提交为准）
 ```
 
 当前最重要的下一件事：**如果长对话恢复仍然慢，需要给 DSH 服务端 `session.history` 增加 `afterSeq` 增量接口**。App 侧已经改成游标判断 + 小尾部合并 + 后台补齐缺口，剩余瓶颈在服务端历史读取。
@@ -327,7 +327,7 @@ curl -fsS https://dsh.ainotex.com/app/content/ai/agents.json | python3 -m json.t
 
 ```text
 请先阅读 /home/x/code/pd02/dsh_mobile/HANDOVER.md，接手 xHarness。
-当前最新版本是 v1.22.1+62，Git 提交 5ad6f11。
+当前最新版本是 v1.22.1+62；App 发布提交是 5ad6f11，交接文档以仓库 main 分支最新内容为准。
 先不要改 DSH Web 进程，也不要重启 127.0.0.1:3080。
 我希望继续处理：____。
 ```
