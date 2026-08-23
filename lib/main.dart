@@ -1,4 +1,4 @@
-/// xHarmess — Flutter client for the DeepSeek Harness web API.
+/// xHarness — Flutter client for the DeepSeek Harness web API.
 ///
 /// Server URL is a built-in default; the user only ever enters credentials.
 library;
@@ -97,7 +97,7 @@ class _DshAppState extends State<DshApp> {
     // rebuilds from this root, so every P read observes the new palette.
     P = theme.palette;
     return MaterialApp(
-      title: 'xHarmess',
+      title: 'xHarness',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(P),
       home: AnimatedBuilder(
@@ -349,7 +349,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         const _BrandMark(size: 84),
                         const SizedBox(height: 20),
                         Text(
-                          'xHarmess',
+                          'xHarness',
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -1682,7 +1682,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final row = _selectedRow();
         final title = row?.title?.isNotEmpty == true
             ? row!.title!
-            : (sessionId == null ? 'xHarmess' : '新会话');
+            : (sessionId == null ? 'xHarness' : '新会话');
         final subtitleParts = <String>[
           ?state.models?.label,
           if (state.selectedRunning) '正在生成…',
@@ -2165,7 +2165,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                       Icon(Icons.auto_awesome, color: P.onAccent, size: 22),
                       SizedBox(width: 8),
                       Text(
-                        'xHarmess',
+                        'xHarness',
                         style: TextStyle(
                           color: P.onAccent,
                           fontSize: 17,

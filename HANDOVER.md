@@ -1,11 +1,11 @@
-# xHarmess 项目交接文档
+# xHarness 项目交接文档
 
 > 写给下一段对话的 agent：读这份文档 + `server/OPERATIONS.md` 即可无缝接手。
 > 最后更新：2026-08-21（v1.9.2+28，main `42e5fc3`）
 
 ## 0. 三十秒速览
 
-**xHarmess** 是一个 Flutter Android App，通过公网链路连接用户的 DeepSeek Harness(dsh)
+**xHarness** 是一个 Flutter Android App，通过公网链路连接用户的 DeepSeek Harness(dsh)
 实例，替代/增强 dsh 网页 GUI(http://127.0.0.1:3080)。已有：完整对话体验、四套主题、
 社区社交、OTA 自更新、多实例登录。基础设施（Cloudflare + HK nginx + frp + systemd)
 已完成速度/稳定性/安全性加固。
@@ -96,7 +96,7 @@ export PATH="/home/x/flutter/bin:$PATH"; cd ~/code/pd02/dsh_mobile
 - **Phase 3 平台扩展**:iOS(MacBook Air + TestFlight;ios/ 已生成,OTA 已按平台门控)、平板适配
 - **Phase 4 账号与产品化**:directory+Basic+社交账号三合一、官网内容完善、多用户开放
 
-## 7. 当前状态快照(v1.14.0)
+## 7. 当前状态快照(v1.14.1)
 
 App 功能:登录(远程/本地连接选择、无需退出的一键切换、本地 DSH 健康检测、directory 路由/实例记忆、电脑端配置教程、安全提醒、友好错误提示、首次快速上手)、会话(含 assistant 生成图片回显、持久附件加载和全屏预览)(分组/折叠/重命名/新建继承 cwd/运行中与归档筛选/本地置顶/服务端归档)、图片消息(相册/拍照/压缩/图文发送/历史附件读取/预览)、
 对话(markdown/流式/工具卡/时间分隔/回到底部按钮/长按复制/入场动画)、斜杠命令
@@ -123,5 +123,5 @@ nginx 双 vhost 加固;CF 边缘缓存(APK HIT ~6MB/s);SSH 密钥-only;OPERATION
 
 ## 9. 给新对话的开场白(用户可直接粘贴)
 
-> 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarmess 项目。
-> 当前版本 v1.14.0,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
+> 读 `~/code/pd02/dsh_mobile/HANDOVER.md` 和 `server/OPERATIONS.md`,接手 xHarness 项目。
+> 当前版本 v1.14.1,我想从 Phase 1 的 ___ 开始(或:先聊聊优先级)。
