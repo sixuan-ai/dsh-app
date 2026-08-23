@@ -72,6 +72,21 @@ class SubagentRow {
   bool get running => activity == 'running';
 }
 
+/// One server-authoritative pending task in a session inbox.
+class QueuedTask {
+  const QueuedTask({
+    required this.id,
+    required this.placement,
+    required this.text,
+    required this.imageCount,
+  });
+
+  final String id;
+  final String placement;
+  final String text;
+  final int imageCount;
+}
+
 class PromptImage {
   PromptImage({
     required this.mediaType,
@@ -282,6 +297,17 @@ class AppState extends ChangeNotifier {
 
   /// Conversation of the selected session.
   final List<ChatItem> items = [];
+
+  /// Server-authoritative pending inbox items for the selected session.
+  final List<QueuedTask> queuedTasks = [];
+
+  bool get hasQueuedTasks => queuedTasks.isNotEmpty;
+
+  int get queuedTaskCount => queuedTasks
+      .where((task) => task.placement == 'queued')
+      .length;
+
+  int get pendingTaskCount => queuedTasks.length;
 
   bool loadingHistory = false;
   bool hasMoreHistory = false;
@@ -805,6 +831,7 @@ class AppState extends ChangeNotifier {
     }
     selectedSessionId = sessionId;
     subagents = const [];
+    queuedTasks.clear();
     items.clear();
     final cached = _itemCache[sessionId];
     if (cached != null) items.addAll(cached);
@@ -1904,15 +1931,47 @@ class AppState extends ChangeNotifier {
         );
       case 'question/resolved':
         questions.removeWhere((q) => q.rpcId == p['questionRpcId']);
+      case 'session/queue':
+        if (sessionId == selectedSessionId) {
+          queuedTasks
+            ..clear()
+            ..addAll(_decodeQueuedTasks(p['items'] as List?));
+        }
       default:
         return;
     }
     notifyListeners();
   }
 
+  List<QueuedTask> _decodeQueuedTasks(List? rawItems) {
+    return [
+      for (final raw in rawItems?.whereType<Map>() ?? const <Map>[])
+        if (raw['placement'] == 'queued' || raw['placement'] == 'steering')
+          QueuedTask(
+            id: raw['id'] as String? ?? '',
+            placement: raw['placement'] as String,
+            text: ((raw['message'] as Map?)?['content'] as List? ?? const [])
+                .whereType<Map>()
+                .where((block) => block['type'] == 'text')
+                .map((block) => block['text'] as String? ?? '')
+                .where((text) => text.isNotEmpty)
+                .join('\n'),
+            imageCount:
+                ((raw['message'] as Map?)?['content'] as List? ?? const [])
+                    .whereType<Map>()
+                    .where((block) => block['type'] == 'image')
+                    .length,
+          ),
+    ];
+  }
+
   /// Test-only entry into the host-frame fold.
   @visibleForTesting
   void hostFrameForTest(ServerFrame frame) => _onHostFrame(frame);
+
+  /// Test-only entry into the mux-frame fold.
+  @visibleForTesting
+  void muxFrameForTest(ServerFrame frame) => _onMuxFrame(frame);
 
   /// Test-only entry into the live-event fold.
   @visibleForTesting

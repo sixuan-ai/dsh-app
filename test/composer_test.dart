@@ -64,6 +64,32 @@ void main() {
     expect(find.text('完全访问'), findsOneWidget);
   });
 
+  testWidgets('composer shows the task queue button when tasks are queued', (
+    tester,
+  ) async {
+    final app = AppState();
+    app.selectedSessionId = 's1';
+    app.queuedTasks.add(
+      const QueuedTask(
+        id: 'q1',
+        placement: 'queued',
+        text: '继续处理',
+        imageCount: 0,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: Composer(state: app))),
+    );
+
+    expect(find.byTooltip('任务队列'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.byTooltip('任务队列'));
+    await tester.pumpAndSettle();
+    expect(find.text('任务队列'), findsOneWidget);
+    expect(find.text('待处理 1 个'), findsOneWidget);
+    expect(find.text('继续处理'), findsOneWidget);
+  });
+
   testWidgets('login offers public and LAN connection modes', (tester) async {
     final app = AppState();
     await tester.pumpWidget(MaterialApp(home: ServerSetupPage(state: app)));

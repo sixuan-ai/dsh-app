@@ -4715,6 +4715,15 @@ class _ComposerState extends State<Composer> {
     );
   }
 
+  void _openQueue() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _TaskQueueSheet(state: widget.state),
+    );
+  }
+
   Future<void> _pickImage() async {
     if (_picking || _images.length >= 4) return;
     final source = await showModalBottomSheet<ImageSource>(
@@ -4907,6 +4916,19 @@ class _ComposerState extends State<Composer> {
                       onPressed: enabled ? _openCommands : null,
                     ),
                   ),
+                  if (widget.state.hasQueuedTasks)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Badge(
+                        label: Text('${widget.state.pendingTaskCount}'),
+                        child: IconButton(
+                          tooltip: '任务队列',
+                          icon: const Icon(Icons.playlist_play_rounded),
+                          color: P.accentLight,
+                          onPressed: enabled ? _openQueue : null,
+                        ),
+                      ),
+                    ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
@@ -6601,6 +6623,154 @@ class _PermissionOption extends StatelessWidget {
         ),
         onTap: () => onPick(preset),
       ),
+    );
+  }
+}
+
+/// Server-authoritative pending task list for the selected session.
+class _TaskQueueSheet extends StatelessWidget {
+  const _TaskQueueSheet({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: state,
+      builder: (context, _) {
+        final tasks = state.queuedTasks;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '任务队列',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '待处理 ${state.pendingTaskCount} 个',
+                      style: TextStyle(color: P.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'AI 完成当前任务后，会按顺序自动继续处理。',
+                  style: TextStyle(color: P.textTertiary, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                if (tasks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        '当前没有排队任务',
+                        style: TextStyle(color: P.textSecondary),
+                      ),
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.55,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: tasks.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (_, index) {
+                        final task = tasks[index];
+                        final label = task.placement == 'steering'
+                            ? '即将插入'
+                            : '排队 ${index + 1}';
+                        final content = task.text.trim().isEmpty
+                            ? (task.imageCount > 0
+                                  ? '[${task.imageCount} 张图片]'
+                                  : '无文字任务')
+                            : task.text;
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: P.fillSubtle,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: P.divider),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: P.accent.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    color: P.accentLight,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: P.textTertiary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      content,
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    if (task.imageCount > 0 &&
+                                        task.text.trim().isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          '附带 ${task.imageCount} 张图片',
+                                          style: TextStyle(
+                                            color: P.textSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

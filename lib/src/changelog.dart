@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.3';
+const kAppVersion = '1.22.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.4',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        'AI 工作中可以继续输入任务，任务会自动排队并按顺序执行',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增任务队列展示区域，可查看排队数量和待处理内容',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.3',
     date: '2026-08-23',
