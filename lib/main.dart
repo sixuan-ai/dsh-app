@@ -17,6 +17,7 @@ import 'package:image/image.dart' as img;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/ai_hub_pages.dart';
 import 'src/changelog.dart';
 import 'src/notifications.dart';
 import 'src/protocol.dart';
@@ -2107,6 +2108,30 @@ class _SessionDrawerState extends State<SessionDrawer> {
                 context: context,
                 showDragHandle: true,
                 builder: (_) => _ThemeSheet(theme: widget.theme),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.newspaper_outlined,
+            label: 'AI 新闻',
+            caption: '实时聚合',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AiNewsPage()),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.school_outlined,
+            label: 'AI 知识学习',
+            caption: 'Agent 教程',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AiLearningPage()),
               );
             },
           ),
