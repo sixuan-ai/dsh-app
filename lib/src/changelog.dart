@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.18.1';
+const kAppVersion = '1.19.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.19.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '输入框新增完全访问快捷键，可直接切换当前会话的工作区写入与完全访问模式',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复代理和子代理创建的内部会话错误出现在侧边栏工作区会话列表的问题',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.18.1',
     date: '2026-08-23',

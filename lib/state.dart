@@ -24,6 +24,14 @@ Future<String?> _ianaTimeZone() async {
   }
 }
 
+/// Whether durable session metadata identifies an internal subagent session.
+bool isSubagentSessionPayload(Map<String, dynamic> raw) {
+  final projectionBlock = (raw['projections'] as Map?)?.cast<String, dynamic>();
+  final projectionValues = (projectionBlock?['values'] as Map?)
+      ?.cast<String, dynamic>();
+  return raw['origin'] == 'subagent' || projectionValues?['subagent'] != null;
+}
+
 /// One row in the session list.
 class SessionRow {
   SessionRow({
@@ -33,6 +41,7 @@ class SessionRow {
     required this.blank,
     this.cwd,
     this.title,
+    this.isSubagent = false,
   });
 
   final String sessionId;
@@ -41,6 +50,7 @@ class SessionRow {
   bool blank;
   String? cwd;
   String? title;
+  bool isSubagent;
 }
 
 /// Image bytes submitted as part of a prompt.
@@ -510,11 +520,16 @@ class AppState extends ChangeNotifier {
     final seen = <String>{};
     for (final raw in list) {
       final id = raw['sessionId'] as String;
+      final projectionBlock = (raw['projections'] as Map?)
+          ?.cast<String, dynamic>();
+      final isSubagent = isSubagentSessionPayload(raw);
+      if (isSubagent) {
+        projections.remove(id);
+        sessions.removeWhere((row) => row.sessionId == id);
+        continue;
+      }
       seen.add(id);
-      _seedProjections(
-        id,
-        (raw['projections'] as Map?)?.cast<String, dynamic>(),
-      );
+      _seedProjections(id, projectionBlock);
       final titleCell = projections[id]?['title']?.value;
       final title = titleCell as String?;
       final row =
@@ -525,6 +540,7 @@ class AppState extends ChangeNotifier {
               updatedAt: (raw['updatedAt'] as num).toInt(),
               running: raw['running'] == true,
               blank: raw['blank'] == true,
+              isSubagent: isSubagent,
             );
             sessions.add(created);
             return created;
@@ -1268,6 +1284,12 @@ class AppState extends ChangeNotifier {
     switch (p['type']) {
       case 'host/session-added':
         final id = p['sessionId'] as String;
+        final projectionValues = (p['projections'] as Map?)?['values'] as Map?;
+        if (p['origin'] == 'subagent' ||
+            projectionValues?['subagent'] != null) {
+          sessions.removeWhere((row) => row.sessionId == id);
+          return;
+        }
         if (_rowOf(id) == null) {
           sessions.insert(
             0,

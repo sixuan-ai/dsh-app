@@ -4593,6 +4593,38 @@ class _ComposerState extends State<Composer> {
     }
   }
 
+  Future<void> _toggleFullAccess() async {
+    final permissions = widget.state.projectionOf(
+      widget.state.selectedSessionId,
+      'permissions',
+    );
+    final current = permissions?['currentValue'] as String?;
+    final target = current == 'danger-full-access'
+        ? 'workspace-write'
+        : 'danger-full-access';
+    if (target == 'danger-full-access') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('开启完全访问?'),
+          content: const Text('开启后 DSH 可读写设备上的所有文件，并且不再弹出审批确认。仅在信任当前任务时开启。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('开启'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await widget.state.runCommand('/permission $target');
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty && _images.isEmpty) return;
@@ -4680,6 +4712,24 @@ class _ComposerState extends State<Composer> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: IconButton(
+                      tooltip: '完全访问',
+                      icon: Icon(
+                        Icons.shield_outlined,
+                        color:
+                            widget.state.projectionOf(
+                                  widget.state.selectedSessionId,
+                                  'permissions',
+                                )?['currentValue'] ==
+                                'danger-full-access'
+                            ? P.success
+                            : P.textSecondary,
+                      ),
+                      onPressed: enabled ? _toggleFullAccess : null,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
                     child: IconButton(

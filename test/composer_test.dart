@@ -25,6 +25,7 @@ void main() {
 
     // Both buttons render before typing; send is disabled on an empty draft.
     expect(find.byTooltip('快捷命令'), findsOneWidget);
+    expect(find.byTooltip('完全访问'), findsOneWidget);
     expect(sendButton(), findsOneWidget);
     expect(tester.widget<IconButton>(sendButton()).onPressed, isNull);
 
@@ -33,6 +34,7 @@ void main() {
 
     // After typing, the send button is still in the tree and now enabled.
     expect(find.byTooltip('快捷命令'), findsOneWidget);
+    expect(find.byTooltip('完全访问'), findsOneWidget);
     expect(sendButton(), findsOneWidget);
     expect(tester.widget<IconButton>(sendButton()).onPressed, isNotNull);
   });
