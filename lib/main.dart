@@ -3323,7 +3323,7 @@ class ChatItemView extends StatelessWidget {
                   ToolCard(state: state, item: item),
                 ],
               ),
-      ChatItemKind.notice => _NoticeCard(item: item),
+      ChatItemKind.notice => _NoticeCard(state: state, item: item),
     };
     if (!animate) return body;
     return TweenAnimationBuilder<double>(
@@ -4013,8 +4013,9 @@ class _ToolCardState extends State<ToolCard> {
 
 /// System notice row (todo lists, errors, agent notices).
 class _NoticeCard extends StatelessWidget {
-  const _NoticeCard({required this.item});
+  const _NoticeCard({required this.state, required this.item});
 
+  final AppState state;
   final ChatItem item;
 
   @override
@@ -4070,6 +4071,25 @@ class _NoticeCard extends StatelessWidget {
               style: TextStyle(fontSize: 12.5, height: 1.5, color: color),
             ),
           ),
+          if (item.retryText != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: color,
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: state.selectedRunning
+                    ? null
+                    : () => state.sendPrompt(item.retryText!),
+                child: const Text('重试'),
+              ),
+            ),
         ],
       ),
     );

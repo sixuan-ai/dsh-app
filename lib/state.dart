@@ -136,9 +136,13 @@ class ChatItem {
   }) : kind = ChatItemKind.tool,
        time = null;
 
-  ChatItem.notice({required this.id, required this.text, this.isError = false})
-    : kind = ChatItemKind.notice,
-      time = null;
+  ChatItem.notice({
+    required this.id,
+    required this.text,
+    this.isError = false,
+    this.retryText,
+  }) : kind = ChatItemKind.notice,
+       time = null;
 
   final ChatItemKind kind;
   final String id;
@@ -156,6 +160,7 @@ class ChatItem {
 
   // notice
   bool isError = false;
+  String? retryText;
 
   /// A notice still awaiting its outcome (slash-command status rows): the UI
   /// renders a spinner until the paired command/done settles it.
@@ -518,6 +523,8 @@ class AppState extends ChangeNotifier {
     _toolItems.clear();
     _sessionTailSeqs.clear();
     _subscribedLastSeqs.clear();
+    _agentErrorNotices.clear();
+    _turnErrorNotices.clear();
     approvals.clear();
     questions.clear();
     selectedSessionId = null;
@@ -1330,6 +1337,57 @@ class AppState extends ChangeNotifier {
 
   final Map<String, ChatItem> _pendingPrompts = {};
 
+  /// Recent host and turn error notices, paired by session + message so one
+  /// provider failure renders once even though it arrives through two frames.
+  final Map<String, ({String message, int at})> _agentErrorNotices = {};
+  final Map<String, ({String message, int at})> _turnErrorNotices = {};
+
+  bool _consumeDuplicateError(
+    Map<String, ({String message, int at})> source,
+    String sessionId,
+    String message,
+  ) {
+    final existing = source[sessionId];
+    if (existing == null) return false;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - existing.at > 30000) {
+      source.remove(sessionId);
+      return false;
+    }
+    if (existing.message != message) return false;
+    source.remove(sessionId);
+    return true;
+  }
+
+  String _friendlyAgentError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('concurrent request limit')) {
+      return '模型服务并发已达上限：请等待正在进行的请求结束后再试。';
+    }
+    if (lower.contains('rate limit') || lower.contains('too many requests')) {
+      return '模型服务请求过于频繁：请稍后重试。';
+    }
+    if (lower.contains('insufficient') || lower.contains('quota')) {
+      return '模型服务额度不足：请检查账户额度或稍后再试。';
+    }
+    return raw;
+  }
+
+  String? _latestRetryablePrompt() {
+    for (var index = items.length - 1; index >= 0; index--) {
+      final item = items[index];
+      if (item.kind == ChatItemKind.user &&
+          !item.provisional &&
+          !item.id.startsWith('cmdin-') &&
+          !item.text.trim().startsWith('/') &&
+          item.images.isEmpty &&
+          item.text.trim().isNotEmpty) {
+        return item.text;
+      }
+    }
+    return null;
+  }
+
   /// Counts one accepted prompt and records a level-up when it crosses a
   /// threshold.
   /// Fetches durable image bytes after the server authorizes the reference.
@@ -1751,11 +1809,21 @@ class AppState extends ChangeNotifier {
         }
       case 'host/agent-error':
         if (p['sessionId'] == selectedSessionId) {
+          final raw = p['message'] as String? ?? '未知错误';
+          final sessionId = p['sessionId'] as String;
+          if (_consumeDuplicateError(_turnErrorNotices, sessionId, raw)) {
+            break;
+          }
+          _agentErrorNotices[sessionId] = (
+            message: raw,
+            at: DateTime.now().millisecondsSinceEpoch,
+          );
           items.add(
             ChatItem.notice(
               id: 'agenterr-${frame.rpcId}',
-              text: '代理错误: ${p['message']}',
+              text: _friendlyAgentError(raw),
               isError: true,
+              retryText: _latestRetryablePrompt(),
             ),
           );
         }
@@ -1831,6 +1899,10 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  /// Test-only entry into the host-frame fold.
+  @visibleForTesting
+  void hostFrameForTest(ServerFrame frame) => _onHostFrame(frame);
 
   /// Test-only entry into the live-event fold.
   @visibleForTesting
@@ -2038,14 +2110,38 @@ class AppState extends ChangeNotifier {
           }
         }
       case 'turn/end':
+        if (into == null) {
+          final turn = data['turn'];
+          final prefix = turn == null ? null : '$turn:';
+          final streamKeys = _streams.keys
+              .where((key) => prefix == null || key.startsWith(prefix))
+              .toList();
+          for (final key in streamKeys) {
+            final stream = _streams.remove(key);
+            if (stream != null) items.remove(stream);
+          }
+        }
         final reason = (data['reason'] as Map?)?.cast<String, dynamic>();
         if (reason?['kind'] == 'error' && into == null) {
           final failure = (reason?['error'] as Map?)?.cast<String, dynamic>();
+          final raw = failure?['message'] as String? ?? '未知错误';
+          final sessionId = selectedSessionId;
+          if (sessionId != null &&
+              _consumeDuplicateError(_agentErrorNotices, sessionId, raw)) {
+            break;
+          }
+          if (sessionId != null) {
+            _turnErrorNotices[sessionId] = (
+              message: raw,
+              at: DateTime.now().millisecondsSinceEpoch,
+            );
+          }
           items.add(
             ChatItem.notice(
               id: 'turnerr-$seq',
-              text: '本轮失败: ${failure?['message'] ?? '未知错误'}',
+              text: _friendlyAgentError(raw),
               isError: true,
+              retryText: _latestRetryablePrompt(),
             ),
           );
         }

@@ -85,6 +85,27 @@ void main() {
     expect(find.byTooltip('下载图片'), findsOneWidget);
   });
 
+  testWidgets('error notice exposes a retry action', (tester) async {
+    final app = AppState();
+    app.selectedSessionId = 's1';
+    final item = ChatItem.notice(
+      id: 'error-1',
+      text: '模型服务并发已达上限',
+      isError: true,
+      retryText: '重试这个问题',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatItemView(state: app, item: item),
+        ),
+      ),
+    );
+    final retryButton = find.widgetWithText(TextButton, '重试');
+    expect(retryButton, findsOneWidget);
+    expect(tester.widget<TextButton>(retryButton).onPressed, isNotNull);
+  });
+
   testWidgets('tool images render as a conversation result above details', (
     tester,
   ) async {

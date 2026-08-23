@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.1';
+const kAppVersion = '1.22.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.2',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '模型服务并发上限等代理错误只显示一次，失败后不再残留“正在生成”占位',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '代理错误卡片新增“重试”按钮，并将并发/限流错误翻译为可读中文提示',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.1',
     date: '2026-08-23',

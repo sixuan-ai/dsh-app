@@ -2,6 +2,7 @@
 /// must produce the same conversation items the UI renders.
 library;
 
+import 'package:dsh_mobile/src/protocol.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -321,6 +322,59 @@ void main() {
         expect(app.items.single.text, '第一条');
       },
     );
+
+    test('provider concurrency error renders once and clears the stream', () {
+      final app = AppState();
+      app.selectedSessionId = 's1';
+      app.foldForTest(
+        event(1, 'user/message', {
+          'id': 'm1',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': '重试这个问题'},
+          ],
+          'source': {'kind': 'user'},
+        }),
+      );
+      app.foldForTest(
+        event(2, 'assistant/chunk', {
+          'turn': 1,
+          'step': 1,
+          'chunk': {'type': 'text-delta', 'index': 0, 'text': '正在'},
+        }),
+      );
+      expect(app.selectedStreaming, isTrue);
+      const raw =
+          '403 {"error":{"message":"You\'ve reached your concurrent request limit."}}';
+      app.hostFrameForTest(
+        ServerFrame(
+          rpcId: 'agent-error-1',
+          method: '',
+          payload: {
+            'type': 'host/agent-error',
+            'sessionId': 's1',
+            'message': raw,
+          },
+        ),
+      );
+      app.foldForTest(
+        event(3, 'turn/end', {
+          'turn': 1,
+          'reason': {
+            'kind': 'error',
+            'error': {'message': raw},
+          },
+        }),
+      );
+      final errors = app.items
+          .where((item) => item.kind == ChatItemKind.notice && item.isError)
+          .toList();
+      expect(errors, hasLength(1));
+      expect(errors.single.text, contains('模型服务并发已达上限'));
+      expect(errors.single.retryText, '重试这个问题');
+      expect(app.selectedStreaming, isFalse);
+      expect(app.items.any((item) => item.id.startsWith('stream-')), isFalse);
+    });
 
     test('tail merge replaces overlap and keeps local transient rows last', () {
       final app = AppState();
