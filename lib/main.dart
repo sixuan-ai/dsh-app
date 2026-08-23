@@ -4699,6 +4699,10 @@ class _ComposerState extends State<Composer> {
           Navigator.of(sheetContext).pop();
           widget.state.runCommand('/$command');
         },
+        onOpenPermissions: () {
+          Navigator.of(sheetContext).pop();
+          _openPermissions();
+        },
         onInsert: (command) {
           Navigator.of(sheetContext).pop();
           _controller.text = '/$command ';
@@ -4775,16 +4779,16 @@ class _ComposerState extends State<Composer> {
     }
   }
 
-  Future<void> _toggleFullAccess() async {
-    final permissions = widget.state.projectionOf(
-      widget.state.selectedSessionId,
-      'permissions',
+  Future<void> _openPermissions() async {
+    final preset = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _PermissionSheet(
+        onPick: (preset) => Navigator.of(sheetContext).pop(preset),
+      ),
     );
-    final current = permissions?['currentValue'] as String?;
-    final target = current == 'danger-full-access'
-        ? 'workspace-write'
-        : 'danger-full-access';
-    if (target == 'danger-full-access') {
+    if (preset == null || !mounted) return;
+    if (preset == 'danger-full-access') {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -4804,7 +4808,7 @@ class _ComposerState extends State<Composer> {
       );
       if (confirmed != true) return;
     }
-    await widget.state.runCommand('/permission $target');
+    await widget.state.runCommand('/permission $preset');
   }
 
   Future<void> _send() async {
@@ -4894,24 +4898,6 @@ class _ComposerState extends State<Composer> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: IconButton(
-                      tooltip: '完全访问',
-                      icon: Icon(
-                        Icons.shield_outlined,
-                        color:
-                            widget.state.projectionOf(
-                                  widget.state.selectedSessionId,
-                                  'permissions',
-                                )?['currentValue'] ==
-                                'danger-full-access'
-                            ? P.success
-                            : P.textSecondary,
-                      ),
-                      onPressed: enabled ? _toggleFullAccess : null,
-                    ),
-                  ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
                     child: IconButton(
@@ -6627,6 +6613,7 @@ class _CommandsSheet extends StatefulWidget {
     required this.state,
     required this.onRun,
     required this.onInsert,
+    required this.onOpenPermissions,
   });
 
   final AppState state;
@@ -6636,6 +6623,9 @@ class _CommandsSheet extends StatefulWidget {
 
   /// Inserts `/<name> ` into the composer for argument entry.
   final ValueChanged<String> onInsert;
+
+  /// Opens the current session's permission preset picker.
+  final VoidCallback onOpenPermissions;
 
   @override
   State<_CommandsSheet> createState() => _CommandsSheetState();
@@ -6697,6 +6687,45 @@ class _CommandsSheetState extends State<_CommandsSheet> {
             Text(
               '以 / 开头的消息会作为命令执行,不会发送给模型',
               style: TextStyle(fontSize: 12, color: P.textTertiary),
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: P.fillSubtle,
+              borderRadius: BorderRadius.circular(14),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: P.isDark
+                        ? P.success.withValues(alpha: 0.18)
+                        : P.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                    color: P.success,
+                  ),
+                ),
+                title: const Text(
+                  '权限模式',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  '切换工作区写入或完全访问',
+                  style: TextStyle(fontSize: 12, color: P.textSecondary),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: P.textTertiary,
+                ),
+                onTap: widget.onOpenPermissions,
+              ),
             ),
             const SizedBox(height: 12),
             // Bounded, scrollable list: the catalog comes from the server and

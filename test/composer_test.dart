@@ -25,9 +25,10 @@ void main() {
       ),
     );
 
-    // Both buttons render before typing; send is disabled on an empty draft.
+    // The compact command entry renders before typing; permission settings no
+    // longer occupy a separate composer button.
     expect(find.byTooltip('快捷命令'), findsOneWidget);
-    expect(find.byTooltip('完全访问'), findsOneWidget);
+    expect(find.byTooltip('完全访问'), findsNothing);
     expect(sendButton(), findsOneWidget);
     expect(tester.widget<IconButton>(sendButton()).onPressed, isNull);
 
@@ -36,9 +37,31 @@ void main() {
 
     // After typing, the send button is still in the tree and now enabled.
     expect(find.byTooltip('快捷命令'), findsOneWidget);
-    expect(find.byTooltip('完全访问'), findsOneWidget);
+    expect(find.byTooltip('完全访问'), findsNothing);
     expect(sendButton(), findsOneWidget);
     expect(tester.widget<IconButton>(sendButton()).onPressed, isNotNull);
+  });
+
+  testWidgets('quick commands contain the permission settings entry', (
+    tester,
+  ) async {
+    final app = AppState();
+    app.selectedSessionId = 's1';
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: Composer(state: app))),
+    );
+
+    await tester.tap(find.byTooltip('快捷命令'));
+    await tester.pumpAndSettle();
+    expect(find.text('快捷命令'), findsOneWidget);
+    expect(find.text('权限模式'), findsOneWidget);
+    expect(find.text('切换工作区写入或完全访问'), findsOneWidget);
+
+    await tester.tap(find.text('权限模式'));
+    await tester.pumpAndSettle();
+    expect(find.text('控制当前会话的文件访问范围与审批策略'), findsOneWidget);
+    expect(find.text('工作区写入'), findsOneWidget);
+    expect(find.text('完全访问'), findsOneWidget);
   });
 
   testWidgets('login offers public and LAN connection modes', (tester) async {

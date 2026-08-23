@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.2';
+const kAppVersion = '1.22.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.3',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '权限设置已移入快捷命令弹窗，输入框获得更大的文字空间',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '启动时优先显示本地缓存会话，服务器列表在后台刷新，不再阻塞首屏',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.2',
     date: '2026-08-23',

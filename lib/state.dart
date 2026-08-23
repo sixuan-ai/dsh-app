@@ -488,7 +488,9 @@ class AppState extends ChangeNotifier {
       await _restoreLocalSnapshot();
       _streamsActive = true;
       _startStreams();
-      await refreshSessions();
+      // Enter the cached home immediately; the sidebar refresh and workspace
+      // metadata can finish in the background without blocking first paint.
+      unawaited(_refreshSessionsBestEffort());
     } catch (error) {
       connectionError = error.toString();
       _api = null;
@@ -615,6 +617,14 @@ class AppState extends ChangeNotifier {
         _scheduleReconnect();
       }
     });
+  }
+
+  Future<void> _refreshSessionsBestEffort() async {
+    try {
+      await refreshSessions();
+    } catch (_) {
+      // The cached sidebar remains usable while the background refresh retries.
+    }
   }
 
   /// Refreshes the sidebar session list.
