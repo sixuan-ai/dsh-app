@@ -236,6 +236,18 @@ class SessionModelsData {
   }
 }
 
+class _CachedHistory {
+  const _CachedHistory({
+    required this.items,
+    required this.oldestSeq,
+    required this.hasMore,
+  });
+
+  final List<ChatItem> items;
+  final int? oldestSeq;
+  final bool hasMore;
+}
+
 /// Root application state.
 class AppState extends ChangeNotifier {
   AppState();
@@ -721,9 +733,14 @@ class AppState extends ChangeNotifier {
     _liveBuffer.clear();
     hasMoreHistory = false;
     notifyListeners();
+    final localHistory = await _loadLocalHistory(sessionId);
+    if (localHistory != null) {
+      hasMoreHistory = localHistory.hasMore;
+      _oldestSeq = localHistory.oldestSeq ?? 0;
+    }
     if (cached == null) {
       // Cold open: paint the SQLite snapshot before the network tail arrives.
-      final local = await _loadLocalItems(sessionId);
+      final local = localHistory?.items ?? const <ChatItem>[];
       if (selectedSessionId != sessionId) return; // user moved on
       if (local.isNotEmpty && items.isEmpty) {
         items.addAll(local);
@@ -737,22 +754,44 @@ class AppState extends ChangeNotifier {
       await Future<void>.delayed(const Duration(milliseconds: 50));
       if (selectedSessionId != sessionId) return; // user moved on
     }
-    await loadHistory(sessionId);
+    if (localHistory == null || localHistory.oldestSeq == null) {
+      await loadHistory(sessionId);
+    }
+    // Cached pages are authoritative for already loaded history; live frames
+    // continue to update the tail without re-downloading it on every open.
     unawaited(refreshSubagents());
   }
 
-  Future<List<ChatItem>> _loadLocalItems(String sessionId) async {
+  Future<_CachedHistory?> _loadLocalHistory(String sessionId) async {
     final store = _store;
-    if (store == null) return const [];
+    if (store == null) return null;
     try {
       final raw = await store.loadChatItems(sessionId);
-      if (raw == null) return const [];
-      return [
-        for (final entry in (jsonDecode(raw) as List))
-          chatItemFromJson((entry as Map).cast<String, dynamic>()),
-      ];
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw);
+      // v1 caches were a bare item list. They remain useful for instant paint,
+      // but cannot safely drive the server's beforeSeq pagination cursor.
+      if (decoded is List) {
+        return _CachedHistory(
+          items: [
+            for (final entry in decoded)
+              chatItemFromJson((entry as Map).cast<String, dynamic>()),
+          ],
+          oldestSeq: null,
+          hasMore: false,
+        );
+      }
+      final map = (decoded as Map).cast<String, dynamic>();
+      return _CachedHistory(
+        items: [
+          for (final entry in (map['items'] as List? ?? const []))
+            chatItemFromJson((entry as Map).cast<String, dynamic>()),
+        ],
+        oldestSeq: (map['oldestSeq'] as num?)?.toInt(),
+        hasMore: map['hasMore'] == true,
+      );
     } catch (_) {
-      return const [];
+      return null;
     }
   }
 
@@ -771,13 +810,16 @@ class AppState extends ChangeNotifier {
     final persistable = items
         .where((item) => !item.id.startsWith('stream-') && !item.provisional)
         .toList();
-    final tail = persistable.length > 300
-        ? persistable.sublist(persistable.length - 300)
-        : persistable;
+    // Keep every page the user has explicitly loaded. Text-heavy fields are
+    // capped by chatItemToJson, while image bytes remain host-backed metadata.
     try {
       await store.saveChatItems(
         sessionId,
-        jsonEncode([for (final item in tail) chatItemToJson(item)]),
+        jsonEncode({
+          'items': [for (final item in persistable) chatItemToJson(item)],
+          'oldestSeq': _oldestSeq,
+          'hasMore': hasMoreHistory,
+        }),
       );
     } catch (_) {
       // Best-effort cache.

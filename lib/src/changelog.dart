@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.20.1';
+const kAppVersion = '1.21.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.21.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '已加载的历史对话完整保存到手机本地，再次打开时优先本地显示',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '加载更多仅从本地历史缺口继续请求服务器，减少重复下载和等待时间',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.20.1',
     date: '2026-08-23',
