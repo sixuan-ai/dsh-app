@@ -3237,7 +3237,16 @@ class ChatItemView extends StatelessWidget {
     final Widget body = switch (item.kind) {
       ChatItemKind.user => _UserBubble(state: state, item: item),
       ChatItemKind.assistant => _AssistantMessage(state: state, item: item),
-      ChatItemKind.tool => ToolCard(state: state, item: item),
+      ChatItemKind.tool =>
+        item.images.isEmpty
+            ? ToolCard(state: state, item: item)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _ToolImageResult(state: state, item: item),
+                  ToolCard(state: state, item: item),
+                ],
+              ),
       ChatItemKind.notice => _NoticeCard(item: item),
     };
     if (!animate) return body;
@@ -3676,6 +3685,46 @@ class _MiniChip extends StatelessWidget {
 // Tool cards
 // ---------------------------------------------------------------------------
 
+class _ToolImageResult extends StatelessWidget {
+  const _ToolImageResult({required this.state, required this.item});
+
+  final AppState state;
+  final ChatItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.image_outlined, size: 16, color: P.accentLight),
+              const SizedBox(width: 6),
+              Text(
+                '图片结果',
+                style: TextStyle(
+                  color: P.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '来自 ${item.name}',
+                style: TextStyle(color: P.textTertiary, fontSize: 11.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _ImageStrip(state: state, images: item.images),
+        ],
+      ),
+    );
+  }
+}
+
 class ToolCard extends StatefulWidget {
   const ToolCard({super.key, required this.state, required this.item});
 
@@ -3805,13 +3854,6 @@ class _ToolCardState extends State<ToolCard> {
                                 item.resultIsError ? '错误' : '结果',
                                 _truncate(item.resultText!),
                                 isError: item.resultIsError,
-                              ),
-                            ],
-                            if (item.images.isNotEmpty) ...[
-                              const SizedBox(height: 10),
-                              _ImageStrip(
-                                state: widget.state,
-                                images: item.images,
                               ),
                             ],
                             if (!item.completed)

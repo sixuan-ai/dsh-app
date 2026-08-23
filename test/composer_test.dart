@@ -55,6 +55,41 @@ void main() {
     expect(find.text('处理确认'), findsOneWidget);
   });
 
+  testWidgets('tool images render as a conversation result above details', (
+    tester,
+  ) async {
+    final app = AppState();
+    final item =
+        ChatItem.tool(
+            id: 'tool-image',
+            callId: 'c1',
+            name: 'read_image',
+            arguments: '{}',
+          )
+          ..completed = true
+          ..resultText = '[图片]'
+          ..images = [
+            ChatImage(
+              attachmentId: 'image-1',
+              mediaType: 'image/png',
+              name: 'test.png',
+              data:
+                  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+            ),
+          ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatItemView(state: app, item: item),
+        ),
+      ),
+    );
+    expect(find.text('图片结果'), findsOneWidget);
+    expect(find.text('来自 read_image'), findsOneWidget);
+    expect(find.text('read_image'), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+  });
+
   testWidgets('composer shows the stop button alongside send while running', (
     tester,
   ) async {

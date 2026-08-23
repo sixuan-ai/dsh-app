@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.14.2';
+const kAppVersion = '1.15.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.15.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '图片结果现在直接显示在对话流中，工具卡片保留调用详情且不再重复显示图片',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '生成图片增加“图片结果”标题和来源标识，点击即可全屏预览',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.14.2',
     date: '2026-08-22',
