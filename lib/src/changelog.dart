@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.14.1';
+const kAppVersion = '1.14.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.14.2',
+    date: '2026-08-22',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复生成图片不显示：DSH 工具结果中的图片附件此前被折叠为占位文本，现在保留附件引用并在工具卡片中显示',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '工具卡片展开即可查看生成图片，历史会话同样恢复，仍通过 session.attachment 鉴权加载',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.14.1',
     date: '2026-08-22',

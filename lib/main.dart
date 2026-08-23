@@ -3237,7 +3237,7 @@ class ChatItemView extends StatelessWidget {
     final Widget body = switch (item.kind) {
       ChatItemKind.user => _UserBubble(state: state, item: item),
       ChatItemKind.assistant => _AssistantMessage(state: state, item: item),
-      ChatItemKind.tool => ToolCard(item: item),
+      ChatItemKind.tool => ToolCard(state: state, item: item),
       ChatItemKind.notice => _NoticeCard(item: item),
     };
     if (!animate) return body;
@@ -3677,8 +3677,9 @@ class _MiniChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class ToolCard extends StatefulWidget {
-  const ToolCard({super.key, required this.item});
+  const ToolCard({super.key, required this.state, required this.item});
 
+  final AppState state;
   final ChatItem item;
 
   @override
@@ -3804,6 +3805,13 @@ class _ToolCardState extends State<ToolCard> {
                                 item.resultIsError ? '错误' : '结果',
                                 _truncate(item.resultText!),
                                 isError: item.resultIsError,
+                              ),
+                            ],
+                            if (item.images.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              _ImageStrip(
+                                state: widget.state,
+                                images: item.images,
                               ),
                             ],
                             if (!item.completed)

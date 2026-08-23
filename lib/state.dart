@@ -1532,9 +1532,11 @@ class AppState extends ChangeNotifier {
           final callId = block['toolCallId'] as String? ?? '';
           final item = _toolItems[callId];
           final text = _toolResultText(block);
+          final images = _resultImages(block);
           if (item != null) {
             item
               ..resultText = text
+              ..images = images
               ..resultIsError =
                   block['isError'] == true || data['error'] != null
               ..completed = true;
@@ -1548,6 +1550,7 @@ class AppState extends ChangeNotifier {
                     arguments: '',
                   )
                   ..resultText = text
+                  ..images = images
                   ..resultIsError = block['isError'] == true
                   ..completed = true;
             target.add(standalone);
@@ -1677,6 +1680,33 @@ class AppState extends ChangeNotifier {
     return parts.join('\n');
   }
 
+  /// Image attachment references carried by a tool result; generated images
+  /// (image tools, run_code output) arrive here, mirroring the web fold.
+  List<ChatImage> _resultImages(Map<String, dynamic> block) {
+    final content = (block['content'] as List?) ?? const [];
+    return content
+        .whereType<Map>()
+        .where((part) => part['type'] == 'image')
+        .map((part) {
+          final ref = (part['attachment'] as Map?)?.cast<String, dynamic>();
+          if (ref == null ||
+              ref['attachmentId'] is! String ||
+              ref['mediaType'] is! String) {
+            return null;
+          }
+          return ChatImage(
+            attachmentId: ref['attachmentId'] as String,
+            mediaType: ref['mediaType'] as String,
+            bytes: (ref['bytes'] as num?)?.toInt(),
+            width: (ref['width'] as num?)?.toInt(),
+            height: (ref['height'] as num?)?.toInt(),
+            name: ref['name'] as String?,
+          );
+        })
+        .whereType<ChatImage>()
+        .toList();
+  }
+
   @override
   void dispose() {
     disconnect();
@@ -1786,6 +1816,17 @@ ChatItem chatItemFromJson(Map<String, dynamic> json) {
               name: json['name'] as String? ?? '',
               arguments: json['arguments'] as String? ?? '',
             )
+            ..images = [
+              for (final raw in (json['images'] as List? ?? const []))
+                ChatImage(
+                  attachmentId: (raw as Map)['attachmentId'] as String,
+                  mediaType: raw['mediaType'] as String,
+                  bytes: (raw['bytes'] as num?)?.toInt(),
+                  width: (raw['width'] as num?)?.toInt(),
+                  height: (raw['height'] as num?)?.toInt(),
+                  name: raw['name'] as String?,
+                ),
+            ]
             ..resultText = json['resultText'] as String?
             ..resultIsError = json['resultIsError'] == true
             ..completed = json['completed'] == true;

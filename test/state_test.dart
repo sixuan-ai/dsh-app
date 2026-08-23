@@ -196,6 +196,61 @@ void main() {
       expect(tool.resultIsError, isFalse);
     });
 
+    test('tool result images are preserved for authenticated loading', () {
+      final app = AppState();
+      app.foldForTest(
+        event(1, 'tool/call', {
+          'turn': 1,
+          'step': 1,
+          'callId': 'c9',
+          'name': 'image_gen',
+          'arguments': '{"prompt":"poster"}',
+        }),
+      );
+      app.foldForTest(
+        event(2, 'tool/result', {
+          'turn': 1,
+          'step': 1,
+          'message': {
+            'id': 'r9',
+            'role': 'user',
+            'content': [
+              {
+                'type': 'tool-result',
+                'toolCallId': 'c9',
+                'content': [
+                  {'type': 'text', 'text': '生成完成'},
+                  {
+                    'type': 'image',
+                    'attachment': {
+                      'attachmentId': 'gen-9',
+                      'mediaType': 'image/png',
+                      'bytes': 4096,
+                      'width': 1024,
+                      'height': 1024,
+                      'name': 'poster.png',
+                    },
+                  },
+                ],
+              },
+            ],
+            'source': {'kind': 'tool'},
+          },
+        }),
+      );
+      final tool = app.items.single;
+      expect(tool.kind, ChatItemKind.tool);
+      expect(tool.resultText, contains('生成完成'));
+      expect(tool.images, hasLength(1));
+      expect(tool.images.single.attachmentId, 'gen-9');
+      expect(tool.images.single.mediaType, 'image/png');
+      expect(tool.images.single.width, 1024);
+      // Cache round-trip keeps the reference so history restores the image.
+      final restored = chatItemFromJson(chatItemToJson(tool));
+      expect(restored.images.single.attachmentId, 'gen-9');
+      expect(restored.images.single.name, 'poster.png');
+    });
+
     test('duplicate replays at or below the watermark are dropped', () {
       final app = AppState();
       app.foldForTest(
