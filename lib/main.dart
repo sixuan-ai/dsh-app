@@ -1260,6 +1260,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
+      state.resyncAfterResume();
       unawaited(_checkLocalConnection());
       final pending = _pendingUpdate;
       if (pending != null) {
@@ -1721,6 +1722,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             : (sessionId == null ? 'xHarness' : '新会话');
         final subtitleParts = <String>[
           ?state.models?.label,
+          if (state.syncingTail) '正在同步最新进度…',
           if (state.selectedRunning) '正在生成…',
         ];
         return Scaffold(

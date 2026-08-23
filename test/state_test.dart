@@ -293,6 +293,57 @@ void main() {
       });
       expect(app.items.single.time, 1756000000000);
     });
+    test(
+      'a live seq gap is buffered instead of appended over missing history',
+      () {
+        final app = AppState();
+        app.foldForTest(
+          event(1, 'user/message', {
+            'id': 'm1',
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': '第一条'},
+            ],
+            'source': {'kind': 'user'},
+          }),
+        );
+        app.foldForTest(
+          event(4, 'user/message', {
+            'id': 'm4',
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': '恢复后的消息'},
+            ],
+            'source': {'kind': 'user'},
+          }),
+        );
+        expect(app.items, hasLength(1));
+        expect(app.items.single.text, '第一条');
+      },
+    );
+
+    test('tail merge replaces overlap and keeps local transient rows last', () {
+      final app = AppState();
+      app.items.addAll([
+        ChatItem.user(id: 'u-1', text: '旧问题'),
+        ChatItem.assistant(id: 'a-2', blocks: [AssistantBlock('text', '旧回答')]),
+        ChatItem.user(id: 'local-prompt-1', text: '待确认消息', provisional: true),
+      ]);
+      app.mergeTailForTest([
+        ChatItem.assistant(
+          id: 'a-2',
+          blocks: [AssistantBlock('text', '同步后的回答')],
+        ),
+        ChatItem.user(id: 'u-5', text: '最新问题'),
+      ], firstSeq: 2);
+      expect(app.items.map((item) => item.id), [
+        'u-1',
+        'a-2',
+        'u-5',
+        'local-prompt-1',
+      ]);
+      expect(app.items[1].blocks.single.text, '同步后的回答');
+    });
   });
 
   group('command lifecycle', () {

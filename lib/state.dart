@@ -240,12 +240,21 @@ class _CachedHistory {
   const _CachedHistory({
     required this.items,
     required this.oldestSeq,
+    required this.latestSeq,
     required this.hasMore,
   });
 
   final List<ChatItem> items;
   final int? oldestSeq;
+  final int? latestSeq;
   final bool hasMore;
+}
+
+class _TailItem {
+  const _TailItem(this.item, this.seq);
+
+  final ChatItem item;
+  final int seq;
 }
 
 /// Root application state.
@@ -271,6 +280,10 @@ class AppState extends ChangeNotifier {
 
   bool loadingHistory = false;
   bool hasMoreHistory = false;
+
+  /// A reconnect tail merge is fetching only the newest message group.
+  bool syncingTail = false;
+
   bool get selectedRunning => _sessionRunning(selectedSessionId);
   bool get selectedStreaming => _streams.isNotEmpty;
 
@@ -361,9 +374,13 @@ class AppState extends ChangeNotifier {
   /// In-flight assistant streams keyed by 'turn:step'.
   final Map<String, ChatItem> _streams = {};
   final Map<String, ChatItem> _toolItems = {};
+  final Map<String, int> _sessionTailSeqs = {};
+  final Map<String, int> _subscribedLastSeqs = {};
   StreamSubscription<ServerFrame>? _muxSub;
   StreamSubscription<ServerFrame>? _hostSub;
   bool _streamsActive = false;
+  bool _tailSyncInFlight = false;
+  int _streamGeneration = 0;
   Timer? _reconnectTimer;
 
   /// Prompts sent from this app, persisted locally; drives the user level.
@@ -472,6 +489,7 @@ class AppState extends ChangeNotifier {
 
   void disconnect() {
     _streamsActive = false;
+    _streamGeneration++;
     _reconnectTimer?.cancel();
     _backoffResetTimer?.cancel();
     _reconnectAttempts = 0;
@@ -492,27 +510,62 @@ class AppState extends ChangeNotifier {
     _itemCache.clear();
     _streams.clear();
     _toolItems.clear();
+    _sessionTailSeqs.clear();
+    _subscribedLastSeqs.clear();
     approvals.clear();
     questions.clear();
     selectedSessionId = null;
     _lastLiveSeq = -1;
     _oldestSeq = 0;
     _loadingTail = false;
+    _tailSyncInFlight = false;
+    syncingTail = false;
     _liveBuffer.clear();
     notifyListeners();
   }
 
   void _startStreams() {
+    final generation = ++_streamGeneration;
     _muxSub = _api!.muxStream().listen(
       _onMuxFrame,
-      onError: (_) => _scheduleReconnect(),
-      onDone: _scheduleReconnect,
+      onError: (_) {
+        if (generation == _streamGeneration) _scheduleReconnect();
+      },
+      onDone: () {
+        if (generation == _streamGeneration) _scheduleReconnect();
+      },
     );
     _hostSub = _api!.hostStream().listen(
       _onHostFrame,
-      onError: (_) => _scheduleReconnect(),
-      onDone: _scheduleReconnect,
+      onError: (_) {
+        if (generation == _streamGeneration) _scheduleReconnect();
+      },
+      onDone: () {
+        if (generation == _streamGeneration) _scheduleReconnect();
+      },
     );
+  }
+
+  void _replaceStreams() {
+    final mux = _muxSub;
+    final host = _hostSub;
+    _muxSub = null;
+    _hostSub = null;
+    _streamGeneration++;
+    unawaited(mux?.cancel());
+    unawaited(host?.cancel());
+    _startStreams();
+  }
+
+  /// Mobile OS may suspend the sockets while the screen is locked. On resume,
+  /// replace them immediately and let the mux baseline decide whether a small
+  /// tail merge is needed; never clear the already cached conversation first.
+  void resyncAfterResume() {
+    if (!_streamsActive || _api == null) return;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _replaceStreams();
+    unawaited(refreshSessions().catchError((_) {}));
   }
 
   /// Reconnect backoff: 2s doubling to a 30s cap with ±25% jitter, so a
@@ -530,11 +583,13 @@ class AppState extends ChangeNotifier {
     _reconnectTimer = Timer(delay, () async {
       _reconnectTimer = null;
       if (!_streamsActive || _api == null) return;
-      _startStreams();
+      _replaceStreams();
       try {
-        await refreshSessions();
-        if (selectedSessionId != null) await loadHistory(selectedSessionId!);
-        // Connected and synced: arm the backoff reset.
+        // The sidebar refresh can be slow on hosts with long attached logs.
+        // Do not block the selected conversation on it; session/subscribed
+        // frames trigger the small tail merge below only when the seq moved.
+        unawaited(refreshSessions().catchError((_) {}));
+        // Connected and syncing: arm the backoff reset.
         _backoffResetTimer?.cancel();
         _backoffResetTimer = Timer(const Duration(minutes: 1), () {
           _reconnectAttempts = 0;
@@ -719,6 +774,7 @@ class AppState extends ChangeNotifier {
     final previous = selectedSessionId;
     if (previous != null && items.isNotEmpty) {
       _itemCache[previous] = List.of(items);
+      _sessionTailSeqs[previous] = _lastLiveSeq;
     }
     selectedSessionId = sessionId;
     subagents = const [];
@@ -727,7 +783,7 @@ class AppState extends ChangeNotifier {
     if (cached != null) items.addAll(cached);
     _streams.clear();
     _toolItems.clear();
-    _lastLiveSeq = -1;
+    _lastLiveSeq = _sessionTailSeqs[sessionId] ?? -1;
     _oldestSeq = 0;
     _loadingTail = false;
     _liveBuffer.clear();
@@ -737,6 +793,12 @@ class AppState extends ChangeNotifier {
     if (localHistory != null) {
       hasMoreHistory = localHistory.hasMore;
       _oldestSeq = localHistory.oldestSeq ?? 0;
+      _lastLiveSeq =
+          _sessionTailSeqs[sessionId] ??
+          localHistory.latestSeq ??
+          _deriveTailSeq(localHistory.items) ??
+          -1;
+      if (_lastLiveSeq >= 0) _sessionTailSeqs[sessionId] = _lastLiveSeq;
     }
     if (cached == null) {
       // Cold open: paint the SQLite snapshot before the network tail arrives.
@@ -756,6 +818,10 @@ class AppState extends ChangeNotifier {
     }
     if (localHistory == null || localHistory.oldestSeq == null) {
       await loadHistory(sessionId);
+    }
+    final subscribedLastSeq = _subscribedLastSeqs[sessionId];
+    if (subscribedLastSeq != null && subscribedLastSeq > _lastLiveSeq) {
+      unawaited(syncTail(sessionId));
     }
     // Cached pages are authoritative for already loaded history; live frames
     // continue to update the tail without re-downloading it on every open.
@@ -778,6 +844,7 @@ class AppState extends ChangeNotifier {
               chatItemFromJson((entry as Map).cast<String, dynamic>()),
           ],
           oldestSeq: null,
+          latestSeq: null,
           hasMore: false,
         );
       }
@@ -788,6 +855,7 @@ class AppState extends ChangeNotifier {
             chatItemFromJson((entry as Map).cast<String, dynamic>()),
         ],
         oldestSeq: (map['oldestSeq'] as num?)?.toInt(),
+        latestSeq: (map['latestSeq'] as num?)?.toInt(),
         hasMore: map['hasMore'] == true,
       );
     } catch (_) {
@@ -812,18 +880,192 @@ class AppState extends ChangeNotifier {
         .toList();
     // Keep every page the user has explicitly loaded. Text-heavy fields are
     // capped by chatItemToJson, while image bytes remain host-backed metadata.
+    _sessionTailSeqs[sessionId] = _lastLiveSeq;
     try {
       await store.saveChatItems(
         sessionId,
         jsonEncode({
           'items': [for (final item in persistable) chatItemToJson(item)],
           'oldestSeq': _oldestSeq,
+          'latestSeq': _lastLiveSeq,
           'hasMore': hasMoreHistory,
         }),
       );
     } catch (_) {
       // Best-effort cache.
     }
+  }
+
+  /// Fetches only the newest message group after a reconnect and merges it
+  /// into the local window. This keeps long conversations visible while the
+  /// network catches up, instead of clearing the chat and downloading a full
+  /// ten-message tail page.
+  Future<void> syncTail([String? sessionId]) async {
+    final api = _api;
+    final target = sessionId ?? selectedSessionId;
+    if (api == null ||
+        target == null ||
+        target != selectedSessionId ||
+        _tailSyncInFlight) {
+      return;
+    }
+    _tailSyncInFlight = true;
+    syncingTail = true;
+    _loadingTail = true;
+    notifyListeners();
+    var succeeded = false;
+    try {
+      final value =
+          await api.call('session.history', {
+                'sessionId': target,
+                'maxMessages': 3,
+              })
+              as Map<String, dynamic>;
+      if (selectedSessionId != target) return;
+      final entries = (value['events'] as List).cast<Map<String, dynamic>>();
+      final incoming = <_TailItem>[];
+      var maxSeq = _lastLiveSeq;
+      for (final entry in entries) {
+        final event = (entry['event'] as Map).cast<String, dynamic>();
+        final seq = (event['seq'] as num?)?.toInt() ?? -1;
+        if (seq > maxSeq) maxSeq = seq;
+        _prepareTailEvent(event);
+        final folded = <ChatItem>[];
+        _foldEvent(event, into: folded);
+        for (final item in folded) {
+          incoming.add(_TailItem(item, seq));
+        }
+      }
+      if (incoming.isNotEmpty) _mergeTailItems(incoming);
+      if (entries.isNotEmpty && items.isNotEmpty && _oldestSeq == 0) {
+        _oldestSeq = (((entries.first['event'] as Map)['seq']) as num).toInt();
+      }
+      _seedProjections(
+        target,
+        (value['projections'] as Map?)?.cast<String, dynamic>(),
+      );
+      final projectionSeq = ((value['projections'] as Map?)?['asOfSeq'] as num?)
+          ?.toInt();
+      if (projectionSeq != null && projectionSeq > maxSeq) {
+        maxSeq = projectionSeq;
+      }
+      if (maxSeq > _lastLiveSeq) _lastLiveSeq = maxSeq;
+      if (_lastLiveSeq >= 0) _sessionTailSeqs[target] = _lastLiveSeq;
+      _settleOrphanedCommands();
+      succeeded = true;
+    } catch (_) {
+      // Keep the cached conversation; the next subscribed baseline or live
+      // event retries the tail merge. Buffered frames stay queued on failure.
+    } finally {
+      _tailSyncInFlight = false;
+      syncingTail = false;
+      _loadingTail = false;
+      if (succeeded && _liveBuffer.isNotEmpty) {
+        final buffered = List.of(_liveBuffer);
+        _liveBuffer.clear();
+        for (final event in buffered) {
+          _foldEvent(event);
+        }
+      }
+      _scheduleSave();
+      notifyListeners();
+    }
+  }
+
+  void _prepareTailEvent(Map<String, dynamic> event) {
+    final type = event['type'] as String?;
+    final data = (event['data'] as Map?)?.cast<String, dynamic>() ?? const {};
+    if (type == 'user/message') {
+      final source = (data['source'] as Map?)?.cast<String, dynamic>();
+      final rpcId = source?['rpcId'] as String?;
+      final provisional = rpcId == null ? null : _pendingPrompts.remove(rpcId);
+      if (provisional != null) items.remove(provisional);
+      return;
+    }
+    if (type == 'assistant/message') {
+      final key = '${data['turn']}:${data['step']}';
+      final stream = _streams.remove(key);
+      if (stream != null) items.remove(stream);
+      return;
+    }
+    if (type == 'command/run') {
+      final name = data['name'] as String? ?? '';
+      final local = name.isEmpty ? null : _takeLocalCommand(name);
+      if (local != null) {
+        items
+          ..remove(local.echo)
+          ..remove(local.status);
+      }
+    }
+  }
+
+  int? _durableSeqOf(ChatItem item) {
+    const prefixes = ['turnerr-', 'todo-', 'tr-', 'u-', 'a-', 't-'];
+    for (final prefix in prefixes) {
+      if (item.id.startsWith(prefix)) {
+        return int.tryParse(item.id.substring(prefix.length));
+      }
+    }
+    return null;
+  }
+
+  int? _deriveTailSeq(List<ChatItem> source) {
+    int? latest;
+    for (final item in source) {
+      final seq = _durableSeqOf(item);
+      if (seq != null && (latest == null || seq > latest)) latest = seq;
+    }
+    return latest;
+  }
+
+  bool _isTransientItem(ChatItem item) =>
+      item.id.startsWith('local-') ||
+      item.id.startsWith('stream-') ||
+      item.id.startsWith('err-');
+
+  void _preserveLoadedImages(ChatItem existing, ChatItem incoming) {
+    final count = math.min(existing.images.length, incoming.images.length);
+    for (var index = 0; index < count; index++) {
+      incoming.images[index].data ??= existing.images[index].data;
+    }
+  }
+
+  void _mergeTailItems(List<_TailItem> incoming) {
+    for (final entry in incoming) {
+      var existingIndex = -1;
+      for (var index = 0; index < items.length; index++) {
+        if (items[index].id == entry.item.id) {
+          existingIndex = index;
+          break;
+        }
+      }
+      if (existingIndex >= 0) {
+        _preserveLoadedImages(items[existingIndex], entry.item);
+        items[existingIndex] = entry.item;
+        continue;
+      }
+      var insertAt = items.length;
+      while (insertAt > 0 && _isTransientItem(items[insertAt - 1])) {
+        insertAt--;
+      }
+      for (var index = 0; index < insertAt; index++) {
+        final seq = _durableSeqOf(items[index]);
+        if (seq != null && seq > entry.seq) {
+          insertAt = index;
+          break;
+        }
+      }
+      items.insert(insertAt, entry.item);
+    }
+    _rebuildToolIndex();
+  }
+
+  @visibleForTesting
+  void mergeTailForTest(List<ChatItem> incoming, {int firstSeq = 1}) {
+    _mergeTailItems([
+      for (var index = 0; index < incoming.length; index++)
+        _TailItem(incoming[index], firstSeq + index),
+    ]);
   }
 
   /// Loads (or prepends older pages of) the selected session's history.
@@ -873,6 +1115,7 @@ class AppState extends ChangeNotifier {
             if (seq > maxSeq) maxSeq = seq;
           }
           _lastLiveSeq = maxSeq;
+          _sessionTailSeqs[sessionId] = maxSeq;
         }
       }
       if (entries.isNotEmpty) {
@@ -1438,6 +1681,14 @@ class AppState extends ChangeNotifier {
     final p = frame.payload;
     final sessionId = p['sessionId'] as String?;
     switch (p['type']) {
+      case 'session/subscribed':
+        if (sessionId != null) {
+          final lastSeq = (p['lastSeq'] as num?)?.toInt() ?? -1;
+          _subscribedLastSeqs[sessionId] = lastSeq;
+          if (sessionId == selectedSessionId && lastSeq > _lastLiveSeq) {
+            unawaited(syncTail(sessionId));
+          }
+        }
       case 'session/event':
         final event = (p['event'] as Map).cast<String, dynamic>();
         final eventSession = sessionId;
@@ -1462,6 +1713,9 @@ class AppState extends ChangeNotifier {
           if (key == 'tokenUsage') _trackPetTokens(sessionId, p['value']);
         }
       case 'approval/requested':
+        approvals.removeWhere(
+          (a) => a.rpcId == frame.rpcId || a.approvalId == p['approvalId'],
+        );
         approvals.add(
           PendingApproval(
             rpcId: frame.rpcId,
@@ -1474,6 +1728,7 @@ class AppState extends ChangeNotifier {
       case 'approval/resolved':
         approvals.removeWhere((a) => a.approvalId == p['approvalId']);
       case 'question/requested':
+        questions.removeWhere((q) => q.rpcId == frame.rpcId);
         questions.add(
           PendingQuestion(
             rpcId: frame.rpcId,
@@ -1513,7 +1768,18 @@ class AppState extends ChangeNotifier {
     if (into == null && seq <= _lastLiveSeq && _lastLiveSeq >= 0) {
       return; // duplicate after reconnect
     }
-    if (into == null) _lastLiveSeq = seq;
+    if (into == null && _lastLiveSeq >= 0 && seq > _lastLiveSeq + 1) {
+      // A suspended socket left a hole. Keep the event buffered and repair the
+      // tail without dropping the locally cached long conversation.
+      _liveBuffer.add(event);
+      unawaited(syncTail(selectedSessionId));
+      return;
+    }
+    if (into == null) {
+      _lastLiveSeq = seq;
+      final sessionId = selectedSessionId;
+      if (sessionId != null) _sessionTailSeqs[sessionId] = seq;
+    }
 
     // Items appended by this fold inherit the event timestamp (drives the
     // QQ-style time dividers in the chat list).

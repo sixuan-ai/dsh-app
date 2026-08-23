@@ -25,10 +25,28 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.21.0';
+const kAppVersion = '1.22.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '锁屏恢复后立即重建实时连接，并优先同步当前会话的最新进度',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '长对话恢复时不再清空本地历史，只拉取并合并最新几条消息',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复重连后重复拉取历史、覆盖本地缓存以及审批提问重复出现的问题',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.21.0',
     date: '2026-08-23',
