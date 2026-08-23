@@ -2,6 +2,8 @@
 /// a user report (v1.10.0, Xiaomi) had it vanish once text was entered.
 library;
 
+import 'dart:convert';
+
 import 'package:dsh_mobile/main.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +57,32 @@ void main() {
     expect(find.text('第一次使用？先看这四步'), findsOneWidget);
     expect(find.text('新建会话'), findsOneWidget);
     expect(find.text('处理确认'), findsOneWidget);
+  });
+
+  testWidgets('image preview exposes a download button', (tester) async {
+    final bytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ImagePreviewPage(bytes: bytes, name: 'demo.jpg'),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('下载图片'), findsOneWidget);
   });
 
   testWidgets('tool images render as a conversation result above details', (

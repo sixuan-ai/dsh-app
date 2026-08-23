@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.20.0';
+const kAppVersion = '1.20.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.20.1',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '图片全屏预览页新增下载按钮，可直接保存到手机系统相册',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '增加保存进度、成功提示以及相册权限失败指引',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.20.0',
     date: '2026-08-23',

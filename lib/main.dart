@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:gal/gal.dart';
 import 'package:image/image.dart' as img;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -4416,7 +4417,7 @@ class _ChatImageTileState extends State<_ChatImageTile> {
           : () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) =>
-                    _ImagePreviewPage(bytes: bytes, name: widget.image.name),
+                    ImagePreviewPage(bytes: bytes, name: widget.image.name),
               ),
             ),
       child: ClipRRect(
@@ -4447,11 +4448,46 @@ class _ChatImageTileState extends State<_ChatImageTile> {
   }
 }
 
-class _ImagePreviewPage extends StatelessWidget {
-  const _ImagePreviewPage({required this.bytes, this.name});
+class ImagePreviewPage extends StatefulWidget {
+  const ImagePreviewPage({super.key, required this.bytes, this.name});
 
   final Uint8List bytes;
   final String? name;
+
+  @override
+  State<ImagePreviewPage> createState() => _ImagePreviewPageState();
+}
+
+class _ImagePreviewPageState extends State<ImagePreviewPage> {
+  bool _saving = false;
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final album = 'xHarness';
+      await Gal.putImageBytes(widget.bytes, album: album);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('图片已保存到系统相册')));
+    } on GalException catch (error) {
+      if (!mounted) return;
+      final message = error.type == GalExceptionType.accessDenied
+          ? '没有相册权限，请在系统设置中允许 xHarness 访问照片'
+          : '保存图片失败，请稍后重试';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('保存图片失败，请稍后重试')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -4460,13 +4496,26 @@ class _ImagePreviewPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(name ?? '图片预览'),
+        title: Text(widget.name ?? '图片预览'),
+        actions: [
+          IconButton(
+            tooltip: '下载图片',
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined),
+          ),
+        ],
       ),
       body: Center(
         child: InteractiveViewer(
           minScale: 0.5,
           maxScale: 5,
-          child: Image.memory(bytes, fit: BoxFit.contain),
+          child: Image.memory(widget.bytes, fit: BoxFit.contain),
         ),
       ),
     );

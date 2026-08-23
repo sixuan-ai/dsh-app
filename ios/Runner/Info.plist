@@ -10,6 +10,8 @@
 	<string>xHarness</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>用于将您下载的 xHarness 会话图片保存到系统相册。</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- 局域网直连用户自建的 dsh 服务器需要明文 HTTP;公网仍走 ATS。 -->
