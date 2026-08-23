@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.17.0';
+const kAppVersion = '1.18.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.18.0',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        'AI 新闻按北京时间10点切分新闻日，默认显示最近已结束的新闻日',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '左右滑动每次切换前一天，支持连续查看更早历史新闻，并扩大模型公司覆盖范围',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.17.0',
     date: '2026-08-23',

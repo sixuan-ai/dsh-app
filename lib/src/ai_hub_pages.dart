@@ -3,22 +3,37 @@ import 'package:flutter/material.dart';
 import 'ai_content.dart';
 import 'theme.dart';
 
-/// Returns the local calendar date portion used to group website news.
-String aiNewsDateKey(String publishedAt) {
-  final parsed = DateTime.tryParse(publishedAt)?.toLocal();
-  if (parsed == null) return '';
-  final month = parsed.month.toString().padLeft(2, '0');
-  final day = parsed.day.toString().padLeft(2, '0');
-  return '${parsed.year}-$month-$day';
-}
-
-/// Selects news published on one local calendar date.
-List<AiNewsItem> aiNewsOnDate(List<AiNewsItem> items, DateTime date) {
-  final key = aiNewsDateKey(date.toIso8601String());
-  return items.where((item) => aiNewsDateKey(item.publishedAt) == key).toList();
-}
+const _newsDayHour = 10;
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+/// Returns the news-day label for a publication timestamp.
+///
+/// A news day labelled `date` contains local times from `date - 1 day at
+/// 10:00` inclusive through `date at 10:00` exclusive.
+DateTime aiNewsDay(DateTime publishedAt) {
+  final local = publishedAt.toLocal();
+  final date = _dateOnly(local);
+  return local.hour >= _newsDayHour ? date.add(const Duration(days: 1)) : date;
+}
+
+/// Selects news in the 10:00-to-10:00 news day ending on [date].
+List<AiNewsItem> aiNewsOnNewsDay(List<AiNewsItem> items, DateTime date) {
+  final target = _dateOnly(date);
+  return items.where((item) {
+    final published = DateTime.tryParse(item.publishedAt);
+    return published != null && _dateOnly(aiNewsDay(published)) == target;
+  }).toList();
+}
+
+/// Returns the most recent news day whose 10:00 boundary has passed.
+DateTime aiLatestClosedNewsDay([DateTime? now]) {
+  final local = (now ?? DateTime.now()).toLocal();
+  final date = _dateOnly(local);
+  return local.hour >= _newsDayHour
+      ? date
+      : date.subtract(const Duration(days: 1));
+}
 
 /// Website-backed AI news page with cached offline fallback.
 class AiNewsPage extends StatefulWidget {
@@ -34,11 +49,15 @@ class _AiNewsPageState extends State<AiNewsPage> {
   bool _loading = true;
   bool _fromCache = false;
   String? _error;
-  final PageController _pageController = PageController(initialPage: 3650);
-  final DateTime _today = _dateOnly(DateTime.now());
-  int _page = 3650;
+  static const _latestPage = 10000;
+  final PageController _pageController = PageController(
+    initialPage: _latestPage,
+  );
+  final DateTime _latestNewsDay = aiLatestClosedNewsDay();
+  int _page = _latestPage;
 
-  DateTime get _selectedDate => _today.add(Duration(days: _page - 3650));
+  DateTime get _selectedDate =>
+      _latestNewsDay.subtract(Duration(days: _latestPage - _page));
 
   @override
   void initState() {
@@ -102,9 +121,9 @@ class _AiNewsPageState extends State<AiNewsPage> {
           const SizedBox(height: 12),
           _NewsDateToolbar(
             date: _selectedDate,
-            isToday: _page == 3650,
+            isToday: _page == _latestPage,
             onToday: () => _pageController.animateToPage(
-              3650,
+              _latestPage,
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOut,
             ),
@@ -115,10 +134,13 @@ class _AiNewsPageState extends State<AiNewsPage> {
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: (page) => setState(() => _page = page),
+              itemCount: _latestPage + 1,
               itemBuilder: (_, page) {
-                final date = _today.add(Duration(days: page - 3650));
-                final todayItems = aiNewsOnDate(_items, date);
-                final yesterdayItems = aiNewsOnDate(
+                final date = _latestNewsDay.subtract(
+                  Duration(days: _latestPage - page),
+                );
+                final todayItems = aiNewsOnNewsDay(_items, date);
+                final yesterdayItems = aiNewsOnNewsDay(
                   _items,
                   date.subtract(const Duration(days: 1)),
                 );

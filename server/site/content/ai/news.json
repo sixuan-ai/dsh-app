@@ -1,50 +1,16 @@
 {
-  "version": 2,
-  "updatedAt": "2026-08-23T06:30:00Z",
+  "version": 3,
+  "updatedAt": "2026-08-23T08:00:00+08:00",
   "items": [
-    {
-      "id": "deepseek-v4-flash-vision-exp-2026-08-21",
-      "title": "DeepSeek 发布 V4-Flash-Vision-Exp，多模态 API 上线",
-      "summary": "DeepSeek 推出 V4-Flash-Vision-Exp 实验模型，为 API 增加图像理解等多模态能力。",
-      "content": "这次更新的重点是把视觉输入能力带到 DeepSeek V4 Flash 系列。开发者可以通过官方 API 文档查看模型名称、输入格式、价格、速率限制和当前实验阶段的使用说明。实验模型可能继续调整，生产接入前应核对最新兼容性。",
-      "category": "新模型",
-      "tags": ["DeepSeek", "V4", "多模态", "视觉模型"],
-      "sourceName": "DeepSeek API 官方文档",
-      "sourceUrl": "https://api-docs.deepseek.com/news/news260821/",
-      "publishedAt": "2026-08-21T00:00:00Z"
-    },
-    {
-      "id": "deepseek-v4-pro-ga-2026-08-13",
-      "title": "DeepSeek V4-Pro 正式发布",
-      "summary": "DeepSeek 宣布 V4-Pro 进入正式可用阶段，面向高质量推理、代码与复杂任务。",
-      "content": "V4-Pro 从预览阶段进入 GA，意味着模型进入正式服务阶段。关注重点包括正式模型标识、上下文能力、工具调用表现、API 定价和迁移说明。已经使用预览版的项目应根据官方公告检查模型别名与兼容性。",
-      "category": "新模型",
-      "tags": ["DeepSeek", "V4-Pro", "推理", "代码"],
-      "sourceName": "DeepSeek API 官方文档",
-      "sourceUrl": "https://api-docs.deepseek.com/news/news260813/",
-      "publishedAt": "2026-08-13T00:00:00Z"
-    },
-    {
-      "id": "openai-gpt-5-6-sol-luna-2026-08",
-      "title": "OpenAI 更新 GPT-5.6 Sol，并扩大 Luna 使用范围",
-      "summary": "OpenAI 改进 GPT-5.6 Sol 在 ChatGPT 中的表现，同时让更多用户可以使用 GPT-5.6 Luna。",
-      "content": "本次更新聚焦 GPT-5.6 系列在 ChatGPT 中的可用性和体验。Sol 面向更高质量的复杂任务，Luna 更强调普及和快速使用。具体模型入口、用户范围和产品限制应以 OpenAI 官方公告与 ChatGPT 模型选择器为准。",
-      "category": "模型更新",
-      "tags": ["OpenAI", "GPT-5.6", "Sol", "Luna"],
-      "sourceName": "OpenAI 官方公告",
-      "sourceUrl": "https://openai.com/index/improving-gpt-5-6-sol-in-chatgpt/",
-      "publishedAt": "2026-08-07T00:00:00Z"
-    },
-    {
-      "id": "anthropic-claude-opus-5-2026",
-      "title": "Anthropic 推出 Claude Opus 5",
-      "summary": "Anthropic 发布 Claude Opus 5，继续强化复杂推理、编码和长任务 Agent 能力。",
-      "content": "Claude Opus 5 面向高难度知识工作、软件工程和 Agent 工作流。使用前应查看官方公告中的模型可用渠道、API 模型名称、上下文限制、价格以及不同地区和账户的开放情况。",
-      "category": "新模型",
-      "tags": ["Anthropic", "Claude", "Opus 5", "Agent"],
-      "sourceName": "Anthropic 官方公告",
-      "sourceUrl": "https://www.anthropic.com/news/claude-opus-5",
-      "publishedAt": "2026-08-01T00:00:00Z"
-    }
+    {"id":"deepseek-v4-flash-vision-exp-2026-08-21","title":"DeepSeek 发布 V4-Flash-Vision-Exp，多模态 API 上线","summary":"DeepSeek 推出 V4-Flash-Vision-Exp 实验模型，为 API 增加图像理解等多模态能力。","content":"更新重点是把视觉输入能力带到 DeepSeek V4 Flash 系列。实验模型可能继续调整，生产接入前应核对官方文档中的模型名称、输入格式、价格和限制。","category":"新模型","tags":["DeepSeek","V4","多模态"],"sourceName":"DeepSeek API 官方文档","sourceUrl":"https://api-docs.deepseek.com/news/news260821/","publishedAt":"2026-08-21T10:30:00+08:00"},
+    {"id":"zhipu-glm-5-3-2026-08-14","title":"智谱发布 GLM-5.3，聚焦编码与长程 Agent 任务","summary":"GLM-5.3 面向复杂软件工程、工具调用和长程 Agent 工作，提供百万级上下文能力。","content":"智谱将 GLM-5.3 定位为旗舰推理和编码模型，支持工具调用、结构化输出、上下文缓存和可配置推理强度。当前通过 Z.ai API 和 GLM Coding Plan 提供。","category":"新模型","tags":["智谱","GLM-5.3","编码","Agent"],"sourceName":"Z.ai 官方公告","sourceUrl":"https://z.ai/blog/glm-5.3","publishedAt":"2026-08-14T14:00:00+08:00"},
+    {"id":"deepseek-v4-pro-ga-2026-08-13","title":"DeepSeek V4-Pro 正式发布","summary":"DeepSeek 宣布 V4-Pro 进入正式可用阶段，面向高质量推理、代码与复杂任务。","content":"V4-Pro 从预览阶段进入正式服务阶段。已经使用预览版的项目应根据官方公告检查正式模型标识、上下文能力、工具调用、API 定价和迁移说明。","category":"新模型","tags":["DeepSeek","V4-Pro","推理","代码"],"sourceName":"DeepSeek API 官方文档","sourceUrl":"https://api-docs.deepseek.com/news/news260813/","publishedAt":"2026-08-13T11:00:00+08:00"},
+    {"id":"minimax-h3-2026-08-03","title":"MiniMax 开源 H3 全模态视频生成模型","summary":"MiniMax H3 支持文本、图像、视频和音频输入，可生成带原生立体声音频的视频。","content":"H3 面向通用音视频生成，支持文生音视频、首尾帧生音视频和参考素材生音视频，最高支持 2K 分辨率和 15 秒长度。模型权重与实现已通过官方仓库发布。","category":"新模型","tags":["MiniMax","H3","视频生成","全模态"],"sourceName":"MiniMax 官方公告","sourceUrl":"https://www.minimax.io/news/minimax-h3-open-source","publishedAt":"2026-08-03T19:24:00+08:00"},
+    {"id":"kimi-k3-2026-07-17","title":"月之暗面发布 Kimi K3，强化长程编码与多模态能力","summary":"Kimi K3 面向长程编码、知识工作、视觉推理和软件创作，支持百万级上下文。","content":"Moonshot AI 将 Kimi K3 定位为大型开放前沿模型，支持原生视觉、多模态、长程编码和知识工作。模型可通过 Kimi 与官方 API 使用，完整权重随后在官方 Hugging Face 发布。","category":"新模型","tags":["月之暗面","Kimi K3","多模态","长上下文"],"sourceName":"Kimi 官方公告","sourceUrl":"https://www.kimi.com/en/blog/kimi-k3","publishedAt":"2026-07-17T12:00:00+08:00"},
+    {"id":"tencent-hy3-2026-07-06","title":"腾讯混元开源 Hy3 推理与 Agent 模型","summary":"Hy3 是混合专家模型，面向推理、工具调用、代码、办公和长上下文任务。","content":"腾讯混元公开 Hy3 模型与部署说明，支持可配置推理强度和工具调用，并提供官方权重与 vLLM、SGLang 部署路径。","category":"新模型","tags":["腾讯","混元","Hy3","开源"],"sourceName":"腾讯混元官方仓库","sourceUrl":"https://github.com/Tencent-Hunyuan/Hy3","publishedAt":"2026-07-06T15:00:00+08:00"},
+    {"id":"nvidia-cosmos-3-2026-05-31","title":"英伟达发布 Cosmos 3 物理 AI 基础模型","summary":"NVIDIA Cosmos 3 面向机器人和物理 AI，结合视觉推理、世界模拟与动作预测。","content":"Cosmos 3 包括 Super 和 Nano 等模型，可处理或生成文本、图像、视频、环境声音和动作，适合机器人世界模型、物理环境模拟与合成数据工作流。","category":"新模型","tags":["NVIDIA","Cosmos 3","物理 AI","机器人"],"sourceName":"NVIDIA 官方新闻稿","sourceUrl":"https://nvidianews.nvidia.com/news/nvidia-launches-cosmos-3-the-open-frontier-foundation-model-for-physical-ai","publishedAt":"2026-05-31T10:30:00+08:00"},
+    {"id":"stepfun-step-3-7-flash-2026-05-29","title":"阶跃星辰发布 Step 3.7 Flash 视觉语言模型","summary":"Step 3.7 Flash 面向视觉理解、代码、搜索和工具编排等 Agent 工作流。","content":"该模型采用稀疏 MoE 架构，支持图像理解、长上下文文档处理和多档推理强度，并通过阶跃开放平台、GitHub 与 Hugging Face 提供。","category":"新模型","tags":["阶跃星辰","Step 3.7 Flash","视觉语言","Agent"],"sourceName":"阶跃星辰官方公告","sourceUrl":"https://static.stepfun.com/blog/step-3.7-flash/","publishedAt":"2026-05-29T13:00:00+08:00"},
+    {"id":"baidu-ernie-5-1-2026-05-09","title":"百度发布文心大模型 ERNIE 5.1","summary":"ERNIE 5.1 强调自主 Agent、工具使用、推理、深度搜索和创作能力。","content":"百度通过 Agent 强化训练提升模型在自主任务和工具使用方面的能力，并降低相对 ERNIE 5.0 的推理与训练成本。模型已通过文心产品和 AI Studio Playground 提供。","category":"新模型","tags":["百度","文心","ERNIE 5.1","Agent"],"sourceName":"百度 ERNIE 官方博客","sourceUrl":"https://ernie.baidu.com/blog/posts/ernie-5.1-0508-release/","publishedAt":"2026-05-09T11:00:00+08:00"},
+    {"id":"meta-llama-4-2025-04-05","title":"Meta 发布 Llama 4 Scout 与 Maverick","summary":"Llama 4 系列采用混合专家架构，支持原生文本和图像理解。","content":"Scout 更强调效率和超长上下文，Maverick 面向更高能力的通用任务。官方通过 GitHub 和 Hugging Face 提供模型资料与权重。","category":"新模型","tags":["Meta","Llama 4","多模态","开源"],"sourceName":"Meta Llama 官方资料","sourceUrl":"https://github.com/meta-llama/llama-models/blob/main/models/llama4/MODEL_CARD.md","publishedAt":"2025-04-05T10:30:00+08:00"}
   ]
 }
