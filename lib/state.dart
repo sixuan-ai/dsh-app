@@ -284,6 +284,9 @@ class AppState extends ChangeNotifier {
   /// A reconnect tail merge is fetching only the newest message group.
   bool syncingTail = false;
 
+  /// A missed middle range is being filled after the newest tail became visible.
+  bool fillingHistoryGap = false;
+
   bool get selectedRunning => _sessionRunning(selectedSessionId);
   bool get selectedStreaming => _streams.isNotEmpty;
 
@@ -380,6 +383,9 @@ class AppState extends ChangeNotifier {
   StreamSubscription<ServerFrame>? _hostSub;
   bool _streamsActive = false;
   bool _tailSyncInFlight = false;
+  bool _gapFillInFlight = false;
+  int? _historyGapBeforeSeq;
+  int? _historyGapAfterSeq;
   int _streamGeneration = 0;
   Timer? _reconnectTimer;
 
@@ -519,7 +525,11 @@ class AppState extends ChangeNotifier {
     _oldestSeq = 0;
     _loadingTail = false;
     _tailSyncInFlight = false;
+    _gapFillInFlight = false;
+    _historyGapBeforeSeq = null;
+    _historyGapAfterSeq = null;
     syncingTail = false;
+    fillingHistoryGap = false;
     _liveBuffer.clear();
     notifyListeners();
   }
@@ -787,6 +797,9 @@ class AppState extends ChangeNotifier {
     _oldestSeq = 0;
     _loadingTail = false;
     _liveBuffer.clear();
+    _historyGapBeforeSeq = null;
+    _historyGapAfterSeq = null;
+    fillingHistoryGap = false;
     hasMoreHistory = false;
     notifyListeners();
     final localHistory = await _loadLocalHistory(sessionId);
@@ -914,6 +927,7 @@ class AppState extends ChangeNotifier {
     _loadingTail = true;
     notifyListeners();
     var succeeded = false;
+    final localTailBeforeSync = _lastLiveSeq;
     try {
       final value =
           await api.call('session.history', {
@@ -937,6 +951,15 @@ class AppState extends ChangeNotifier {
         }
       }
       if (incoming.isNotEmpty) _mergeTailItems(incoming);
+      if (entries.isNotEmpty) {
+        final firstIncomingSeq =
+            (((entries.first['event'] as Map)['seq']) as num).toInt();
+        if (localTailBeforeSync >= 0 &&
+            firstIncomingSeq > localTailBeforeSync + 1) {
+          _historyGapAfterSeq = localTailBeforeSync;
+          _historyGapBeforeSeq = firstIncomingSeq;
+        }
+      }
       if (entries.isNotEmpty && items.isNotEmpty && _oldestSeq == 0) {
         _oldestSeq = (((entries.first['event'] as Map)['seq']) as num).toInt();
       }
@@ -967,6 +990,71 @@ class AppState extends ChangeNotifier {
           _foldEvent(event);
         }
       }
+      _scheduleSave();
+      notifyListeners();
+      if (succeeded && _historyGapBeforeSeq != null) {
+        unawaited(_fillHistoryGap(target));
+      }
+    }
+  }
+
+  /// Fills the range skipped by a tail-first reconnect after the newest
+  /// messages are already visible. Pages merge by seq without moving the UI
+  /// back to a loading state.
+  Future<void> _fillHistoryGap(String sessionId) async {
+    final api = _api;
+    if (api == null || _gapFillInFlight) return;
+    _gapFillInFlight = true;
+    fillingHistoryGap = true;
+    notifyListeners();
+    var pages = 0;
+    try {
+      while (selectedSessionId == sessionId &&
+          _historyGapBeforeSeq != null &&
+          pages < 8) {
+        final beforeSeq = _historyGapBeforeSeq!;
+        final afterSeq = _historyGapAfterSeq ?? -1;
+        final value =
+            await api.call('session.history', {
+                  'sessionId': sessionId,
+                  'beforeSeq': beforeSeq,
+                  'maxMessages': 10,
+                })
+                as Map<String, dynamic>;
+        if (selectedSessionId != sessionId) return;
+        final entries = (value['events'] as List).cast<Map<String, dynamic>>();
+        if (entries.isEmpty) {
+          _historyGapBeforeSeq = null;
+          _historyGapAfterSeq = null;
+          break;
+        }
+        final firstSeq = (((entries.first['event'] as Map)['seq']) as num)
+            .toInt();
+        final incoming = <_TailItem>[];
+        for (final entry in entries) {
+          final event = (entry['event'] as Map).cast<String, dynamic>();
+          final seq = (event['seq'] as num?)?.toInt() ?? -1;
+          _prepareTailEvent(event);
+          final folded = <ChatItem>[];
+          _foldEvent(event, into: folded);
+          for (final item in folded) {
+            incoming.add(_TailItem(item, seq));
+          }
+        }
+        if (incoming.isNotEmpty) _mergeTailItems(incoming);
+        if (firstSeq <= afterSeq + 1) {
+          _historyGapBeforeSeq = null;
+          _historyGapAfterSeq = null;
+          break;
+        }
+        _historyGapBeforeSeq = firstSeq;
+        pages++;
+      }
+    } catch (_) {
+      // Keep the gap marker; the next resume or tail repair continues it.
+    } finally {
+      _gapFillInFlight = false;
+      fillingHistoryGap = false;
       _scheduleSave();
       notifyListeners();
     }

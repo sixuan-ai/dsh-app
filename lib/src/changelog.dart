@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.0';
+const kAppVersion = '1.22.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.1',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '锁屏期间产生的大量新消息会先显示最新进度，再在后台补齐中间历史',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '补齐中间历史时不打断当前浏览，也不会覆盖本地已缓存内容',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.0',
     date: '2026-08-23',

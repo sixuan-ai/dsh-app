@@ -344,6 +344,19 @@ void main() {
       ]);
       expect(app.items[1].blocks.single.text, '同步后的回答');
     });
+
+    test('tail merge inserts missed middle history before the newest tail', () {
+      final app = AppState();
+      app.items.addAll([
+        ChatItem.user(id: 'u-1', text: '旧消息'),
+        ChatItem.user(id: 'u-10', text: '最新消息'),
+      ]);
+      app.mergeTailForTest([
+        ChatItem.user(id: 'u-3', text: '中间消息 1'),
+        ChatItem.user(id: 'u-4', text: '中间消息 2'),
+      ], firstSeq: 3);
+      expect(app.items.map((item) => item.id), ['u-1', 'u-3', 'u-4', 'u-10']);
+    });
   });
 
   group('command lifecycle', () {

@@ -1723,6 +1723,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final subtitleParts = <String>[
           ?state.models?.label,
           if (state.syncingTail) '正在同步最新进度…',
+          if (state.fillingHistoryGap) '正在补齐中间历史…',
           if (state.selectedRunning) '正在生成…',
         ];
         return Scaffold(
