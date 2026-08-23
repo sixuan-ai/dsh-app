@@ -93,7 +93,7 @@ class _AiNewsPageState extends State<AiNewsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('AI 新闻'),
+      title: const Text('AI 日报'),
       actions: [
         IconButton(
           tooltip: '刷新新闻',
@@ -109,7 +109,7 @@ class _AiNewsPageState extends State<AiNewsPage> {
         children: [
           const _PageIntro(
             icon: Icons.newspaper_outlined,
-            title: 'AI 新闻',
+            title: 'AI 日报',
             subtitle: '由 xHarness 网站统一整理和发布',
           ),
           const SizedBox(height: 12),

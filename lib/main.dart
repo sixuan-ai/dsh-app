@@ -2113,7 +2113,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.newspaper_outlined,
-            label: 'AI 新闻',
+            label: 'AI 日报',
             caption: '实时聚合',
             onTap: () {
               Navigator.of(sheetContext).pop();
