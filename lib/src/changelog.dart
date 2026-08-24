@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.2';
+const kAppVersion = '1.24.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.3',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '升级至 Flutter 3.47.1 与 Dart 3.13.1，使用新版 Android 网络引擎重新构建，用于验证深圳线路 TLS 重置问题',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.2',
     date: '2026-08-24',
