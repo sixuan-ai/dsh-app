@@ -24,14 +24,11 @@ import 'src/social.dart';
 import 'update_dialogs.dart';
 import 'src/theme.dart';
 import 'src/updater.dart';
-import 'chat_list.dart';
+import 'home_view.dart';
 import 'session_drawer.dart';
-import 'session_header.dart';
-import 'stats_bar.dart';
 import 'model_picker.dart';
 import 'changelog_view.dart';
 import 'new_session_sheet.dart';
-import 'composer.dart';
 import 'state.dart';
 
 /// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
@@ -859,62 +856,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: state,
-      builder: (context, _) {
-        final sessionId = state.selectedSessionId;
-        final row = _selectedRow();
-        final title = row?.title?.isNotEmpty == true
-            ? row!.title!
-            : (sessionId == null ? 'xHarness' : '新会话');
-        final subtitleParts = <String>[
-          ?state.models?.label,
-          if (state.syncingTail) '正在同步最新进度…',
-          if (state.fillingHistoryGap) '正在补齐中间历史…',
-          if (state.selectedRunning) '正在生成…',
-        ];
-        return Scaffold(
-          drawer: SessionDrawer(
-            state: state,
-            theme: widget.theme,
-            onLogout: _logout,
-            onNewSession: _showNewSessionSheet,
-            onCheckUpdate: () => _checkForUpdate(manual: true),
-            onConnectionCenter: _showConnectionCenter,
-            connectionMode: _connectionMode,
-            localAvailable: _localAvailable,
-            updateAvailable: _availableUpdate != null,
-            socialBaseUrl: '$kDefaultServerUrl/social',
-            connectionGuideBuilder: (_) => const ConnectionGuideSheet(),
-            changelogBuilder: (_) => const ChangelogPage(),
-          ),
-          appBar: SessionHeader(
-            state: state,
-            title: title,
-            subtitleParts: subtitleParts,
-            onModelPicker: _showModelPicker,
-            onNewSession: _newSession,
-            onRename: _renameDialog,
-            onRefresh: state.refreshSessions,
-            onCheckUpdate: () => _checkForUpdate(manual: true),
-            onLogout: _logout,
-          ),
-          body: Column(
-            children: [
-              StatsBar(state: state),
-              Expanded(
-                child: sessionId == null
-                    ? EmptySessionView(
-                        onNewSession: _showNewSessionSheet,
-                        onSuggestion: _sendSuggestion,
-                      )
-                    : ChatList(state: state),
-              ),
-              Composer(state: state),
-            ],
-          ),
-        );
-      },
+    return HomeView(
+      state: state,
+      drawerBuilder: (context) => SessionDrawer(
+        state: state,
+        theme: widget.theme,
+        onLogout: _logout,
+        onNewSession: _showNewSessionSheet,
+        onCheckUpdate: () => _checkForUpdate(manual: true),
+        onConnectionCenter: _showConnectionCenter,
+        connectionMode: _connectionMode,
+        localAvailable: _localAvailable,
+        updateAvailable: _availableUpdate != null,
+        socialBaseUrl: '$kDefaultServerUrl/social',
+        connectionGuideBuilder: (_) => const ConnectionGuideSheet(),
+        changelogBuilder: (_) => const ChangelogPage(),
+      ),
+      onModelPicker: _showModelPicker,
+      onNewSession: _newSession,
+      onRename: _renameDialog,
+      onRefresh: state.refreshSessions,
+      onCheckUpdate: () => _checkForUpdate(manual: true),
+      onLogout: _logout,
+      onSuggestion: _sendSuggestion,
     );
   }
 }
