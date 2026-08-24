@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.5';
+const kAppVersion = '1.24.6';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.6',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '连接中心新增当前连接横幅、正在使用状态和明确的切换按钮文案，避免误以为深圳线路尚未启用',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.5',
     date: '2026-08-25',

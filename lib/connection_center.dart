@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'src/theme.dart';
+import 'connection_center_banner.dart';
 
 class ConnectionCenterSheet extends StatelessWidget {
   const ConnectionCenterSheet({
@@ -27,6 +28,12 @@ class ConnectionCenterSheet extends StatelessWidget {
   /// Switches to the direct Shenzhen relay (low-latency route).
   final VoidCallback? onSwitchDirect;
 
+  String get _currentLabel => switch (connectionMode) {
+    'lan' => '本地连接',
+    'direct' => '深圳直连',
+    _ => '远程连接',
+  };
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -47,13 +54,15 @@ class ConnectionCenterSheet extends StatelessWidget {
               '切换连接不会退出账号。正在生成内容时建议等待完成后再切换。',
               style: TextStyle(color: P.textSecondary),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+            CurrentConnectionBanner(label: _currentLabel),
+            const SizedBox(height: 14),
             _ConnectionCard(
               icon: Icons.cloud_outlined,
               title: '远程连接',
               subtitle: connectionMode == 'public' ? '当前正在使用' : '通过官网连接，适合外出使用',
               active: connectionMode == 'public',
-              actionLabel: '切换',
+              actionLabel: '切换到远程',
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchRemote();
@@ -68,7 +77,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                     ? '当前正在使用'
                     : '不经过 Cloudflare，国内延迟更低更稳',
                 active: connectionMode == 'direct',
-                actionLabel: '切换',
+                actionLabel: '切换到深圳',
                 onSwitch: () {
                   Navigator.pop(context);
                   onSwitchDirect!();
@@ -89,7 +98,7 @@ class ConnectionCenterSheet extends StatelessWidget {
               active: connectionMode == 'lan',
               available: localAvailable,
               checking: checkingLocal,
-              actionLabel: '切换',
+              actionLabel: '切换到本地',
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchLocal();
@@ -186,7 +195,28 @@ class _ConnectionCard extends StatelessWidget {
             ),
           ),
           if (active)
-            Icon(Icons.check_circle, color: P.success, size: 20)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: P.success.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: P.success, size: 15),
+                  const SizedBox(width: 5),
+                  Text(
+                    '正在使用',
+                    style: TextStyle(
+                      color: P.success,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            )
           else if (checking)
             SizedBox(
               width: 18,
