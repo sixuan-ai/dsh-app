@@ -181,7 +181,26 @@ class _ChatListState extends State<ChatList> {
         return const Center(child: CircularProgressIndicator());
       }
       return Center(
-        child: Text('发送消息开始对话', style: TextStyle(color: P.textTertiary)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: P.accent.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 24,
+                color: P.accentLight,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('发送消息开始对话', style: TextStyle(color: P.textTertiary)),
+          ],
+        ),
       );
     }
     final animateFrom = _animBaseline;

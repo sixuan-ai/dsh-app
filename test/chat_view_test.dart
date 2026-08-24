@@ -141,6 +141,7 @@ void main() {
       ),
     );
     expect(find.text('发送消息开始对话'), findsOneWidget);
+    expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsOneWidget);
 
     final loadingState = AppState()..loadingHistory = true;
     await tester.pumpWidget(
