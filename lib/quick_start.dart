@@ -96,7 +96,25 @@ class EmptySessionView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const BrandMark(size: 76),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        P.accent.withValues(alpha: 0.18),
+                        P.accent.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+                const BrandMark(size: 76),
+              ],
+            ),
             const SizedBox(height: 22),
             Text(
               '开始一个新的对话',

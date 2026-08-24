@@ -533,6 +533,54 @@ class _ToolImageResult extends StatelessWidget {
   }
 }
 
+/// Status strip on a tool card's leading edge; pulses while the tool runs.
+class _StatusStrip extends StatefulWidget {
+  const _StatusStrip({required this.color, required this.running});
+
+  final Color color;
+  final bool running;
+
+  @override
+  State<_StatusStrip> createState() => _StatusStripState();
+}
+
+class _StatusStripState extends State<_StatusStrip>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.running) {
+      _controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 900),
+      )..repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller == null) {
+      return Container(width: 3, color: widget.color);
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Container(
+        width: 3,
+        color: widget.color.withValues(alpha: 0.45 + 0.55 * controller.value),
+      ),
+    );
+  }
+}
+
 class ToolCard extends StatefulWidget {
   const ToolCard({super.key, required this.state, required this.item});
 
@@ -597,7 +645,7 @@ class _ToolCardState extends State<ToolCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 3, color: _statusColor),
+              _StatusStrip(color: _statusColor, running: !item.completed),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -906,28 +954,47 @@ class _ChatImageTileState extends State<_ChatImageTile> {
                     ImagePreviewPage(bytes: bytes, name: widget.image.name),
               ),
             ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 156,
-          height: 156,
-          color: P.fillMedium,
-          alignment: Alignment.center,
-          child: bytes != null
-              ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
-              : _loading
-              ? const CircularProgressIndicator(strokeWidth: 2)
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.broken_image_outlined, color: P.textTertiary),
-                    const SizedBox(height: 6),
-                    Text(
-                      _failed ? '加载失败,点击重试' : '点击加载',
-                      style: TextStyle(color: P.textSecondary, fontSize: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: P.fillMedium),
+          boxShadow: P.cardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 156,
+            height: 156,
+            color: P.fillLight,
+            alignment: Alignment.center,
+            child: bytes != null
+                ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+                : _loading
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: P.textTertiary,
                     ),
-                  ],
-                ),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _failed
+                            ? Icons.broken_image_outlined
+                            : Icons.image_outlined,
+                        color: P.textTertiary,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _failed ? '加载失败,点击重试' : '点击加载',
+                        style: TextStyle(color: P.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -979,8 +1046,10 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         foregroundColor: Colors.white,
         title: Text(widget.name ?? '图片预览'),
         actions: [

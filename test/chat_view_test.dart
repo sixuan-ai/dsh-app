@@ -69,6 +69,39 @@ void main() {
     expect(find.text('image_tool'), findsWidgets);
   });
 
+  testWidgets('running tool card pulses its status strip', (tester) async {
+    final state = AppState();
+    final item = ChatItem.tool(
+      id: 't-1',
+      callId: 'c-1',
+      name: 'bash',
+      arguments: '{}',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatItemView(state: state, item: item),
+        ),
+      ),
+    );
+    expect(find.text('运行中'), findsOneWidget);
+    // Pump a frame mid-animation without settling (the pulse loops forever).
+    await tester.pump(const Duration(milliseconds: 450));
+
+    item
+      ..completed = true
+      ..resultText = 'ok';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatItemView(state: state, item: item),
+        ),
+      ),
+    );
+    expect(find.text('完成'), findsOneWidget);
+  });
+
   testWidgets('shows empty and loading states in ChatList', (tester) async {
     final state = AppState();
     await tester.pumpWidget(
