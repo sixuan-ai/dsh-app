@@ -9,11 +9,15 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
+import 'src/conversation.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
 import 'src/queue.dart';
+import 'src/session_event_parser.dart';
 
+export 'src/conversation.dart'
+    show AssistantBlock, ChatImage, ChatItem, ChatItemKind;
 export 'src/queue.dart' show QueuedTask;
 
 /// Device IANA zone for prompt attribution; falls back to omission (valid
@@ -89,101 +93,6 @@ class PromptImage {
   final String? name;
   final int? width;
   final int? height;
-}
-
-/// An image reference in a durable user or assistant message.
-class ChatImage {
-  ChatImage({
-    required this.attachmentId,
-    required this.mediaType,
-    this.bytes,
-    this.width,
-    this.height,
-    this.name,
-    this.data,
-  });
-
-  final String attachmentId;
-  final String mediaType;
-  final int? bytes;
-  final int? width;
-  final int? height;
-  final String? name;
-  String? data;
-}
-
-/// Renderable conversation unit produced by the event fold.
-class ChatItem {
-  ChatItem.user({
-    required this.id,
-    required this.text,
-    this.provisional = false,
-    this.images = const [],
-  }) : kind = ChatItemKind.user,
-       time = null;
-
-  ChatItem.assistant({
-    required this.id,
-    required this.blocks,
-    this.images = const [],
-    this.usage,
-    this.interrupted = false,
-  }) : kind = ChatItemKind.assistant,
-       time = null;
-
-  ChatItem.tool({
-    required this.id,
-    required this.callId,
-    required this.name,
-    required this.arguments,
-  }) : kind = ChatItemKind.tool,
-       time = null;
-
-  ChatItem.notice({
-    required this.id,
-    required this.text,
-    this.isError = false,
-    this.retryText,
-  }) : kind = ChatItemKind.notice,
-       time = null;
-
-  final ChatItemKind kind;
-  final String id;
-  int? time;
-
-  // user
-  String text = '';
-  bool provisional = false;
-  List<ChatImage> images = [];
-
-  // assistant: ordered blocks ('text' | 'reasoning')
-  List<AssistantBlock> blocks = [];
-  Map<String, dynamic>? usage;
-  bool interrupted = false;
-
-  // notice
-  bool isError = false;
-  String? retryText;
-
-  /// A notice still awaiting its outcome (slash-command status rows): the UI
-  /// renders a spinner until the paired command/done settles it.
-  bool pending = false;
-
-  // tool
-  String callId = '';
-  String name = '';
-  String arguments = '';
-  String? resultText;
-  bool resultIsError = false;
-  bool completed = false;
-}
-
-enum ChatItemKind { user, assistant, tool, notice }
-
-class AssistantBlock {
-  AssistantBlock(this.type, this.text);
-  final String type; // 'text' | 'reasoning'
-  String text;
 }
 
 /// A pending approval the user must answer.
@@ -1971,34 +1880,12 @@ class AppState extends ChangeNotifier {
         if (sessionId == selectedSessionId) {
           queuedTasks
             ..clear()
-            ..addAll(_decodeQueuedTasks(p['items'] as List?));
+            ..addAll(parseQueuedTasks(p['items']));
         }
       default:
         return;
     }
     notifyListeners();
-  }
-
-  List<QueuedTask> _decodeQueuedTasks(List? rawItems) {
-    return [
-      for (final raw in rawItems?.whereType<Map>() ?? const <Map>[])
-        if (raw['placement'] == 'queued' || raw['placement'] == 'steering')
-          QueuedTask(
-            id: raw['id'] as String? ?? '',
-            placement: raw['placement'] as String,
-            text: ((raw['message'] as Map?)?['content'] as List? ?? const [])
-                .whereType<Map>()
-                .where((block) => block['type'] == 'text')
-                .map((block) => block['text'] as String? ?? '')
-                .where((text) => text.isNotEmpty)
-                .join('\n'),
-            imageCount:
-                ((raw['message'] as Map?)?['content'] as List? ?? const [])
-                    .whereType<Map>()
-                    .where((block) => block['type'] == 'image')
-                    .length,
-          ),
-    ];
   }
 
   /// Test-only entry into the host-frame fold.
@@ -2056,29 +1943,11 @@ class AppState extends ChangeNotifier {
         final source =
             (data['source'] as Map?)?.cast<String, dynamic>() ?? const {};
         final kind = source['kind'];
-        final content = (data['content'] as List?) ?? const [];
-        final text = content
-            .whereType<Map>()
-            .where((b) => b['type'] == 'text')
-            .map((b) => b['text'] as String? ?? '')
-            .join('\n');
-        final images = content
-            .whereType<Map>()
-            .where((b) => b['type'] == 'image')
-            .map((b) {
-              final ref = (b['attachment'] as Map?)?.cast<String, dynamic>();
-              if (ref == null) return null;
-              return ChatImage(
-                attachmentId: ref['attachmentId'] as String,
-                mediaType: ref['mediaType'] as String,
-                bytes: (ref['bytes'] as num?)?.toInt(),
-                width: (ref['width'] as num?)?.toInt(),
-                height: (ref['height'] as num?)?.toInt(),
-                name: ref['name'] as String?,
-              );
-            })
-            .whereType<ChatImage>()
-            .toList();
+        final content = data['content'];
+        final text = textFromContent(content);
+        final images = imageAttachmentsFromContent(
+          content,
+        ).map(_chatImageFromParsed).toList();
         if (kind == 'user') {
           final rpcId = source['rpcId'] as String?;
           final provisional = rpcId != null
@@ -2100,35 +1969,14 @@ class AppState extends ChangeNotifier {
         final key = '${data['turn']}:${data['step']}';
         final streaming = into == null ? _streams.remove(key) : null;
         if (streaming != null) target.remove(streaming);
-        final content =
-            (data['message'] as Map?)?['content'] as List? ?? const [];
-        final blocks = <AssistantBlock>[];
-        final images = <ChatImage>[];
-        for (final block in content.whereType<Map>()) {
-          if (block['type'] == 'text') {
-            blocks.add(AssistantBlock('text', block['text'] as String? ?? ''));
-          } else if (block['type'] == 'reasoning') {
-            blocks.add(
-              AssistantBlock('reasoning', block['text'] as String? ?? ''),
-            );
-          } else if (block['type'] == 'image') {
-            final ref = (block['attachment'] as Map?)?.cast<String, dynamic>();
-            if (ref != null &&
-                ref['attachmentId'] is String &&
-                ref['mediaType'] is String) {
-              images.add(
-                ChatImage(
-                  attachmentId: ref['attachmentId'] as String,
-                  mediaType: ref['mediaType'] as String,
-                  bytes: (ref['bytes'] as num?)?.toInt(),
-                  width: (ref['width'] as num?)?.toInt(),
-                  height: (ref['height'] as num?)?.toInt(),
-                  name: ref['name'] as String?,
-                ),
-              );
-            }
-          }
-        }
+        final parsed = parseAssistantContent(
+          (data['message'] as Map?)?['content'],
+        );
+        final blocks = [
+          for (final block in parsed.blocks)
+            AssistantBlock(block.type, block.text),
+        ];
+        final images = parsed.images.map(_chatImageFromParsed).toList();
         if (blocks.isNotEmpty ||
             images.isNotEmpty ||
             data['interrupted'] == true) {
@@ -2189,14 +2037,16 @@ class AppState extends ChangeNotifier {
           final block = (content.first as Map).cast<String, dynamic>();
           final callId = block['toolCallId'] as String? ?? '';
           final item = _toolItems[callId];
-          final text = _toolResultText(block);
-          final images = _resultImages(block);
+          final parsed = parseToolResult(
+            block['content'],
+            eventError: block['isError'] == true || data['error'] != null,
+          );
+          final images = parsed.images.map(_chatImageFromParsed).toList();
           if (item != null) {
             item
-              ..resultText = text
+              ..resultText = parsed.text
               ..images = images
-              ..resultIsError =
-                  block['isError'] == true || data['error'] != null
+              ..resultIsError = parsed.isError
               ..completed = true;
           } else if (into == null) {
             // Result without a seen call (page boundary): render standalone.
@@ -2207,9 +2057,9 @@ class AppState extends ChangeNotifier {
                     name: 'tool',
                     arguments: '',
                   )
-                  ..resultText = text
+                  ..resultText = parsed.text
                   ..images = images
-                  ..resultIsError = block['isError'] == true
+                  ..resultIsError = parsed.isError
                   ..completed = true;
             target.add(standalone);
           }
@@ -2337,6 +2187,15 @@ class AppState extends ChangeNotifier {
     if (into == null) _scheduleSave();
   }
 
+  ChatImage _chatImageFromParsed(ParsedAttachment image) => ChatImage(
+    attachmentId: image.attachmentId,
+    mediaType: image.mediaType,
+    bytes: image.bytes,
+    width: image.width,
+    height: image.height,
+    name: image.name,
+  );
+
   int _lastLiveSeq = -1;
 
   void _appendDelta(ChatItem item, String type, int index, String delta) {
@@ -2350,43 +2209,6 @@ class AppState extends ChangeNotifier {
       return;
     }
     block.text += delta;
-  }
-
-  String _toolResultText(Map<String, dynamic> block) {
-    final content = (block['content'] as List?) ?? const [];
-    final parts = <String>[];
-    for (final part in content.whereType<Map>()) {
-      if (part['type'] == 'text') parts.add(part['text'] as String? ?? '');
-      if (part['type'] == 'image') parts.add('[图片]');
-    }
-    return parts.join('\n');
-  }
-
-  /// Image attachment references carried by a tool result; generated images
-  /// (image tools, run_code output) arrive here, mirroring the web fold.
-  List<ChatImage> _resultImages(Map<String, dynamic> block) {
-    final content = (block['content'] as List?) ?? const [];
-    return content
-        .whereType<Map>()
-        .where((part) => part['type'] == 'image')
-        .map((part) {
-          final ref = (part['attachment'] as Map?)?.cast<String, dynamic>();
-          if (ref == null ||
-              ref['attachmentId'] is! String ||
-              ref['mediaType'] is! String) {
-            return null;
-          }
-          return ChatImage(
-            attachmentId: ref['attachmentId'] as String,
-            mediaType: ref['mediaType'] as String,
-            bytes: (ref['bytes'] as num?)?.toInt(),
-            width: (ref['width'] as num?)?.toInt(),
-            height: (ref['height'] as num?)?.toInt(),
-            name: ref['name'] as String?,
-          );
-        })
-        .whereType<ChatImage>()
-        .toList();
   }
 
   @override
