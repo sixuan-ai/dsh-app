@@ -34,6 +34,9 @@ import 'state.dart';
 /// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
 const kDefaultServerUrl = 'https://dsh.ainotex.com';
 
+/// Direct Shenzhen relay endpoint (nginx → frps → auth proxy), no Cloudflare.
+const kDirectServerUrl = 'https://sz.ainotex.com';
+
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
 /// download tests; production uses the public domain.
@@ -294,7 +297,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _switchConnection(String mode) async {
     final prefs = await SharedPreferences.getInstance();
-    var target = mode == 'lan' ? _localUrl : _remoteUrl;
+    var target = switch (mode) {
+      'lan' => _localUrl,
+      // Direct Shenzhen relay: same account and credentials, no Cloudflare.
+      'direct' => kDirectServerUrl,
+      _ => _remoteUrl,
+    };
     if (mode == 'public' && (target == null || target.isEmpty)) {
       final user = state.authUsername;
       final pass = state.authPassword;
@@ -323,7 +331,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _connectionMode = mode);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mode == 'lan' ? '已切换到本地连接' : '已切换到远程连接')),
+        SnackBar(
+          content: Text(switch (mode) {
+            'lan' => '已切换到本地连接',
+            'direct' => '已切换到深圳直连',
+            _ => '已切换到远程连接',
+          }),
+        ),
       );
     } else {
       setState(() => _connectionMode = previousMode);
@@ -347,6 +361,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         localAvailable: _localAvailable,
         onSwitchRemote: () => _switchConnection('public'),
         onSwitchLocal: () => _switchConnection('lan'),
+        onSwitchDirect: () => _switchConnection('direct'),
         onRefreshLocal: _checkLocalConnection,
       ),
     );

@@ -51,4 +51,27 @@ void main() {
     final inactiveTitle = tester.widget<Text>(find.text('远程连接'));
     expect(inactiveTitle.style?.color, isNull);
   });
+
+  testWidgets('shows the direct Shenzhen card when wired', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConnectionCenterSheet(
+            connectionMode: 'direct',
+            checkingLocal: false,
+            localAvailable: false,
+            onSwitchRemote: () {},
+            onSwitchLocal: () {},
+            onRefreshLocal: () {},
+            onSwitchDirect: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('深圳直连'), findsOneWidget);
+    expect(find.text('当前正在使用'), findsOneWidget);
+    final directTitle = tester.widget<Text>(find.text('深圳直连'));
+    expect(directTitle.style?.color, P.accentLight);
+  });
 }

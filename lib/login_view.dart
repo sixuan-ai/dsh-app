@@ -47,7 +47,10 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     if (!mounted) return;
     setState(() {
       if (user != null) _user.text = user;
-      _connectionMode = prefs.getString('connectionMode') ?? 'public';
+      final storedMode = prefs.getString('connectionMode') ?? 'public';
+      // The login page only models public/LAN; other stored modes (e.g. the
+      // direct Shenzhen relay) present as public until the user re-picks.
+      _connectionMode = storedMode == 'lan' ? 'lan' : 'public';
       _lanUrl.text =
           prefs.getString('lanServerUrl') ?? 'http://192.168.1.100:3080';
     });

@@ -14,6 +14,7 @@ class ConnectionCenterSheet extends StatelessWidget {
     required this.onSwitchRemote,
     required this.onSwitchLocal,
     required this.onRefreshLocal,
+    this.onSwitchDirect,
   });
 
   final String connectionMode;
@@ -22,6 +23,9 @@ class ConnectionCenterSheet extends StatelessWidget {
   final VoidCallback onSwitchRemote;
   final VoidCallback onSwitchLocal;
   final VoidCallback onRefreshLocal;
+
+  /// Switches to the direct Shenzhen relay (low-latency route).
+  final VoidCallback? onSwitchDirect;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +59,22 @@ class ConnectionCenterSheet extends StatelessWidget {
                 onSwitchRemote();
               },
             ),
+            if (onSwitchDirect != null) ...[
+              const SizedBox(height: 10),
+              _ConnectionCard(
+                icon: Icons.bolt_rounded,
+                title: '深圳直连',
+                subtitle: connectionMode == 'direct'
+                    ? '当前正在使用'
+                    : '不经过 Cloudflare，国内延迟更低更稳',
+                active: connectionMode == 'direct',
+                actionLabel: '切换',
+                onSwitch: () {
+                  Navigator.pop(context);
+                  onSwitchDirect!();
+                },
+              ),
+            ],
             const SizedBox(height: 10),
             _ConnectionCard(
               icon: Icons.lan_outlined,
