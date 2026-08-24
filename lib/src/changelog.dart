@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.22';
+const kAppVersion = '1.22.23';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.23',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '登录页密码支持显示/隐藏切换，主按钮增加品牌辉光',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.22',
     date: '2026-08-24',
