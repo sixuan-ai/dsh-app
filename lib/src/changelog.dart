@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.17';
+const kAppVersion = '1.22.18';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.18',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '主页按 Header、统计、聊天和输入区分离状态监听，减少无关区域重建',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.17',
     date: '2026-08-24',
