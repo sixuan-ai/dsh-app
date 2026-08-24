@@ -20,21 +20,78 @@ class ChatList extends StatefulWidget {
   State<ChatList> createState() => _ChatListState();
 }
 
-String chatTailRevision(List<ChatItem> items) {
-  if (items.isEmpty) return '';
-  final item = items.last;
-  final blockRevision = item.blocks
-      .map((block) => '${block.type}:${block.text.length}')
-      .join('|');
-  return '${item.id}:${item.kind.name}:${item.text.length}:$blockRevision:'
-      '${item.resultText?.length ?? -1}:${item.pending}:${item.completed}:'
-      '${item.interrupted}:${item.images.length}';
+int chatItemRevision(ChatItem item) => Object.hashAll([
+  item.id,
+  item.kind,
+  item.time,
+  item.text,
+  item.provisional,
+  item.interrupted,
+  item.isError,
+  item.retryText,
+  item.pending,
+  item.callId,
+  item.name,
+  item.arguments,
+  item.resultText,
+  item.resultIsError,
+  item.completed,
+  for (final block in item.blocks) Object.hash(block.type, block.text),
+  for (final image in item.images)
+    Object.hash(
+      image.attachmentId,
+      image.mediaType,
+      image.bytes,
+      image.width,
+      image.height,
+      image.name,
+      image.data?.length,
+    ),
+]);
+
+int? chatTailRevision(List<ChatItem> items) =>
+    items.isEmpty ? null : chatItemRevision(items.last);
+
+class ChatItemBoundary extends StatefulWidget {
+  const ChatItemBoundary({
+    super.key,
+    required this.state,
+    required this.item,
+    required this.animate,
+  });
+
+  final AppState state;
+  final ChatItem item;
+  final bool animate;
+
+  @override
+  State<ChatItemBoundary> createState() => _ChatItemBoundaryState();
+}
+
+class _ChatItemBoundaryState extends State<ChatItemBoundary> {
+  int? _revision;
+  late Widget _child;
+
+  @override
+  Widget build(BuildContext context) {
+    final revision = chatItemRevision(widget.item);
+    if (_revision != revision) {
+      _revision = revision;
+      _child = ChatItemView(
+        key: ValueKey('${widget.item.id}:$revision'),
+        state: widget.state,
+        item: widget.item,
+        animate: widget.animate,
+      );
+    }
+    return _child;
+  }
 }
 
 class _ChatListState extends State<ChatList> {
   final ScrollController _controller = ScrollController();
   int _lastCount = -1;
-  String? _lastTailRevision;
+  int? _lastTailRevision;
   bool _scrollScheduled = false;
 
   /// Entrance-animation baseline: items at or above this index animate in.
@@ -162,7 +219,7 @@ class _ChatListState extends State<ChatList> {
         final item = state.items[itemIndex];
         final prev = itemIndex > 0 ? state.items[itemIndex - 1] : null;
         final showTime = _needsTimeDivider(prev, item);
-        final body = ChatItemView(
+        final body = ChatItemBoundary(
           key: ValueKey(item.id),
           state: state,
           item: item,

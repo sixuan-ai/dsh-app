@@ -10,6 +10,7 @@ void main() {
     );
     final items = [first];
     final initial = chatTailRevision(items);
+    expect(initial, isNotNull);
 
     first.blocks.first.text = 'hello world';
     expect(chatTailRevision(items), isNot(initial));
@@ -17,6 +18,13 @@ void main() {
     final afterChunk = chatTailRevision(items);
     final unrelated = ChatItem.notice(id: 'older', text: 'unrelated');
     expect(chatTailRevision([unrelated, first]), afterChunk);
+  });
+
+  test('item revision captures same-length rendered content changes', () {
+    final notice = ChatItem.notice(id: 'notice-1', text: 'abcd');
+    final initial = chatItemRevision(notice);
+    notice.text = 'wxyz';
+    expect(chatItemRevision(notice), isNot(initial));
   });
 
   test('tail revision captures tool completion without list growth', () {
