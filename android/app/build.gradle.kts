@@ -71,6 +71,9 @@ kotlin {
 dependencies {
     // FileProvider backs the in-app update installer channel.
     implementation("androidx.core:core:1.13.1")
+    // Android-native HTTPS probe used to compare OkHttp/Conscrypt against
+    // Dart's TLS stack without replacing the production transport yet.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 

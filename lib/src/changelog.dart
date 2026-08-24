@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.3';
+const kAppVersion = '1.24.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.4',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '深圳直连失败后增加 Android 原生 OkHttp 对照探测，明确区分 Dart TLS 问题与手机/运营商链路问题，不改变现有消息和 WebSocket 网络层',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.3',
     date: '2026-08-24',

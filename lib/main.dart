@@ -8,6 +8,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,6 +21,7 @@ import 'quick_start.dart';
 import 'question_dialog.dart';
 import 'src/notifications.dart';
 import 'src/protocol.dart';
+import 'src/native_probe.dart';
 import 'src/social.dart';
 import 'update_dialogs.dart';
 import 'src/theme.dart';
@@ -41,6 +43,10 @@ const kDirectServerUrl = 'https://sz.ainotex.com';
 /// 443 for unregistered domains and RST those TLS handshakes; 9443 sits
 /// outside that inspection, so the app retries the direct route here.
 const kDirectServerFallbackUrl = 'https://sz.ainotex.com:9443';
+
+const _nativeNetworkChannel = MethodChannel(
+  'dev.dsh.dsh_mobile/native_network',
+);
 
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
@@ -300,6 +306,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
   }
 
+  Future<Map<String, dynamic>?> _nativeProbe(String url) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      final value = await _nativeNetworkChannel.invokeMethod<dynamic>(
+        'probeDsh',
+        {
+          'url': url,
+          'username': state.authUsername,
+          'password': state.authPassword,
+        },
+      );
+      if (value is Map) return value.cast<String, dynamic>();
+    } on PlatformException catch (error) {
+      return {'ok': false, 'errorType': error.code, 'error': error.message};
+    } on MissingPluginException {
+      return {
+        'ok': false,
+        'errorType': 'missing-plugin',
+        'error': 'native channel unavailable',
+      };
+    }
+    return null;
+  }
+
   Future<void> _switchConnection(String mode) async {
     final prefs = await SharedPreferences.getInstance();
     var target = switch (mode) {
@@ -329,6 +359,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
     final previousMode = _connectionMode;
     var ok = false;
+    String? nativeProbeSummary;
     if (mode == 'direct') {
       // Try 443 first, then the 9443 fallback that escapes the carrier's
       // unregistered-domain RST sampling on the default HTTPS port.
@@ -340,6 +371,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           target = candidate;
           ok = true;
           break;
+        }
+      }
+      if (!ok) {
+        final nativeResult = await _nativeProbe(kDirectServerFallbackUrl);
+        if (nativeResult != null) {
+          nativeProbeSummary = formatNativeProbeResult(nativeResult);
         }
       }
     } else {
@@ -366,7 +403,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            reason == null ? '切换失败，已保持原来的连接' : '切换失败: $reason',
+            nativeProbeSummary ??
+                (reason == null ? '切换失败，已保持原来的连接' : '切换失败: $reason'),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
