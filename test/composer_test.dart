@@ -5,6 +5,7 @@ library;
 import 'dart:convert';
 
 import 'package:dsh_mobile/chat_view.dart';
+import 'package:dsh_mobile/login_view.dart';
 import 'package:dsh_mobile/composer.dart';
 import 'package:dsh_mobile/main.dart';
 import 'package:dsh_mobile/state.dart';
@@ -103,7 +104,14 @@ void main() {
 
   testWidgets('login offers public and LAN connection modes', (tester) async {
     final app = AppState();
-    await tester.pumpWidget(MaterialApp(home: ServerSetupPage(state: app)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ServerSetupPage(
+          state: app,
+          defaultServerUrl: 'https://example.com',
+        ),
+      ),
+    );
     expect(find.text('远程连接'), findsOneWidget);
     expect(find.text('本地连接'), findsOneWidget);
     await tester.tap(find.text('本地连接'));
