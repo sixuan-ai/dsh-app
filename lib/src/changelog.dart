@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.4';
+const kAppVersion = '1.24.5';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.5',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '深圳直连切换到 dsh.qxrobot.com：保持同一深圳服务器和 DSH 后端，绕开 sz.ainotex.com 的 TLS/SNI 重置问题',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.4',
     date: '2026-08-24',

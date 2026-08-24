@@ -37,12 +37,10 @@ import 'state.dart';
 const kDefaultServerUrl = 'https://dsh.ainotex.com';
 
 /// Direct Shenzhen relay endpoint (nginx → frps → auth proxy), no Cloudflare.
-const kDirectServerUrl = 'https://sz.ainotex.com';
+const kDirectServerUrl = 'https://dsh.qxrobot.com';
 
-/// Fallback Shenzhen entry on port 9443. Mainland carriers sample-inspect
-/// 443 for unregistered domains and RST those TLS handshakes; 9443 sits
-/// outside that inspection, so the app retries the direct route here.
-const kDirectServerFallbackUrl = 'https://sz.ainotex.com:9443';
+/// Legacy Shenzhen entry retained only as a fallback during migration.
+const kDirectServerFallbackUrl = 'https://sz.ainotex.com';
 
 const _nativeNetworkChannel = MethodChannel(
   'dev.dsh.dsh_mobile/native_network',
@@ -361,8 +359,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     var ok = false;
     String? nativeProbeSummary;
     if (mode == 'direct') {
-      // Try 443 first, then the 9443 fallback that escapes the carrier's
-      // unregistered-domain RST sampling on the default HTTPS port.
+      // Prefer the qxrobot hostname; retain the old ainotex hostname for
+      // rollback compatibility while DNS and installed clients converge.
       for (final candidate in const [
         kDirectServerUrl,
         kDirectServerFallbackUrl,
@@ -374,7 +372,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
       }
       if (!ok) {
-        final nativeResult = await _nativeProbe(kDirectServerFallbackUrl);
+        final nativeResult = await _nativeProbe(kDirectServerUrl);
         if (nativeResult != null) {
           nativeProbeSummary = formatNativeProbeResult(nativeResult);
         }
