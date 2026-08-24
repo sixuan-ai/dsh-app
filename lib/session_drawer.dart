@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'composer.dart';
+import 'directory_tree_page.dart';
+import 'network_diagnostics_page.dart';
 import 'pet_page.dart';
 import 'src/ai_hub_pages.dart';
 import 'social_page.dart';
@@ -231,6 +233,35 @@ class _SessionDrawerState extends State<SessionDrawer> {
               Navigator.of(context).pop();
               Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => PetPage(state: state)),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.folder_open_outlined,
+            label: '目录浏览',
+            caption: '电脑上的目录',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      DirectoryTreePage(directoryLoader: state.listDirectory),
+                ),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.network_check_rounded,
+            label: '网络诊断',
+            caption: '延迟与抖动',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => NetworkDiagnosticsPage(state: state),
+                ),
               );
             },
           ),

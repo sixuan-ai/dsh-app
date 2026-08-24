@@ -11,6 +11,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
+import 'src/directory_listing.dart';
 import 'src/frame_router.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
@@ -404,6 +405,26 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Lists one directory level on the connected host (read-only browse).
+  /// Without [path] the backend lists the host home directory.
+  Future<DirectoryListingView> listDirectory([String? path]) async {
+    final client = _api;
+    if (client == null) throw StateError('未连接服务器');
+    final value =
+        await client.call('host.listDirectory', {'path': ?path})
+            as Map<String, dynamic>;
+    return DirectoryListingView.fromJson(value);
+  }
+
+  /// Measures one round trip to the connected host; throws on failure.
+  Future<int> pingHost() async {
+    final client = _api;
+    if (client == null) throw StateError('未连接服务器');
+    final stopwatch = Stopwatch()..start();
+    await client.call('host.describe', {});
+    return stopwatch.elapsedMilliseconds;
   }
 
   /// Switches after the target passes a real DSH health check. If activation
