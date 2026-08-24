@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
+import 'composer_input.dart';
 import 'src/theme.dart';
 import 'state.dart';
 
@@ -26,12 +27,6 @@ class _ComposerState extends State<Composer> {
   final FocusNode _focusNode = FocusNode();
   final List<PromptImage> _images = [];
   bool _picking = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() => setState(() {}));
-  }
 
   @override
   void dispose() {
@@ -190,8 +185,6 @@ class _ComposerState extends State<Composer> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.state.selectedSessionId != null;
-    final canSend =
-        enabled && (_controller.text.trim().isNotEmpty || _images.isNotEmpty);
     return SafeArea(
       top: false,
       child: Padding(
@@ -250,93 +243,24 @@ class _ComposerState extends State<Composer> {
                     ),
                   ),
                 ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: IconButton(
-                      tooltip: '快捷命令',
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: P.textSecondary,
-                      onPressed: enabled ? _openCommands : null,
-                    ),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      enabled: enabled,
-                      minLines: 1,
-                      maxLines: 6,
-                      textInputAction: TextInputAction.newline,
-                      style: const TextStyle(fontSize: 15.5),
-                      decoration: InputDecoration(
-                        hintText: enabled ? '发消息给 DSH…' : '先选择或新建一个会话',
-                        hintStyle: TextStyle(color: P.textTertiary),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  if (widget.state.selectedRunning)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6, bottom: 2),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: P.danger.withValues(alpha: 0.16),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: P.danger.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: IconButton(
-                          tooltip: '停止生成',
-                          icon: Icon(Icons.stop_rounded, color: P.danger),
-                          onPressed: () => widget.state.cancelTurn(),
-                        ),
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: IconButton(
-                      tooltip: '添加图片',
-                      icon: _picking
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.image_outlined),
-                      color: P.textSecondary,
-                      onPressed: enabled && !_picking && _images.length < 4
-                          ? _pickImage
-                          : null,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    // Container, not Ink: on Xiaomi HyperOS the Ink+gradient
-                    // decoration silently fails to paint, leaving the white
-                    // (onAccent) arrow on a white card — an invisible but still
-                    // tappable send button (v1.10.0 field report).
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: canSend ? P.brandGradient : null,
-                        color: canSend ? null : P.fillLight,
-                        shape: BoxShape.circle,
-                        boxShadow: canSend ? [P.brandGlow] : null,
-                      ),
-                      child: IconButton(
-                        tooltip: '发送',
-                        icon: Icon(
-                          Icons.arrow_upward_rounded,
-                          color: canSend ? P.onAccent : P.textTertiary,
-                        ),
-                        onPressed: canSend ? _send : null,
-                      ),
-                    ),
-                  ),
-                ],
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) => ComposerInput(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  enabled: enabled,
+                  canSend:
+                      enabled &&
+                      (value.text.trim().isNotEmpty || _images.isNotEmpty),
+                  running: widget.state.selectedRunning,
+                  picking: _picking,
+                  canPickImage: !_picking && _images.length < 4,
+                  onChanged: (_) {},
+                  onOpenCommands: _openCommands,
+                  onPickImage: _pickImage,
+                  onStop: widget.state.cancelTurn,
+                  onSend: _send,
+                ),
               ),
             ],
           ),
