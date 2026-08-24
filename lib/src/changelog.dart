@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.15';
+const kAppVersion = '1.22.16';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.16',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '流式回答时仅重建内容发生变化的聊天项，减少长会话 Markdown 重复解析',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.15',
     date: '2026-08-24',
