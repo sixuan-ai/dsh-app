@@ -163,6 +163,16 @@ class Strings {
     required this.modePlan,
     required this.modeAuto,
     required this.sessionName,
+    required this.dshUpdate,
+    required this.dshInstalled,
+    required this.dshLatest,
+    required this.dshUpToDate,
+    required this.dshUpdateAvailable,
+    required this.dshHowToUpdate,
+    required this.dshUpdateCommandHint,
+    required this.dshReleaseNotes,
+    required this.dshCheckFailed,
+    required this.refresh,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -285,6 +295,16 @@ class Strings {
   final String modePlan;
   final String modeAuto;
   final String sessionName;
+  final String dshUpdate;
+  final String dshInstalled;
+  final String dshLatest;
+  final String dshUpToDate;
+  final String dshUpdateAvailable;
+  final String dshHowToUpdate;
+  final String dshUpdateCommandHint;
+  final String dshReleaseNotes;
+  final String dshCheckFailed;
+  final String refresh;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -407,6 +427,16 @@ class Strings {
     modePlan: '计划模式',
     modeAuto: '自动模式',
     sessionName: '会话名称',
+    dshUpdate: 'DSH 更新',
+    dshInstalled: '已安装版本',
+    dshLatest: '最新版本',
+    dshUpToDate: '已是最新版本',
+    dshUpdateAvailable: '发现新版本',
+    dshHowToUpdate: '更新方法',
+    dshUpdateCommandHint: '在电脑上执行上面的命令即可升级（需 npm）',
+    dshReleaseNotes: '更新说明',
+    dshCheckFailed: '检查失败',
+    refresh: '刷新',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -533,6 +563,17 @@ class Strings {
     modePlan: 'Plan mode',
     modeAuto: 'Auto mode',
     sessionName: 'Session name',
+    dshUpdate: 'DSH Update',
+    dshInstalled: 'Installed version',
+    dshLatest: 'Latest version',
+    dshUpToDate: 'Up to date',
+    dshUpdateAvailable: 'Update available',
+    dshHowToUpdate: 'How to update',
+    dshUpdateCommandHint:
+        'Run the command above on your PC to upgrade (requires npm)',
+    dshReleaseNotes: 'Release notes',
+    dshCheckFailed: 'Check failed',
+    refresh: 'Refresh',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

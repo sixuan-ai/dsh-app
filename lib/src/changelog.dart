@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.28.1';
+const kAppVersion = '1.29.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.29.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '设置中心新增 DSH 更新：对比电脑上安装的 DSH 版本与 npm 最新版，显示更新说明与升级命令',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.28.1',
     date: '2026-08-25',
