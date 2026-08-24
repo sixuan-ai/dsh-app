@@ -60,6 +60,49 @@ void main() {
     await hostStreams.last.close();
   });
 
+  test('schedules one reconnect and resets attempts after stability', () {
+    final timers = <_FakeTimer>[];
+    final muxStreams = <StreamController<ServerFrame>>[];
+    final hostStreams = <StreamController<ServerFrame>>[];
+    var reconnects = 0;
+    final controller = SessionConnectionController(
+      muxStream: () {
+        final stream = StreamController<ServerFrame>();
+        muxStreams.add(stream);
+        return stream.stream;
+      },
+      hostStream: () {
+        final stream = StreamController<ServerFrame>();
+        hostStreams.add(stream);
+        return stream.stream;
+      },
+      onMuxFrame: (_) {},
+      onHostFrame: (_) {},
+      onStreamClosed: (_) {},
+      onReconnect: () => reconnects++,
+      timerFactory: (delay, callback) {
+        final timer = _FakeTimer(delay, callback);
+        timers.add(timer);
+        return timer;
+      },
+      randomUnit: () => 0.5,
+      stableDuration: const Duration(seconds: 1),
+    );
+    controller.start();
+    controller.scheduleReconnect();
+    controller.scheduleReconnect();
+
+    expect(controller.reconnectAttempts, 1);
+    expect(timers.single.delay, const Duration(milliseconds: 2000));
+    timers.single.fire();
+    expect(reconnects, 1);
+    expect(controller.reconnectScheduled, isFalse);
+    expect(timers, hasLength(2));
+    timers.last.fire();
+    expect(controller.reconnectAttempts, 0);
+    controller.stop();
+  });
+
   test('stop prevents closed streams from requesting reconnect', () async {
     final mux = StreamController<ServerFrame>();
     final host = StreamController<ServerFrame>();
@@ -84,3 +127,26 @@ void main() {
 
 ServerFrame _frame(String rpcId) =>
     ServerFrame(rpcId: rpcId, method: 'notify', payload: const {});
+
+class _FakeTimer implements Timer {
+  _FakeTimer(this.delay, this._callback);
+
+  final Duration delay;
+  final void Function() _callback;
+  bool _active = true;
+
+  void fire() {
+    if (!_active) return;
+    _active = false;
+    _callback();
+  }
+
+  @override
+  void cancel() => _active = false;
+
+  @override
+  bool get isActive => _active;
+
+  @override
+  int get tick => _active ? 0 : 1;
+}

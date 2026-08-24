@@ -157,5 +157,5 @@ git diff --check
 - [~] 阶段一：纯事件解析和会话数据模型已抽取；序列化迁移待下一步完成
 - [x] 阶段二：聊天事件折叠器（用户、助手、工具、命令、待办和回合结束事件）
 - [x] 阶段三：下行帧路由（host/mux payload 分类与 AppState 状态提交分离）
-- [~] 阶段四：controller 已接管 stream、generation、replace 和 stop；重连 timer 待迁移
+- [x] 阶段四：连接 controller 已接管 stream、generation、replace、stop、重连 timer、attempt、稳定重置和 resume
 - [ ] 阶段五：测试与规范整理

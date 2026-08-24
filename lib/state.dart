@@ -9,7 +9,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
-import 'src/connection_backoff.dart';
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
 import 'src/frame_router.dart';
@@ -364,7 +363,6 @@ class AppState extends ChangeNotifier {
   bool _gapFillInFlight = false;
   int? _historyGapBeforeSeq;
   int? _historyGapAfterSeq;
-  Timer? _reconnectTimer;
 
   /// Prompts sent from this app, persisted locally; drives the user level.
   int promptCount = 0;
@@ -474,9 +472,6 @@ class AppState extends ChangeNotifier {
 
   void disconnect() {
     _streamsActive = false;
-    _reconnectTimer?.cancel();
-    _backoffResetTimer?.cancel();
-    _reconnectAttempts = 0;
     _saveTimer?.cancel();
     _saveTimer = null;
     _connectionController?.stop();
@@ -520,12 +515,15 @@ class AppState extends ChangeNotifier {
       hostStream: api.hostStream,
       onMuxFrame: _onMuxFrame,
       onHostFrame: _onHostFrame,
-      onStreamClosed: (_) => _scheduleReconnect(),
+      onStreamClosed: (_) {},
+      onReconnect: () {
+        unawaited(refreshSessions().catchError((_) {}));
+      },
     )..start();
   }
 
   void _replaceStreams() {
-    _connectionController?.replaceStreams();
+    _connectionController?.resume();
   }
 
   /// Mobile OS may suspend the sockets while the screen is locked. On resume,
@@ -533,43 +531,8 @@ class AppState extends ChangeNotifier {
   /// tail merge is needed; never clear the already cached conversation first.
   void resyncAfterResume() {
     if (!_streamsActive || _api == null) return;
-    _reconnectTimer?.cancel();
-    _reconnectTimer = null;
     _replaceStreams();
     unawaited(refreshSessions().catchError((_) {}));
-  }
-
-  /// Reconnect backoff: 2s doubling to a 30s cap with ±25% jitter, so a
-  /// downed tunnel does not get hammered and recovering peers do not
-  /// reconnect in lockstep. Reset after a stable minute on the wire.
-  int _reconnectAttempts = 0;
-  Timer? _backoffResetTimer;
-
-  void _scheduleReconnect() {
-    if (!_streamsActive || _reconnectTimer != null) return;
-    final delay = reconnectDelayForAttempt(
-      _reconnectAttempts,
-      jitterUnit: math.Random().nextDouble() * 2 - 1,
-    );
-    _reconnectAttempts++;
-    _reconnectTimer = Timer(delay, () async {
-      _reconnectTimer = null;
-      if (!_streamsActive || _api == null) return;
-      _replaceStreams();
-      try {
-        // The sidebar refresh can be slow on hosts with long attached logs.
-        // Do not block the selected conversation on it; session/subscribed
-        // frames trigger the small tail merge below only when the seq moved.
-        unawaited(refreshSessions().catchError((_) {}));
-        // Connected and syncing: arm the backoff reset.
-        _backoffResetTimer?.cancel();
-        _backoffResetTimer = Timer(const Duration(minutes: 1), () {
-          _reconnectAttempts = 0;
-        });
-      } catch (_) {
-        _scheduleReconnect();
-      }
-    });
   }
 
   Future<void> _refreshSessionsBestEffort() async {
