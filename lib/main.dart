@@ -341,9 +341,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     } else {
       setState(() => _connectionMode = previousMode);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('切换失败，已保持原来的连接')));
+      final reason = state.lastProbeError;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            reason == null ? '切换失败，已保持原来的连接' : '切换失败: $reason',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 

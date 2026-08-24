@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.0';
+const kAppVersion = '1.24.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.1',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复移动网络下切换深圳直连偶发"切换失败"：连接探测超时从 3 秒放宽到 10 秒并自动重试一次，失败时显示具体原因',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.0',
     date: '2026-08-24',

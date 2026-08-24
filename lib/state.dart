@@ -388,21 +388,33 @@ class AppState extends ChangeNotifier {
 
   bool get connected => _api != null && connectionError == null;
 
-  /// Probes a server without changing the active connection.
+  /// Failure detail of the most recent [probeServer] call (null on success),
+  /// surfaced by the connection-switch UI when a switch is rejected.
+  String? lastProbeError;
+
+  /// Probes a server without changing the active connection. The default
+  /// timeout suits LAN checks; remote routes over cellular need a longer one
+  /// because a dropped first TLS handshake otherwise reads as "server down".
   Future<bool> probeServer(
     String url, {
     String? username,
     String? password,
+    Duration timeout = const Duration(seconds: 3),
   }) async {
     try {
       final api = DshApi(url, username: username, password: password);
       try {
-        await api.call('host.describe', {}).timeout(const Duration(seconds: 3));
+        await api.call('host.describe', {}).timeout(timeout);
+        lastProbeError = null;
         return true;
       } finally {
         api.close();
       }
-    } catch (_) {
+    } on TimeoutException {
+      lastProbeError = '连接超时（${timeout.inSeconds} 秒内无响应）';
+      return false;
+    } catch (error) {
+      lastProbeError = error.toString();
       return false;
     }
   }
@@ -433,9 +445,25 @@ class AppState extends ChangeNotifier {
     final username = authUsername;
     final password = authPassword;
     final previousUrl = serverUrl;
-    if (!await probeServer(url, username: username, password: password)) {
-      return false;
+    // Remote probes share the 10s budget of a slow cellular handshake; one
+    // immediate retry rides out a single dropped handshake instead of
+    // reporting a healthy server as unreachable.
+    const probeTimeout = Duration(seconds: 10);
+    var reachable = await probeServer(
+      url,
+      username: username,
+      password: password,
+      timeout: probeTimeout,
+    );
+    if (!reachable) {
+      reachable = await probeServer(
+        url,
+        username: username,
+        password: password,
+        timeout: probeTimeout,
+      );
     }
+    if (!reachable) return false;
     await connect(url, username: username, password: password);
     if (connected) return true;
     if (previousUrl.isNotEmpty && previousUrl != url) {
