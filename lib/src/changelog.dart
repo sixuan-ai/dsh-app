@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.25.0';
+const kAppVersion = '1.26.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.26.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '设置中心新增 API 余额：填入 DeepSeek 密钥即可查看官方余额（可用总额/赠金/充值），密钥仅保存在本机',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.25.0',
     date: '2026-08-25',

@@ -34,6 +34,7 @@ void main() {
     expect(find.text('English'), findsOneWidget);
     expect(find.text(S.theme), findsOneWidget);
     expect(find.text(S.connectionCenter), findsOneWidget);
+    expect(find.text(S.balanceTitle), findsOneWidget);
     expect(find.text(S.feedback), findsOneWidget);
     expect(find.text(S.support), findsOneWidget);
     expect(find.text(S.checkUpdate), findsOneWidget);

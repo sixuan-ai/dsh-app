@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'balance_page.dart';
 import 'feedback_page.dart';
 import 'support_page.dart';
 import 'src/l10n.dart';
@@ -112,6 +113,13 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
                 Navigator.of(context).pop();
                 widget.onConnectionCenter();
               },
+            ),
+            _EntryTile(
+              icon: Icons.account_balance_wallet_outlined,
+              title: S.balanceTitle,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BalancePage()),
+              ),
             ),
             _SectionHeader(S.help),
             _EntryTile(

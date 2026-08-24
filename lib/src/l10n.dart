@@ -178,6 +178,20 @@ class Strings {
     required this.downloadingUpdate,
     required this.installPackage,
     required this.newVersion,
+    required this.balanceTitle,
+    required this.balanceKeyLabel,
+    required this.balanceKeyHint,
+    required this.balanceKeyLocalNote,
+    required this.balanceQuery,
+    required this.balanceNoKey,
+    required this.balanceAvailable,
+    required this.balanceUnavailable,
+    required this.balanceTotal,
+    required this.balanceGranted,
+    required this.balanceToppedUp,
+    required this.balanceRefresh,
+    required this.balanceQueryFailed,
+    required this.balanceKeyInvalid,
   });
 
   final String settings;
@@ -285,6 +299,20 @@ class Strings {
   final String downloadingUpdate;
   final String installPackage;
   final String newVersion;
+  final String balanceTitle;
+  final String balanceKeyLabel;
+  final String balanceKeyHint;
+  final String balanceKeyLocalNote;
+  final String balanceQuery;
+  final String balanceNoKey;
+  final String balanceAvailable;
+  final String balanceUnavailable;
+  final String balanceTotal;
+  final String balanceGranted;
+  final String balanceToppedUp;
+  final String balanceRefresh;
+  final String balanceQueryFailed;
+  final String balanceKeyInvalid;
 
   static const zh = Strings(
     settings: '设置',
@@ -392,6 +420,20 @@ class Strings {
     downloadingUpdate: '正在下载更新',
     installPackage: '安装包',
     newVersion: '新版本',
+    balanceTitle: 'API 余额',
+    balanceKeyLabel: 'DeepSeek API 密钥',
+    balanceKeyHint: 'sk-…（在 platform.deepseek.com 获取）',
+    balanceKeyLocalNote: '密钥仅保存在本机，用于直接查询官方余额接口，不会上传',
+    balanceQuery: '查询余额',
+    balanceNoKey: '请先填写 API 密钥',
+    balanceAvailable: '可用',
+    balanceUnavailable: '不可用',
+    balanceTotal: '可用总额',
+    balanceGranted: '赠金',
+    balanceToppedUp: '充值',
+    balanceRefresh: '刷新',
+    balanceQueryFailed: '查询失败',
+    balanceKeyInvalid: '密钥无效（401），请检查后重试',
   );
 
   static const en = Strings(
@@ -506,5 +548,20 @@ class Strings {
     downloadingUpdate: 'Downloading update',
     installPackage: 'Package',
     newVersion: 'New version',
+    balanceTitle: 'API Balance',
+    balanceKeyLabel: 'DeepSeek API Key',
+    balanceKeyHint: 'sk-… (get it at platform.deepseek.com)',
+    balanceKeyLocalNote:
+        'Stored on this device only; used to query the official balance API and never uploaded',
+    balanceQuery: 'Check Balance',
+    balanceNoKey: 'Enter your API key first',
+    balanceAvailable: 'Available',
+    balanceUnavailable: 'Unavailable',
+    balanceTotal: 'Total balance',
+    balanceGranted: 'Granted',
+    balanceToppedUp: 'Topped up',
+    balanceRefresh: 'Refresh',
+    balanceQueryFailed: 'Query failed',
+    balanceKeyInvalid: 'Invalid key (401), please check and retry',
   );
 }
