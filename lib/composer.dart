@@ -359,6 +359,7 @@ class PermissionSheet extends StatelessWidget {
               title: '完全访问',
               preset: 'danger-full-access',
               description: '全部文件可读写,且不再弹审批(需二次确认)',
+              danger: true,
               onPick: onPick,
             ),
           ],
@@ -375,6 +376,7 @@ class _PermissionOption extends StatelessWidget {
     required this.preset,
     required this.description,
     required this.onPick,
+    this.danger = false,
   });
 
   final IconData icon;
@@ -384,6 +386,9 @@ class _PermissionOption extends StatelessWidget {
   final String preset;
   final String description;
   final ValueChanged<String> onPick;
+
+  /// Danger presets (full device access) use a warning icon treatment.
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
@@ -396,10 +401,14 @@ class _PermissionOption extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            gradient: P.brandGradient,
+            gradient: danger ? null : P.brandGradient,
+            color: danger ? P.danger.withValues(alpha: 0.14) : null,
             borderRadius: BorderRadius.circular(10),
+            border: danger
+                ? Border.all(color: P.danger.withValues(alpha: 0.4))
+                : null,
           ),
-          child: Icon(icon, size: 18, color: P.onAccent),
+          child: Icon(icon, size: 18, color: danger ? P.danger : P.onAccent),
         ),
         title: Text(
           title,

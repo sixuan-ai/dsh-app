@@ -142,13 +142,21 @@ class _QuestionDialogState extends State<QuestionDialog> {
       children: [
         if (header != null && header.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              header,
-              style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 0.6,
-                color: P.accentLight,
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: P.accent.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                header,
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 0.4,
+                  color: P.accentLight,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -205,6 +213,13 @@ class _QuestionDialogState extends State<QuestionDialog> {
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: P.fillLight),
               ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: P.accent.withValues(alpha: 0.65),
+                  width: 1.2,
+                ),
+              ),
             ),
             style: const TextStyle(fontSize: 13.5),
           ),
@@ -221,7 +236,6 @@ class _QuestionDialogState extends State<QuestionDialog> {
   ) {
     final label = option['label'] as String? ?? '';
     final description = option['description'] as String?;
-    final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
@@ -231,10 +245,10 @@ class _QuestionDialogState extends State<QuestionDialog> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? primary.withValues(alpha: 0.18) : P.fillSubtle,
+            color: selected ? P.accent.withValues(alpha: 0.10) : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? primary.withValues(alpha: 0.7) : P.fillMedium,
+              color: selected ? P.accent.withValues(alpha: 0.4) : P.fillMedium,
             ),
           ),
           child: Row(
@@ -248,14 +262,21 @@ class _QuestionDialogState extends State<QuestionDialog> {
                           ? Icons.radio_button_checked
                           : Icons.radio_button_off),
                 size: 20,
-                color: selected ? primary : P.textTertiary,
+                color: selected ? P.accentLight : P.textTertiary,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(fontSize: 14)),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected ? FontWeight.w600 : null,
+                        color: selected ? P.accentLight : null,
+                      ),
+                    ),
                     if (description != null && description.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),

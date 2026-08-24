@@ -1,4 +1,5 @@
 import 'package:dsh_mobile/question_dialog.dart';
+import 'package:dsh_mobile/src/theme.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,5 +34,9 @@ void main() {
     await tester.tap(find.text('蓝色'));
     await tester.pump();
     expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
+
+    final selected = tester.widget<Text>(find.text('蓝色'));
+    expect(selected.style?.color, P.accentLight);
+    expect(selected.style?.fontWeight, FontWeight.w600);
   });
 }
