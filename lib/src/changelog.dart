@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.12';
+const kAppVersion = '1.22.13';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.13',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '连接中心拆分为独立模块，完成 main.dart 页面级解耦收尾',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.12',
     date: '2026-08-24',
