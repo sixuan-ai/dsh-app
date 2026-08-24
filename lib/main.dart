@@ -24,7 +24,7 @@ import 'src/social.dart';
 import 'update_dialogs.dart';
 import 'src/theme.dart';
 import 'src/updater.dart';
-import 'chat_view.dart';
+import 'chat_list.dart';
 import 'session_drawer.dart';
 import 'session_header.dart';
 import 'stats_bar.dart';
