@@ -4,12 +4,13 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'composer_input.dart';
+import 'src/prompt_image_normalizer.dart';
 import 'src/theme.dart';
 import 'state.dart';
 
@@ -99,11 +100,8 @@ class _ComposerState extends State<Composer> {
       );
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) throw StateError('无法读取图片');
-      final normalized = img.bakeOrientation(decoded);
-      final encoded = img.encodeJpg(normalized, quality: 88);
-      if (encoded.length > 8 * 1024 * 1024) {
+      final encoded = await compute(normalizePromptImage, bytes);
+      if (encoded.bytes.length > 8 * 1024 * 1024) {
         throw StateError('图片超过 8 MB,请换一张');
       }
       if (!mounted) return;
@@ -111,10 +109,10 @@ class _ComposerState extends State<Composer> {
         _images.add(
           PromptImage(
             mediaType: 'image/jpeg',
-            data: base64Encode(encoded),
+            data: base64Encode(encoded.bytes),
             name: picked.name,
-            width: normalized.width,
-            height: normalized.height,
+            width: encoded.width,
+            height: encoded.height,
           ),
         );
       });
