@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.21';
+const kAppVersion = '1.22.22';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.22',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '界面打磨：问题选项选中样式统一、完全访问权限改用警示色、输入框聚焦描边',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.21',
     date: '2026-08-24',
