@@ -164,19 +164,21 @@ class ModelPickerSheet extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: current
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-            : P.fillSubtle,
+        color: current ? P.accent.withValues(alpha: 0.10) : P.fillSubtle,
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
+            side: current
+                ? BorderSide(color: P.accent.withValues(alpha: 0.35))
+                : BorderSide.none,
           ),
           title: Text(
             name,
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: current ? FontWeight.w600 : FontWeight.normal,
+              color: current ? P.accentLight : null,
             ),
           ),
           subtitle: Column(
@@ -209,11 +211,7 @@ class ModelPickerSheet extends StatelessWidget {
             ],
           ),
           trailing: current
-              ? Icon(
-                  Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                )
+              ? Icon(Icons.check_circle, color: P.accentLight, size: 20)
               : hasEfforts
               ? Icon(Icons.tune, size: 18, color: P.textTertiary)
               : null,

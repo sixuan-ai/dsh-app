@@ -153,9 +153,19 @@ class _TaskQueueSheetState extends State<_TaskQueueSheet> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
-                      child: Text(
-                        '当前没有排队任务',
-                        style: TextStyle(color: P.textSecondary),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.playlist_remove_rounded,
+                            size: 34,
+                            color: P.textTertiary,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '当前没有排队任务',
+                            style: TextStyle(color: P.textSecondary),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -179,12 +189,19 @@ class _TaskQueueSheetState extends State<_TaskQueueSheet> {
                                   : '无文字任务')
                             : task.text;
                         final busy = _busyId == task.id;
+                        final steering = task.placement == 'steering';
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: P.fillSubtle,
+                            color: steering
+                                ? P.accent.withValues(alpha: 0.08)
+                                : P.fillSubtle,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: P.divider),
+                            border: Border.all(
+                              color: steering
+                                  ? P.accent.withValues(alpha: 0.35)
+                                  : P.divider,
+                            ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
