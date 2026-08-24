@@ -24,6 +24,20 @@ void main() {
     });
   });
 
+  test('disconnect clears transient queued tasks', () {
+    final app = AppState();
+    app.queuedTasks.add(
+      const QueuedTask(
+        id: 'q1',
+        placement: 'queued',
+        text: '旧任务',
+        imageCount: 0,
+      ),
+    );
+    app.disconnect();
+    expect(app.queuedTasks, isEmpty);
+  });
+
   group('event fold', () {
     test('user image references are preserved for authenticated loading', () {
       final app = AppState();
@@ -419,6 +433,42 @@ void main() {
       app.selectedSessionId = 's1';
       expect(await app.updateQueuedTask('q1', '   '), isFalse);
       expect(await app.removeQueuedTask('q1'), isFalse);
+    });
+
+    test('queued task mutation sends edit and remove payloads', () async {
+      final calls = <Map<String, dynamic>>[];
+      final app = AppState(
+        queueMutationCall: (method, payload) async {
+          calls.add({'method': method, 'payload': payload});
+        },
+      );
+      app.selectedSessionId = 's1';
+
+      expect(await app.updateQueuedTask('q1', ' 新内容 '), isTrue);
+      expect(await app.removeQueuedTask('q2'), isTrue);
+      expect(calls, [
+        {
+          'method': 'session.updateQueue',
+          'payload': {
+            'sessionId': 's1',
+            'itemId': 'q1',
+            'action': {
+              'kind': 'edit',
+              'content': [
+                {'type': 'text', 'text': '新内容'},
+              ],
+            },
+          },
+        },
+        {
+          'method': 'session.updateQueue',
+          'payload': {
+            'sessionId': 's1',
+            'itemId': 'q2',
+            'action': {'kind': 'remove'},
+          },
+        },
+      ]);
     });
 
     test(

@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:dsh_mobile/main.dart';
 import 'package:dsh_mobile/state.dart';
+import 'package:dsh_mobile/task_queue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

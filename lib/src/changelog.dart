@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.6';
+const kAppVersion = '1.22.7';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.7',
+    date: '2026-08-23',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '任务队列拆分为独立模块，降低主页面和状态层耦合',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '断开连接时清理旧队列，避免切换服务器后残留任务',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.6',
     date: '2026-08-23',

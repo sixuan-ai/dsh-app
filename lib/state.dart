@@ -12,6 +12,9 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
+import 'src/queue.dart';
+
+export 'src/queue.dart' show QueuedTask;
 
 /// Device IANA zone for prompt attribution; falls back to omission (valid
 /// for non-browser callers) when the platform lookup fails.
@@ -70,21 +73,6 @@ class SubagentRow {
   final String? label;
 
   bool get running => activity == 'running';
-}
-
-/// One server-authoritative pending task in a session inbox.
-class QueuedTask {
-  const QueuedTask({
-    required this.id,
-    required this.placement,
-    required this.text,
-    required this.imageCount,
-  });
-
-  final String id;
-  final String placement;
-  final String text;
-  final int imageCount;
 }
 
 class PromptImage {
@@ -278,10 +266,14 @@ class _TailItem {
 }
 
 /// Root application state.
+typedef QueueMutationCall =
+    Future<dynamic> Function(String method, Map<String, dynamic> payload);
+
 class AppState extends ChangeNotifier {
-  AppState();
+  AppState({@visibleForTesting this._queueMutationCall});
 
   DshApi? _api;
+  final QueueMutationCall? _queueMutationCall;
   String serverUrl = '';
   bool connecting = false;
   String? connectionError;
@@ -313,17 +305,12 @@ class AppState extends ChangeNotifier {
   Future<bool> updateQueuedTask(String itemId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
-    return _mutateQueuedTask(itemId, {
-      'kind': 'edit',
-      'content': [
-        {'type': 'text', 'text': trimmed},
-      ],
-    });
+    return _mutateQueuedTask(itemId, queueEditAction(trimmed));
   }
 
   /// Removes one still-pending queued task.
   Future<bool> removeQueuedTask(String itemId) =>
-      _mutateQueuedTask(itemId, {'kind': 'remove'});
+      _mutateQueuedTask(itemId, queueRemoveAction());
 
   Future<bool> _mutateQueuedTask(
     String itemId,
@@ -331,13 +318,26 @@ class AppState extends ChangeNotifier {
   ) async {
     final api = _api;
     final sessionId = selectedSessionId;
-    if (api == null || sessionId == null || itemId.isEmpty) return false;
+    if ((api == null && _queueMutationCall == null) ||
+        sessionId == null ||
+        itemId.isEmpty) {
+      return false;
+    }
     try {
-      await api.call('session.updateQueue', {
-        'sessionId': sessionId,
-        'itemId': itemId,
-        'action': action,
-      });
+      final call = _queueMutationCall;
+      if (call != null) {
+        await call('session.updateQueue', {
+          'sessionId': sessionId,
+          'itemId': itemId,
+          'action': action,
+        });
+      } else {
+        await api!.call('session.updateQueue', {
+          'sessionId': sessionId,
+          'itemId': itemId,
+          'action': action,
+        });
+      }
       return true;
     } catch (_) {
       return false;
@@ -581,6 +581,7 @@ class AppState extends ChangeNotifier {
     authPassword = null;
     sessions.clear();
     items.clear();
+    queuedTasks.clear();
     _itemCache.clear();
     _streams.clear();
     _toolItems.clear();
