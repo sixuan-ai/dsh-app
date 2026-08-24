@@ -30,6 +30,12 @@ class _ComposerState extends State<Composer> {
   bool _picking = false;
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
@@ -183,16 +189,24 @@ class _ComposerState extends State<Composer> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.state.selectedSessionId != null;
+    final focused = _focusNode.hasFocus;
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: P.card,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: P.isDark ? P.fillMedium : P.divider),
-            boxShadow: P.cardShadow,
+            border: Border.all(
+              color: focused
+                  ? P.accent.withValues(alpha: 0.65)
+                  : (P.isDark ? P.fillMedium : P.divider),
+              width: focused ? 1.2 : 1,
+            ),
+            boxShadow: focused ? [...P.cardShadow, P.brandGlow] : P.cardShadow,
           ),
           padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
           child: Column(

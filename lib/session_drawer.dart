@@ -624,59 +624,76 @@ class _SessionDrawerState extends State<SessionDrawer> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
-        color: selected
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-            : Colors.transparent,
+        color: selected ? P.accent.withValues(alpha: 0.10) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          dense: true,
-          leading: Icon(
-            archived
-                ? Icons.archive_outlined
-                : pinned
-                ? Icons.push_pin
-                : Icons.circle,
-            size: pinned || archived ? 18 : 8,
-            color: archived
-                ? P.textTertiary
-                : pinned
-                ? P.accentLight
-                : row.running
-                ? P.success
-                : P.textTertiary,
-          ),
-          title: Text(
-            row.title?.isNotEmpty == true ? row.title! : '新会话',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-          subtitle: Text(
-            _timeAgo(row.updatedAt),
-            style: TextStyle(fontSize: 11.5, color: P.textTertiary),
-          ),
-          trailing: PopupMenuButton<String>(
-            tooltip: '会话操作',
-            onSelected: (action) => _sessionAction(row, action),
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: pinned ? 'unpin' : 'pin',
-                child: Text(pinned ? '取消置顶' : '置顶'),
+        child: Stack(
+          children: [
+            ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
-              if (!archived)
-                const PopupMenuItem(value: 'archive', child: Text('归档')),
-            ],
-          ),
-          onTap: () {
-            HapticFeedback.selectionClick();
-            Navigator.of(context).pop();
-            state.openSession(row.sessionId);
-          },
+              dense: true,
+              contentPadding: const EdgeInsets.only(left: 18, right: 4),
+              leading: Icon(
+                archived
+                    ? Icons.archive_outlined
+                    : pinned
+                    ? Icons.push_pin
+                    : Icons.circle,
+                size: pinned || archived ? 18 : 8,
+                color: archived
+                    ? P.textTertiary
+                    : pinned
+                    ? P.accentLight
+                    : row.running
+                    ? P.success
+                    : P.textTertiary,
+              ),
+              title: Text(
+                row.title?.isNotEmpty == true ? row.title! : '新会话',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  color: selected ? P.accentLight : null,
+                ),
+              ),
+              subtitle: Text(
+                _timeAgo(row.updatedAt),
+                style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+              ),
+              trailing: PopupMenuButton<String>(
+                tooltip: '会话操作',
+                onSelected: (action) => _sessionAction(row, action),
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: pinned ? 'unpin' : 'pin',
+                    child: Text(pinned ? '取消置顶' : '置顶'),
+                  ),
+                  if (!archived)
+                    const PopupMenuItem(value: 'archive', child: Text('归档')),
+                ],
+              ),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.of(context).pop();
+                state.openSession(row.sessionId);
+              },
+            ),
+            if (selected)
+              Positioned(
+                left: 5,
+                top: 11,
+                bottom: 11,
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    gradient: P.brandGradient,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

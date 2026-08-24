@@ -46,6 +46,31 @@ void main() {
     expect(tester.widget<IconButton>(sendButton()).onPressed, isNotNull);
   });
 
+  testWidgets('composer highlights its border while the field is focused', (
+    tester,
+  ) async {
+    final app = AppState();
+    app.selectedSessionId = 's1';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: Composer(state: app)),
+      ),
+    );
+
+    BoxDecoration decoration() =>
+        (tester
+                .widget<AnimatedContainer>(find.byType(AnimatedContainer))
+                .decoration!)
+            as BoxDecoration;
+
+    expect(decoration().border!.top.width, 1);
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(decoration().border!.top.width, greaterThan(1));
+    expect(decoration().boxShadow!.length, greaterThan(1));
+  });
+
   testWidgets('quick commands contain the permission settings entry', (
     tester,
   ) async {

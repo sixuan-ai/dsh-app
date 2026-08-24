@@ -96,6 +96,7 @@ class _UserBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(6),
               ),
+              border: Border.all(color: P.onAccent.withValues(alpha: 0.22)),
               boxShadow: [
                 BoxShadow(
                   color: P.accent.withValues(alpha: 0.3),
@@ -251,6 +252,13 @@ class _AssistantMessage extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: P.brandGradient,
               borderRadius: BorderRadius.circular(9),
+              boxShadow: [
+                BoxShadow(
+                  color: P.accent.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(Icons.auto_awesome, color: P.onAccent, size: 16),
           ),
@@ -280,7 +288,10 @@ MarkdownStyleSheet _markdownStyle(BuildContext context) {
     h2: base.copyWith(fontSize: 19, fontWeight: FontWeight.bold),
     h3: base.copyWith(fontSize: 17, fontWeight: FontWeight.w600),
     h4: base.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
+    blockSpacing: 10,
+    listIndent: 22,
     listBullet: base,
+    listBulletPadding: const EdgeInsets.only(right: 6),
     strong: base.copyWith(fontWeight: FontWeight.bold),
     em: base.copyWith(fontStyle: FontStyle.italic),
     a: base.copyWith(color: P.accentLight),

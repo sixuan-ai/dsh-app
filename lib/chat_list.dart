@@ -298,11 +298,22 @@ class _TimeDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 4),
+      padding: const EdgeInsets.only(top: 12, bottom: 6),
       child: Center(
-        child: Text(
-          _fmtDividerTime(time),
-          style: TextStyle(fontSize: 11, color: P.textTertiary),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: P.fillSubtle,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _fmtDividerTime(time),
+            style: TextStyle(
+              fontSize: 10.5,
+              letterSpacing: 0.2,
+              color: P.textTertiary,
+            ),
+          ),
         ),
       ),
     );
