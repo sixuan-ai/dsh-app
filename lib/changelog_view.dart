@@ -100,7 +100,20 @@ class ChangelogPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: P.card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: P.fillLight),
+                border: Border.all(
+                  color: release.version == kLatestRelease.version
+                      ? P.accent.withValues(alpha: 0.35)
+                      : P.fillLight,
+                ),
+                boxShadow: release.version == kLatestRelease.version
+                    ? [
+                        BoxShadow(
+                          color: P.accent.withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

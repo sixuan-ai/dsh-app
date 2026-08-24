@@ -367,9 +367,7 @@ class _TypingDotsState extends State<_TypingDots>
               margin: const EdgeInsets.only(right: 5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: opacity),
+                color: P.accentLight.withValues(alpha: opacity),
               ),
             );
           }),
@@ -436,19 +434,30 @@ class _ReasoningCardState extends State<_ReasoningCard> {
               ),
             ),
           ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              child: Text(
-                widget.text,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.5,
-                  color: P.textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _expanded
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          widget.text,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: P.textSecondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
             ),
+          ),
         ],
       ),
     );

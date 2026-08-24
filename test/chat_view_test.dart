@@ -102,6 +102,37 @@ void main() {
     expect(find.text('完成'), findsOneWidget);
   });
 
+  testWidgets('reasoning card expands and collapses smoothly', (tester) async {
+    final state = AppState();
+    final item = ChatItem.assistant(
+      id: 'a-1',
+      blocks: [
+        AssistantBlock('reasoning', '推理内容细节'),
+        AssistantBlock('text', '正式回答'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatItemView(state: state, item: item),
+        ),
+      ),
+    );
+    // Completed messages start collapsed; streaming content stays hidden.
+    expect(find.text('推理内容细节'), findsNothing);
+
+    await tester.tap(find.text('思考过程'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('推理内容细节'), findsOneWidget);
+
+    await tester.tap(find.text('思考过程'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('推理内容细节'), findsNothing);
+  });
+
   testWidgets('shows empty and loading states in ChatList', (tester) async {
     final state = AppState();
     await tester.pumpWidget(
