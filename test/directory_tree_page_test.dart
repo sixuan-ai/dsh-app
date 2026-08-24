@@ -1,5 +1,6 @@
 import 'package:dsh_mobile/directory_tree_page.dart';
 import 'package:dsh_mobile/src/directory_listing.dart';
+import 'package:dsh_mobile/src/protocol.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,5 +70,19 @@ void main() {
     await tester.tap(find.text('重试'));
     await tester.pump();
     expect(find.text('code'), findsOneWidget);
+  });
+  testWidgets('explains when the host lacks the browse capability', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DirectoryTreePage(
+          directoryLoader: (path) async =>
+              throw DshError('directory-picker-unavailable', 'native picker'),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('未开启远程目录浏览'), findsOneWidget);
   });
 }
