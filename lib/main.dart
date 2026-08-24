@@ -37,6 +37,11 @@ const kDefaultServerUrl = 'https://dsh.ainotex.com';
 /// Direct Shenzhen relay endpoint (nginx → frps → auth proxy), no Cloudflare.
 const kDirectServerUrl = 'https://sz.ainotex.com';
 
+/// Fallback Shenzhen entry on port 9443. Mainland carriers sample-inspect
+/// 443 for unregistered domains and RST those TLS handshakes; 9443 sits
+/// outside that inspection, so the app retries the direct route here.
+const kDirectServerFallbackUrl = 'https://sz.ainotex.com:9443';
+
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
 /// download tests; production uses the public domain.
@@ -323,11 +328,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return;
     }
     final previousMode = _connectionMode;
-    final ok = await state.switchConnection(target);
+    var ok = false;
+    if (mode == 'direct') {
+      // Try 443 first, then the 9443 fallback that escapes the carrier's
+      // unregistered-domain RST sampling on the default HTTPS port.
+      for (final candidate in const [
+        kDirectServerUrl,
+        kDirectServerFallbackUrl,
+      ]) {
+        if (await state.switchConnection(candidate)) {
+          target = candidate;
+          ok = true;
+          break;
+        }
+      }
+    } else {
+      ok = await state.switchConnection(target);
+    }
     if (!mounted) return;
     if (ok) {
       await prefs.setString('connectionMode', mode);
-      await prefs.setString('serverUrl', target);
+      await prefs.setString('serverUrl', target!);
       if (!mounted) return;
       setState(() => _connectionMode = mode);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.1';
+const kAppVersion = '1.24.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.2',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复深圳直连被运营商 RST 重置（errno 104）导致切换失败：新增 9443 备用端口，443 被掐断时自动切换，绕开未备案域名的 443 抽样封锁',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.1',
     date: '2026-08-24',
