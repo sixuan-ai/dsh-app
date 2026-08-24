@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.27';
+const kAppVersion = '1.22.28';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.28',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '界面打磨：社区动态卡片阴影与等级分享描边，统一社交页质感',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.27',
     date: '2026-08-24',
