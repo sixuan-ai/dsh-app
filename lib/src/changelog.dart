@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.23.1';
+const kAppVersion = '1.24.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.0',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '连接中心新增深圳直连线路：不经过 Cloudflare，国内延迟从约 500ms 降至 100ms 内',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.23.1',
     date: '2026-08-24',
