@@ -6,8 +6,8 @@ import 'dart:convert';
 
 import 'package:dsh_mobile/chat_view.dart';
 import 'package:dsh_mobile/login_view.dart';
+import 'package:dsh_mobile/quick_start.dart';
 import 'package:dsh_mobile/composer.dart';
-import 'package:dsh_mobile/main.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:dsh_mobile/task_queue.dart';
 import 'package:flutter/material.dart';
