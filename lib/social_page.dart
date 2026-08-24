@@ -19,8 +19,9 @@ import 'state.dart';
 
 String _ago(int millis) {
   if (millis <= 0) return '';
-  final diff =
-      DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(millis));
+  final diff = DateTime.now().difference(
+    DateTime.fromMillisecondsSinceEpoch(millis),
+  );
   if (diff.inMinutes < 1) return '刚刚';
   if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
   if (diff.inDays < 1) return '${diff.inHours} 小时前';
@@ -88,9 +89,10 @@ class _Avatar extends StatelessWidget {
       child: Text(
         name.isEmpty ? '?' : name.characters.first,
         style: TextStyle(
-            color: tint,
-            fontSize: size * 0.42,
-            fontWeight: FontWeight.bold),
+          color: tint,
+          fontSize: size * 0.42,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -174,15 +176,16 @@ class _CommunityPageState extends State<CommunityPage> {
     if (me == null || token == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        'socialProfile',
-        jsonEncode({
-          'userId': me.userId,
-          'nickname': me.nickname,
-          'level': me.level,
-          'title': me.title,
-          'avatarVer': me.avatarVer,
-          'token': token,
-        }));
+      'socialProfile',
+      jsonEncode({
+        'userId': me.userId,
+        'nickname': me.nickname,
+        'level': me.level,
+        'title': me.title,
+        'avatarVer': me.avatarVer,
+        'token': token,
+      }),
+    );
   }
 
   Future<String?> _askNickname() {
@@ -195,8 +198,10 @@ class _CommunityPageState extends State<CommunityPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('设置你的昵称,系统会为你分配一个 8 位好友码,朋友凭它添加你。',
-                style: TextStyle(fontSize: 13, color: P.textSecondary)),
+            Text(
+              '设置你的昵称,系统会为你分配一个 8 位好友码,朋友凭它添加你。',
+              style: TextStyle(fontSize: 13, color: P.textSecondary),
+            ),
             const SizedBox(height: 14),
             TextField(
               controller: controller,
@@ -225,33 +230,31 @@ class _CommunityPageState extends State<CommunityPage> {
       body: _booting
           ? const Center(child: CircularProgressIndicator())
           : _bootError != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('加载失败: $_bootError',
-                          style: TextStyle(color: P.danger)),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                          onPressed: _bootstrap, child: const Text('重试')),
-                    ],
-                  ),
-                )
-              : switch (_tab) {
-                  1 => FriendsTab(
-                      api: _api,
-                      me: _me!,
-                      onChanged: () async {
-                        try {
-                          final me = await _api.me();
-                          if (mounted) setState(() => _me = me);
-                          await _cacheProfile();
-                        } catch (_) {}
-                      },
-                    ),
-                  2 => MessagesTab(api: _api, me: _me!),
-                  _ => FeedTab(api: _api, state: widget.state),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('加载失败: $_bootError', style: TextStyle(color: P.danger)),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: _bootstrap, child: const Text('重试')),
+                ],
+              ),
+            )
+          : switch (_tab) {
+              1 => FriendsTab(
+                api: _api,
+                me: _me!,
+                onChanged: () async {
+                  try {
+                    final me = await _api.me();
+                    if (mounted) setState(() => _me = me);
+                    await _cacheProfile();
+                  } catch (_) {}
                 },
+              ),
+              2 => MessagesTab(api: _api, me: _me!),
+              _ => FeedTab(api: _api, state: widget.state),
+            },
       bottomNavigationBar: _booting || _bootError != null
           ? null
           : NavigationBar(
@@ -259,17 +262,20 @@ class _CommunityPageState extends State<CommunityPage> {
               onDestinationSelected: (i) => setState(() => _tab = i),
               destinations: const [
                 NavigationDestination(
-                    icon: Icon(Icons.dynamic_feed_outlined),
-                    selectedIcon: Icon(Icons.dynamic_feed),
-                    label: '动态'),
+                  icon: Icon(Icons.dynamic_feed_outlined),
+                  selectedIcon: Icon(Icons.dynamic_feed),
+                  label: '动态',
+                ),
                 NavigationDestination(
-                    icon: Icon(Icons.emoji_events_outlined),
-                    selectedIcon: Icon(Icons.emoji_events),
-                    label: '好友'),
+                  icon: Icon(Icons.emoji_events_outlined),
+                  selectedIcon: Icon(Icons.emoji_events),
+                  label: '好友',
+                ),
                 NavigationDestination(
-                    icon: Icon(Icons.chat_bubble_outline),
-                    selectedIcon: Icon(Icons.chat_bubble),
-                    label: '消息'),
+                  icon: Icon(Icons.chat_bubble_outline),
+                  selectedIcon: Icon(Icons.chat_bubble),
+                  label: '消息',
+                ),
               ],
             ),
     );
@@ -290,8 +296,7 @@ class FeedTab extends StatefulWidget {
   State<FeedTab> createState() => _FeedTabState();
 }
 
-class _FeedTabState extends State<FeedTab>
-    with AutomaticKeepAliveClientMixin {
+class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
   final List<Post> _posts = [];
   final TextEditingController _composer = TextEditingController();
   bool _loading = true;
@@ -349,8 +354,9 @@ class _FeedTabState extends State<FeedTab>
       await _refresh();
     } on SocialError catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _posting = false);
@@ -387,11 +393,18 @@ class _FeedTabState extends State<FeedTab>
               Row(
                 children: [
                   ActionChip(
-                    avatar: const Icon(Icons.military_tech,
-                        size: 16, color: Colors.amber),
-                    label: Text('分享等级 Lv.${level.level}',
-                        style: const TextStyle(fontSize: 12)),
-                    onPressed: _posting ? null : () => _publish(shareLevel: true),
+                    avatar: const Icon(
+                      Icons.military_tech,
+                      size: 16,
+                      color: Colors.amber,
+                    ),
+                    label: Text(
+                      '分享等级 Lv.${level.level}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: _posting
+                        ? null
+                        : () => _publish(shareLevel: true),
                   ),
                   const Spacer(),
                   FilledButton(
@@ -400,7 +413,8 @@ class _FeedTabState extends State<FeedTab>
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('发布'),
                   ),
                 ],
@@ -418,9 +432,11 @@ class _FeedTabState extends State<FeedTab>
                           children: [
                             const SizedBox(height: 120),
                             Center(
-                                child: Text('还没有动态,来发第一条吧',
-                                    style:
-                                        TextStyle(color: P.textTertiary))),
+                              child: Text(
+                                '还没有动态,来发第一条吧',
+                                style: TextStyle(color: P.textTertiary),
+                              ),
+                            ),
                           ],
                         )
                       : ListView.builder(
@@ -448,8 +464,11 @@ class _FeedTabState extends State<FeedTab>
 }
 
 class _PostCard extends StatefulWidget {
-  const _PostCard(
-      {required this.post, required this.api, required this.onDeleted});
+  const _PostCard({
+    required this.post,
+    required this.api,
+    required this.onDeleted,
+  });
 
   final Post post;
   final SocialApi api;
@@ -483,6 +502,7 @@ class _PostCardState extends State<_PostCard> {
         color: P.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: P.fillLight),
+        boxShadow: P.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,19 +521,24 @@ class _PostCardState extends State<_PostCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.nickname,
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    Text(_ago(post.time),
-                        style: TextStyle(
-                            fontSize: 11, color: P.textTertiary)),
+                    Text(
+                      post.nickname,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      _ago(post.time),
+                      style: TextStyle(fontSize: 11, color: P.textTertiary),
+                    ),
                   ],
                 ),
               ),
               if (post.mine)
                 IconButton(
-                  icon: Icon(Icons.delete_outline,
-                      size: 18, color: P.textTertiary),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: P.textTertiary,
+                  ),
                   onPressed: () async {
                     await widget.api.deletePost(post.id);
                     widget.onDeleted();
@@ -529,11 +554,15 @@ class _PostCardState extends State<_PostCard> {
               decoration: BoxDecoration(
                 gradient: P.brandGradient,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: P.onAccent.withValues(alpha: 0.25)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.military_tech,
-                      color: Colors.amber, size: 26),
+                  const Icon(
+                    Icons.military_tech,
+                    color: Colors.amber,
+                    size: 26,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -542,13 +571,18 @@ class _PostCardState extends State<_PostCard> {
                         Text(
                           'Lv.${levelInfo['level']} · ${levelInfo['title']}',
                           style: TextStyle(
-                              color: P.onAccent,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
+                            color: P.onAccent,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        Text('累计 ${levelInfo['count']} 次对话',
-                            style: TextStyle(
-                                color: P.onAccent.withValues(alpha: 0.7), fontSize: 11.5)),
+                        Text(
+                          '累计 ${levelInfo['count']} 次对话',
+                          style: TextStyle(
+                            color: P.onAccent.withValues(alpha: 0.7),
+                            fontSize: 11.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -569,9 +603,10 @@ class _PostCardState extends State<_PostCard> {
                   color: post.liked ? P.danger : P.textTertiary,
                 ),
               ),
-              Text('${post.likes}',
-                  style: TextStyle(
-                      fontSize: 12, color: P.textSecondary)),
+              Text(
+                '${post.likes}',
+                style: TextStyle(fontSize: 12, color: P.textSecondary),
+              ),
             ],
           ),
         ],
@@ -585,11 +620,12 @@ class _PostCardState extends State<_PostCard> {
 // ---------------------------------------------------------------------------
 
 class FriendsTab extends StatefulWidget {
-  const FriendsTab(
-      {super.key,
-      required this.api,
-      required this.me,
-      required this.onChanged});
+  const FriendsTab({
+    super.key,
+    required this.api,
+    required this.me,
+    required this.onChanged,
+  });
 
   final SocialApi api;
   final SocialUser me;
@@ -634,8 +670,9 @@ class _FriendsTabState extends State<FriendsTab>
       if (accept) {
         final friend = await widget.api.acceptFriend(request.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('已添加好友: ${friend.nickname}')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('已添加好友: ${friend.nickname}')));
         }
       } else {
         await widget.api.rejectFriend(request.id);
@@ -643,8 +680,9 @@ class _FriendsTabState extends State<FriendsTab>
       await _refresh();
     } on SocialError catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -681,15 +719,19 @@ class _FriendsTabState extends State<FriendsTab>
     try {
       final (pending, friend) = await widget.api.requestFriend(code);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(pending
-              ? '已发送好友申请,等待对方通过'
-              : '已添加好友: ${friend?.nickname ?? ''}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            pending ? '已发送好友申请,等待对方通过' : '已添加好友: ${friend?.nickname ?? ''}',
+          ),
+        ),
+      );
       _refresh();
     } on SocialError catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -727,14 +769,14 @@ class _FriendsTabState extends State<FriendsTab>
         final bytes = await picked.readAsBytes();
         if (!mounted) return;
         final cropped = await Navigator.of(context).push<Uint8List>(
-          MaterialPageRoute(
-              builder: (_) => AvatarCropPage(bytes: bytes)),
+          MaterialPageRoute(builder: (_) => AvatarCropPage(bytes: bytes)),
         );
         if (cropped == null) return;
         if (cropped.length > 400 * 1024) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('图片过大,请换一张')));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('图片过大,请换一张')));
           }
           return;
         }
@@ -746,8 +788,9 @@ class _FriendsTabState extends State<FriendsTab>
       await _refresh();
     } on SocialError catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -780,8 +823,9 @@ class _FriendsTabState extends State<FriendsTab>
       if (mounted) setState(() {});
     } on SocialError catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -816,8 +860,7 @@ class _FriendsTabState extends State<FriendsTab>
                             name: me.nickname,
                             size: 44,
                             imageUrl: me.avatarVer > 0
-                                ? widget.api
-                                    .avatarUrl(me.userId, me.avatarVer)
+                                ? widget.api.avatarUrl(me.userId, me.avatarVer)
                                 : null,
                             headers: widget.api.imageHeaders,
                           ),
@@ -830,8 +873,11 @@ class _FriendsTabState extends State<FriendsTab>
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.photo_camera,
-                                  size: 11, color: P.onAccent),
+                              child: Icon(
+                                Icons.photo_camera,
+                                size: 11,
+                                color: P.onAccent,
+                              ),
                             ),
                           ),
                         ],
@@ -842,21 +888,31 @@ class _FriendsTabState extends State<FriendsTab>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(me.nickname,
-                              style: TextStyle(
-                                  color: P.onAccent,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
-                          Text('Lv.${me.level} · ${me.title}',
-                              style: TextStyle(
-                                  color: P.onAccent.withValues(alpha: 0.7), fontSize: 12)),
+                          Text(
+                            me.nickname,
+                            style: TextStyle(
+                              color: P.onAccent,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Lv.${me.level} · ${me.title}',
+                            style: TextStyle(
+                              color: P.onAccent.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     IconButton(
                       tooltip: '修改昵称',
-                      icon: Icon(Icons.edit_outlined,
-                          color: P.onAccent.withValues(alpha: 0.7), size: 18),
+                      icon: Icon(
+                        Icons.edit_outlined,
+                        color: P.onAccent.withValues(alpha: 0.7),
+                        size: 18,
+                      ),
                       onPressed: _rename,
                     ),
                   ],
@@ -865,12 +921,15 @@ class _FriendsTabState extends State<FriendsTab>
                 InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: code));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('好友码已复制')));
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('好友码已复制')));
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -883,23 +942,31 @@ class _FriendsTabState extends State<FriendsTab>
                               ? '${code.substring(0, 4)} ${code.substring(4)}'
                               : code,
                           style: TextStyle(
-                              color: P.onAccent,
-                              fontSize: 24,
-                              letterSpacing: 4,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.bold),
+                            color: P.onAccent,
+                            fontSize: 24,
+                            letterSpacing: 4,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 10),
-                        Icon(Icons.copy,
-                            size: 16, color: P.onAccent.withValues(alpha: 0.7)),
+                        Icon(
+                          Icons.copy,
+                          size: 16,
+                          color: P.onAccent.withValues(alpha: 0.7),
+                        ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text('这是我的好友码,点按复制',
-                    style:
-                        TextStyle(color: P.onAccent.withValues(alpha: 0.6), fontSize: 11)),
+                Text(
+                  '这是我的好友码,点按复制',
+                  style: TextStyle(
+                    color: P.onAccent.withValues(alpha: 0.6),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -916,14 +983,20 @@ class _FriendsTabState extends State<FriendsTab>
             const SizedBox(height: 14),
             Row(
               children: [
-                const Icon(Icons.person_add_alt,
-                    size: 16, color: Colors.orangeAccent),
+                const Icon(
+                  Icons.person_add_alt,
+                  size: 16,
+                  color: Colors.orangeAccent,
+                ),
                 const SizedBox(width: 6),
-                Text('好友申请(${_requests.length})',
-                    style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.orangeAccent,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  '好友申请(${_requests.length})',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.orangeAccent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -932,14 +1005,16 @@ class _FriendsTabState extends State<FriendsTab>
           const SizedBox(height: 14),
           const Row(
             children: [
-              Icon(Icons.emoji_events_outlined,
-                  size: 16, color: Colors.amber),
+              Icon(Icons.emoji_events_outlined, size: 16, color: Colors.amber),
               SizedBox(width: 6),
-              Text('等级排名',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.amber,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                '等级排名',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.amber,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -950,8 +1025,12 @@ class _FriendsTabState extends State<FriendsTab>
             )
           else
             for (var i = 0; i < ranked.length; i++)
-              _rankTile(ranked[i], i + 1, ranked[i].userId == me.userId,
-                  ranked.first.promptCount),
+              _rankTile(
+                ranked[i],
+                i + 1,
+                ranked[i].userId == me.userId,
+                ranked.first.promptCount,
+              ),
         ],
       ),
     );
@@ -965,8 +1044,7 @@ class _FriendsTabState extends State<FriendsTab>
       decoration: BoxDecoration(
         color: Colors.orangeAccent.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -983,18 +1061,20 @@ class _FriendsTabState extends State<FriendsTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(from.nickname,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text('Lv.${from.level} · ${from.title} · ${_ago(request.time)}',
-                    style: TextStyle(
-                        fontSize: 11.5, color: P.textSecondary)),
+                Text(
+                  from.nickname,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'Lv.${from.level} · ${from.title} · ${_ago(request.time)}',
+                  style: TextStyle(fontSize: 11.5, color: P.textSecondary),
+                ),
               ],
             ),
           ),
           TextButton(
             onPressed: () => _answer(request, false),
-            child:
-                Text('拒绝', style: TextStyle(color: P.textTertiary)),
+            child: Text('拒绝', style: TextStyle(color: P.textTertiary)),
           ),
           FilledButton(
             onPressed: () => _answer(request, true),
@@ -1035,9 +1115,11 @@ class _FriendsTabState extends State<FriendsTab>
                 width: 26,
                 child: rank <= 3
                     ? Icon(Icons.emoji_events, size: 20, color: medal)
-                    : Text('$rank',
+                    : Text(
+                        '$rank',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: P.textTertiary)),
+                        style: TextStyle(color: P.textTertiary),
+                      ),
               ),
               _Avatar(
                 name: user.nickname,
@@ -1052,18 +1134,21 @@ class _FriendsTabState extends State<FriendsTab>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${user.nickname}${isMe ? ' (我)' : ''}',
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    Text('Lv.${user.level} · ${user.title}',
-                        style: TextStyle(
-                            fontSize: 11.5, color: P.textSecondary)),
+                    Text(
+                      '${user.nickname}${isMe ? ' (我)' : ''}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Lv.${user.level} · ${user.title}',
+                      style: TextStyle(fontSize: 11.5, color: P.textSecondary),
+                    ),
                   ],
                 ),
               ),
-              Text('${user.promptCount} 次',
-                  style: TextStyle(
-                      fontSize: 12, color: P.textTertiary)),
+              Text(
+                '${user.promptCount} 次',
+                style: TextStyle(fontSize: 12, color: P.textTertiary),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1074,7 +1159,8 @@ class _FriendsTabState extends State<FriendsTab>
               minHeight: 4,
               backgroundColor: P.fillLight,
               valueColor: AlwaysStoppedAnimation(
-                  isMe ? P.accent : P.textTertiary),
+                isMe ? P.accent : P.textTertiary,
+              ),
             ),
           ),
         ],
@@ -1138,8 +1224,10 @@ class _MessagesTabState extends State<MessagesTab>
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_items.isEmpty) {
       return Center(
-        child: Text('还没有私聊,先去好友页添加好友吧',
-            style: TextStyle(color: P.textTertiary)),
+        child: Text(
+          '还没有私聊,先去好友页添加好友吧',
+          style: TextStyle(color: P.textTertiary),
+        ),
       );
     }
     return RefreshIndicator(
@@ -1157,37 +1245,45 @@ class _MessagesTabState extends State<MessagesTab>
               headers: widget.api.imageHeaders,
             ),
             title: Text(c.nickname),
-            subtitle: Text(c.lastText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5)),
+            subtitle: Text(
+              c.lastText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12.5),
+            ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(_ago(c.lastTime),
-                    style: TextStyle(
-                        fontSize: 11, color: P.textTertiary)),
+                Text(
+                  _ago(c.lastTime),
+                  style: TextStyle(fontSize: 11, color: P.textTertiary),
+                ),
                 if (c.unread > 0)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: P.danger,
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: Text('${c.unread}',
-                        style: TextStyle(
-                            fontSize: 10, color: P.onAccent)),
+                    child: Text(
+                      '${c.unread}',
+                      style: TextStyle(fontSize: 10, color: P.onAccent),
+                    ),
                   ),
               ],
             ),
             onTap: () async {
-              await Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => FriendChatPage(
-                    api: widget.api, me: widget.me, peer: c),
-              ));
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      FriendChatPage(api: widget.api, me: widget.me, peer: c),
+                ),
+              );
               _refresh();
             },
           );
@@ -1227,8 +1323,7 @@ class _FriendChatPageState extends State<FriendChatPage> {
   void initState() {
     super.initState();
     _poll();
-    _timer =
-        Timer.periodic(const Duration(seconds: 4), (_) => _poll());
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) => _poll());
   }
 
   @override
@@ -1241,8 +1336,10 @@ class _FriendChatPageState extends State<FriendChatPage> {
 
   Future<void> _poll() async {
     try {
-      final incoming =
-          await widget.api.messages(widget.peer.userId, after: _lastId);
+      final incoming = await widget.api.messages(
+        widget.peer.userId,
+        after: _lastId,
+      );
       if (!mounted || incoming.isEmpty) return;
       setState(() => _messages.addAll(incoming));
       unawaited(widget.api.markRead(widget.peer.userId, _lastId));
@@ -1264,8 +1361,9 @@ class _FriendChatPageState extends State<FriendChatPage> {
       await _poll();
     } on SocialError catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -1281,8 +1379,11 @@ class _FriendChatPageState extends State<FriendChatPage> {
           Expanded(
             child: _messages.isEmpty
                 ? Center(
-                    child: Text('打个招呼吧',
-                        style: TextStyle(color: P.textTertiary)))
+                    child: Text(
+                      '打个招呼吧',
+                      style: TextStyle(color: P.textTertiary),
+                    ),
+                  )
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.all(12),
@@ -1297,15 +1398,15 @@ class _FriendChatPageState extends State<FriendChatPage> {
                         child: Container(
                           margin: const EdgeInsets.symmetric(vertical: 3),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           constraints: BoxConstraints(
-                              maxWidth:
-                                  MediaQuery.of(context).size.width * 0.75),
+                            maxWidth: MediaQuery.of(context).size.width * 0.75,
+                          ),
                           decoration: BoxDecoration(
                             gradient: mine ? P.brandGradient : null,
-                            color: mine
-                                ? null
-                                : P.fillLight,
+                            color: mine ? null : P.fillLight,
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),
@@ -1313,8 +1414,10 @@ class _FriendChatPageState extends State<FriendChatPage> {
                               bottomRight: Radius.circular(mine ? 4 : 16),
                             ),
                           ),
-                          child: Text(m.text,
-                              style: const TextStyle(height: 1.4)),
+                          child: Text(
+                            m.text,
+                            style: const TextStyle(height: 1.4),
+                          ),
                         ),
                       );
                     },
@@ -1333,12 +1436,10 @@ class _FriendChatPageState extends State<FriendChatPage> {
                       maxLines: 4,
                       decoration: InputDecoration(
                         hintText: '发消息…',
-                        hintStyle:
-                            TextStyle(color: P.textTertiary),
+                        hintStyle: TextStyle(color: P.textTertiary),
                         isDense: true,
                         filled: true,
-                        fillColor:
-                            P.fillSubtle,
+                        fillColor: P.fillSubtle,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(22),
                           borderSide: BorderSide.none,
@@ -1351,11 +1452,15 @@ class _FriendChatPageState extends State<FriendChatPage> {
                   // HyperOS, hiding the button (see the composer send fix).
                   Container(
                     decoration: BoxDecoration(
-                        gradient: P.brandGradient,
-                        shape: BoxShape.circle),
+                      gradient: P.brandGradient,
+                      shape: BoxShape.circle,
+                    ),
                     child: IconButton(
-                      icon: Icon(Icons.send_rounded,
-                          color: P.onAccent, size: 20),
+                      icon: Icon(
+                        Icons.send_rounded,
+                        color: P.onAccent,
+                        size: 20,
+                      ),
                       onPressed: _sending ? null : _send,
                     ),
                   ),
@@ -1384,6 +1489,7 @@ class AvatarCropPage extends StatefulWidget {
   @override
   State<AvatarCropPage> createState() => _AvatarCropPageState();
 }
+
 class _AvatarCropPageState extends State<AvatarCropPage> {
   img_lib.Image? _image;
   Uint8List? _displayBytes;
@@ -1414,8 +1520,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     if (decoded == null) return;
     // Bake EXIF orientation so display and export see the same pixels.
     _image = img_lib.bakeOrientation(decoded);
-    _displayBytes =
-        Uint8List.fromList(img_lib.encodeJpg(_image!, quality: 92));
+    _displayBytes = Uint8List.fromList(img_lib.encodeJpg(_image!, quality: 92));
     final codec = await ui.instantiateImageCodec(_displayBytes!);
     final frame = await codec.getNextFrame();
     if (mounted) setState(() => _paintImage = frame.image);
@@ -1464,8 +1569,10 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     setState(() {
       if (details.scale != 1.0) {
         // Pinch: zoom about the focal point so it stays under the fingers.
-        final newScale =
-            (_scale * details.scale).clamp(_coverScale, _coverScale * 5);
+        final newScale = (_scale * details.scale).clamp(
+          _coverScale,
+          _coverScale * 5,
+        );
         final ratio = newScale / _scale;
         final focal = details.localFocalPoint;
         _offset = focal - (focal - _offset) * ratio;
@@ -1485,10 +1592,8 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     setState(() => _exporting = true);
     // Render maps child pixel p to viewport v = p * scale + offset, so the
     // visible square [0, viewport] is the inverse region below.
-    final left =
-        (-_offset.dx / _scale).clamp(0.0, image.width.toDouble() - 1);
-    final top =
-        (-_offset.dy / _scale).clamp(0.0, image.height.toDouble() - 1);
+    final left = (-_offset.dx / _scale).clamp(0.0, image.width.toDouble() - 1);
+    final top = (-_offset.dy / _scale).clamp(0.0, image.height.toDouble() - 1);
     final side = math.min(
       _viewport / _scale,
       math.min(image.width - left, image.height - top),
@@ -1532,10 +1637,12 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('确定',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    '确定',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
           ),
         ],
       ),
@@ -1547,8 +1654,10 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                   child: Center(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final side = math.min(constraints.maxWidth,
-                            constraints.maxHeight);
+                        final side = math.min(
+                          constraints.maxWidth,
+                          constraints.maxHeight,
+                        );
                         if (side > 0 && _viewport != side) {
                           if (_dirty) {
                             _refitDirty(side);
@@ -1562,7 +1671,9 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                           height: side,
                           decoration: BoxDecoration(
                             border: Border.all(
-                                color: Colors.white54, width: 1.5),
+                              color: Colors.white54,
+                              width: 1.5,
+                            ),
                           ),
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
@@ -1578,8 +1689,8 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                                       offset: _offset,
                                     ),
                                   ),
-                            ),
-                          );
+                          ),
+                        );
                       },
                     ),
                   ),
@@ -1588,8 +1699,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                   padding: const EdgeInsets.all(20),
                   child: Text(
                     '缩放 ${(_scale / _coverScale * 100).round()}% · 拖动/双指缩放调整',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 13),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                 ),
               ],
@@ -1597,7 +1707,6 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     );
   }
 }
-
 
 /// Paints the crop region directly: viewport pixel v maps to image pixel
 /// (v - offset) / scale, the exact inverse of the export mapping.
