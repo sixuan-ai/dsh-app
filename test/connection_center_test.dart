@@ -46,9 +46,9 @@ void main() {
       ),
     );
 
-    final activeTitle = tester.widgetList<Text>(find.text('本地连接')).last;
+    final activeTitle = tester.widgetList<Text>(find.text('本地电脑')).last;
     expect(activeTitle.style?.color, P.accentLight);
-    final inactiveTitle = tester.widgetList<Text>(find.text('远程连接')).last;
+    final inactiveTitle = tester.widgetList<Text>(find.text('香港服务器')).last;
     expect(inactiveTitle.style?.color, isNull);
   });
 
@@ -69,14 +69,15 @@ void main() {
       ),
     );
 
-    expect(find.text('深圳直连'), findsNWidgets(2));
+    expect(find.text('深圳服务器'), findsNWidgets(2));
     expect(find.text('当前连接'), findsOneWidget);
     expect(find.text('已连接'), findsOneWidget);
     expect(find.text('当前正在使用'), findsOneWidget);
     expect(find.text('正在使用'), findsOneWidget);
-    expect(find.text('切换到远程'), findsOneWidget);
-    expect(find.text('切换到本地'), findsOneWidget);
-    final directTitle = tester.widgetList<Text>(find.text('深圳直连')).last;
+    expect(find.text('切换回香港服务器'), findsOneWidget);
+    expect(find.text('切换到本地电脑'), findsOneWidget);
+    expect(find.text('切换到深圳服务器'), findsNothing);
+    final directTitle = tester.widgetList<Text>(find.text('深圳服务器')).last;
     expect(directTitle.style?.color, P.accentLight);
   });
 }

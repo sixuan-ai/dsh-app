@@ -29,9 +29,9 @@ class ConnectionCenterSheet extends StatelessWidget {
   final VoidCallback? onSwitchDirect;
 
   String get _currentLabel => switch (connectionMode) {
-    'lan' => '本地连接',
-    'direct' => '深圳直连',
-    _ => '远程连接',
+    'lan' => '本地电脑',
+    'direct' => '深圳服务器',
+    _ => '香港服务器',
   };
 
   @override
@@ -59,10 +59,12 @@ class ConnectionCenterSheet extends StatelessWidget {
             const SizedBox(height: 14),
             _ConnectionCard(
               icon: Icons.cloud_outlined,
-              title: '远程连接',
-              subtitle: connectionMode == 'public' ? '当前正在使用' : '通过官网连接，适合外出使用',
+              title: '香港服务器',
+              subtitle: connectionMode == 'public'
+                  ? '当前正在使用'
+                  : '通过香港服务器中转，适合外出使用',
               active: connectionMode == 'public',
-              actionLabel: '切换到远程',
+              actionLabel: '切换回香港服务器',
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchRemote();
@@ -72,12 +74,10 @@ class ConnectionCenterSheet extends StatelessWidget {
               const SizedBox(height: 10),
               _ConnectionCard(
                 icon: Icons.bolt_rounded,
-                title: '深圳直连',
-                subtitle: connectionMode == 'direct'
-                    ? '当前正在使用'
-                    : '不经过 Cloudflare，国内延迟更低更稳',
+                title: '深圳服务器',
+                subtitle: connectionMode == 'direct' ? '当前正在使用' : '国内直连，延迟更低更稳',
                 active: connectionMode == 'direct',
-                actionLabel: '切换到深圳',
+                actionLabel: '切换到深圳服务器',
                 onSwitch: () {
                   Navigator.pop(context);
                   onSwitchDirect!();
@@ -87,7 +87,7 @@ class ConnectionCenterSheet extends StatelessWidget {
             const SizedBox(height: 10),
             _ConnectionCard(
               icon: Icons.lan_outlined,
-              title: '本地连接',
+              title: '本地电脑',
               subtitle: connectionMode == 'lan'
                   ? '当前正在使用'
                   : checkingLocal
@@ -98,7 +98,7 @@ class ConnectionCenterSheet extends StatelessWidget {
               active: connectionMode == 'lan',
               available: localAvailable,
               checking: checkingLocal,
-              actionLabel: '切换到本地',
+              actionLabel: '切换到本地电脑',
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchLocal();

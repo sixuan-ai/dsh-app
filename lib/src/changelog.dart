@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.6';
+const kAppVersion = '1.24.7';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.24.7',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '连接中心根据当前线路动态显示切换目标：深圳状态显示“切换回香港服务器”，香港状态显示“切换到深圳服务器”',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.6',
     date: '2026-08-25',
