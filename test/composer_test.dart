@@ -4,6 +4,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:dsh_mobile/chat_view.dart';
 import 'package:dsh_mobile/composer.dart';
 import 'package:dsh_mobile/main.dart';
 import 'package:dsh_mobile/state.dart';
