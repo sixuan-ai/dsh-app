@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'src/conversation.dart';
+import 'src/conversation_fold.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
@@ -1938,132 +1939,29 @@ class AppState extends ChangeNotifier {
     final targetBefore = target.length;
     final eventTime = (event['time'] as num?)?.toInt();
 
+    final coreResult = foldCoreConversationEvent(
+      type: type,
+      data: data,
+      seq: seq,
+      target: target,
+      live: into == null,
+      eventTime: eventTime,
+      streams: _streams,
+      toolItems: _toolItems,
+      pendingPrompts: _pendingPrompts,
+    );
+    if (coreResult == ConversationFoldResult.stop) return;
+    if (coreResult == ConversationFoldResult.handled) {
+      if (eventTime != null) {
+        for (var i = targetBefore; i < target.length; i++) {
+          target[i].time ??= eventTime;
+        }
+      }
+      if (into == null) _scheduleSave();
+      return;
+    }
+
     switch (type) {
-      case 'user/message':
-        final source =
-            (data['source'] as Map?)?.cast<String, dynamic>() ?? const {};
-        final kind = source['kind'];
-        final content = data['content'];
-        final text = textFromContent(content);
-        final images = imageAttachmentsFromContent(
-          content,
-        ).map(_chatImageFromParsed).toList();
-        if (kind == 'user') {
-          final rpcId = source['rpcId'] as String?;
-          final provisional = rpcId != null
-              ? _pendingPrompts.remove(rpcId)
-              : null;
-          if (provisional != null && into == null) {
-            provisional
-              ..text = text
-              ..images = images
-              ..provisional = false
-              ..time ??= eventTime;
-            return;
-          }
-          target.add(ChatItem.user(id: 'u-$seq', text: text, images: images));
-        } else if (kind == 'plugin' || kind == 'goal') {
-          // Injected context stays off the chat surface, mirroring the web client.
-        }
-      case 'assistant/message':
-        final key = '${data['turn']}:${data['step']}';
-        final streaming = into == null ? _streams.remove(key) : null;
-        if (streaming != null) target.remove(streaming);
-        final parsed = parseAssistantContent(
-          (data['message'] as Map?)?['content'],
-        );
-        final blocks = [
-          for (final block in parsed.blocks)
-            AssistantBlock(block.type, block.text),
-        ];
-        final images = parsed.images.map(_chatImageFromParsed).toList();
-        if (blocks.isNotEmpty ||
-            images.isNotEmpty ||
-            data['interrupted'] == true) {
-          target.add(
-            ChatItem.assistant(
-              id: 'a-$seq',
-              blocks: blocks,
-              images: images,
-              usage: (data['usage'] as Map?)?.cast<String, dynamic>(),
-              interrupted: data['interrupted'] == true,
-            ),
-          );
-        }
-      case 'assistant/chunk':
-        if (into != null) {
-          return; // history tail replays chunks; the final message covers them
-        }
-        final turn = data['turn'];
-        final step = data['step'];
-        final chunk = (data['chunk'] as Map).cast<String, dynamic>();
-        final key = '$turn:$step';
-        final item = _streams.putIfAbsent(key, () {
-          final created = ChatItem.assistant(id: 'stream-$key', blocks: []);
-          target.add(created);
-          return created;
-        });
-        switch (chunk['type']) {
-          case 'text-delta':
-            _appendDelta(
-              item,
-              'text',
-              chunk['index'] as int? ?? 0,
-              chunk['text'] as String? ?? '',
-            );
-          case 'reasoning-delta':
-            _appendDelta(
-              item,
-              'reasoning',
-              chunk['index'] as int? ?? 0,
-              chunk['text'] as String? ?? '',
-            );
-          default:
-            break; // block boundaries and tool-call deltas arrive complete via other events
-        }
-      case 'tool/call':
-        final item = ChatItem.tool(
-          id: 't-$seq',
-          callId: data['callId'] as String? ?? '',
-          name: data['name'] as String? ?? '',
-          arguments: data['arguments'] as String? ?? '',
-        );
-        target.add(item);
-        _toolItems[item.callId] = item;
-      case 'tool/result':
-        final message = (data['message'] as Map?)?.cast<String, dynamic>();
-        final content = (message?['content'] as List?) ?? const [];
-        if (content.isNotEmpty) {
-          final block = (content.first as Map).cast<String, dynamic>();
-          final callId = block['toolCallId'] as String? ?? '';
-          final item = _toolItems[callId];
-          final parsed = parseToolResult(
-            block['content'],
-            eventError: block['isError'] == true || data['error'] != null,
-          );
-          final images = parsed.images.map(_chatImageFromParsed).toList();
-          if (item != null) {
-            item
-              ..resultText = parsed.text
-              ..images = images
-              ..resultIsError = parsed.isError
-              ..completed = true;
-          } else if (into == null) {
-            // Result without a seen call (page boundary): render standalone.
-            final standalone =
-                ChatItem.tool(
-                    id: 'tr-$seq',
-                    callId: callId,
-                    name: 'tool',
-                    arguments: '',
-                  )
-                  ..resultText = parsed.text
-                  ..images = images
-                  ..resultIsError = parsed.isError
-                  ..completed = true;
-            target.add(standalone);
-          }
-        }
       case 'turn/end':
         if (into == null) {
           final turn = data['turn'];
@@ -2187,29 +2085,7 @@ class AppState extends ChangeNotifier {
     if (into == null) _scheduleSave();
   }
 
-  ChatImage _chatImageFromParsed(ParsedAttachment image) => ChatImage(
-    attachmentId: image.attachmentId,
-    mediaType: image.mediaType,
-    bytes: image.bytes,
-    width: image.width,
-    height: image.height,
-    name: image.name,
-  );
-
   int _lastLiveSeq = -1;
-
-  void _appendDelta(ChatItem item, String type, int index, String delta) {
-    while (item.blocks.length <= index) {
-      item.blocks.add(AssistantBlock(type, ''));
-    }
-    final block = item.blocks[index];
-    if (block.type != type) {
-      // A block index reused with a new type: start a fresh visual block.
-      item.blocks.insert(index, AssistantBlock(type, delta));
-      return;
-    }
-    block.text += delta;
-  }
 
   @override
   void dispose() {
