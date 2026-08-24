@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.27.0';
+const kAppVersion = '1.28.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.28.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '会话顶部与列表显示当前模式：目标模式（/goal）/ 计划模式（/plan）/ 自动模式，状态随会话实时更新',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.27.0',
     date: '2026-08-25',

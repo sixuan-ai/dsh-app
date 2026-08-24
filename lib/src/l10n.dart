@@ -159,6 +159,9 @@ class Strings {
     required this.fullAccess,
     required this.pickTheme,
     required this.appliesInstantly,
+    required this.modeGoal,
+    required this.modePlan,
+    required this.modeAuto,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -277,6 +280,9 @@ class Strings {
   final String fullAccess;
   final String pickTheme;
   final String appliesInstantly;
+  final String modeGoal;
+  final String modePlan;
+  final String modeAuto;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -395,6 +401,9 @@ class Strings {
     fullAccess: '完全访问',
     pickTheme: '选择主题',
     appliesInstantly: '立即生效,自动保存',
+    modeGoal: '目标模式',
+    modePlan: '计划模式',
+    modeAuto: '自动模式',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -517,6 +526,9 @@ class Strings {
     fullAccess: 'Full access',
     pickTheme: 'Pick a theme',
     appliesInstantly: 'Applies instantly and saves',
+    modeGoal: 'Goal mode',
+    modePlan: 'Plan mode',
+    modeAuto: 'Auto mode',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

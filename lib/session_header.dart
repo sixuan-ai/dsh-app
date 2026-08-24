@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'src/theme.dart';
+import 'session_mode_badge.dart';
 import 'state.dart';
 import 'task_queue.dart';
 
@@ -42,10 +43,23 @@ class SessionHeader extends StatelessWidget implements PreferredSizeWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (sessionId != null) ...[
+                const SizedBox(width: 8),
+                SessionModeBadge(mode: state.sessionModeOf(sessionId)),
+              ],
+            ],
           ),
           if (subtitleParts.isNotEmpty)
             Text(

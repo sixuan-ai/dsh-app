@@ -64,6 +64,13 @@ class SessionRow {
   bool isSubagent;
 }
 
+/// The collaboration mode a session currently runs in, derived from its
+/// live projections (host-authoritative, kept fresh by projection frames):
+/// - [goal]: a `/goal` exists and has not completed;
+/// - [plan]: plan mode is active (`plan` projection `active: true`);
+/// - [auto]: neither — the default free loop.
+enum SessionMode { goal, plan, auto }
+
 /// Image bytes submitted as part of a prompt.
 class SubagentRow {
   const SubagentRow({
@@ -334,6 +341,19 @@ class AppState extends ChangeNotifier {
     if (sessionId == null) return null;
     return (projections[sessionId]?[key]?.value as Map?)
         ?.cast<String, dynamic>();
+  }
+
+  /// The collaboration mode of a session, derived from its projections.
+  SessionMode sessionModeOf(String? sessionId) {
+    final goal = projectionOf(sessionId, 'goal');
+    if (goal != null) {
+      final phase = (goal['goal'] as Map?)?['phase'] as String?;
+      // A completed goal no longer drives the loop; fall through to plan/auto.
+      if (phase != 'complete') return SessionMode.goal;
+    }
+    final plan = projectionOf(sessionId, 'plan');
+    if (plan != null && plan['active'] == true) return SessionMode.plan;
+    return SessionMode.auto;
   }
 
   void _seedProjections(String sessionId, Map<String, dynamic>? block) {

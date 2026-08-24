@@ -12,6 +12,7 @@ import 'composer.dart';
 import 'directory_tree_page.dart';
 import 'network_diagnostics_page.dart';
 import 'pet_page.dart';
+import 'session_mode_badge.dart';
 import 'settings_center.dart';
 import 'src/ai_hub_pages.dart';
 import 'social_page.dart';
@@ -676,6 +677,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
     final selected = row.sessionId == state.selectedSessionId;
     final archived = state.archivedSessionIds.contains(row.sessionId);
     final pinned = state.pinnedSessionIds.contains(row.sessionId);
+    final mode = state.sessionModeOf(row.sessionId);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
@@ -713,9 +715,17 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   color: selected ? P.accentLight : null,
                 ),
               ),
-              subtitle: Text(
-                _timeAgo(row.updatedAt),
-                style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+              subtitle: Row(
+                children: [
+                  if (mode != SessionMode.auto) ...[
+                    SessionModeBadge(mode: mode, compact: true),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    _timeAgo(row.updatedAt),
+                    style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+                  ),
+                ],
               ),
               trailing: PopupMenuButton<String>(
                 tooltip: '会话操作',
