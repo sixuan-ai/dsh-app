@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.9';
+const kAppVersion = '1.22.10';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.10',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '会话事件折叠、下行帧路由和连接生命周期完成模块化解耦',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '连接重试、恢复和旧流失效逻辑增加独立测试保障',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.9',
     date: '2026-08-24',
@@ -61,24 +75,15 @@ const kChangelog = [
         ChangelogChangeType.improvement,
         '任务队列拆分为独立模块，降低主页面和状态层耦合',
       ),
-      ChangelogChange(
-        ChangelogChangeType.fix,
-        '断开连接时清理旧队列，避免切换服务器后残留任务',
-      ),
+      ChangelogChange(ChangelogChangeType.fix, '断开连接时清理旧队列，避免切换服务器后残留任务'),
     ],
   ),
   ChangelogRelease(
     version: '1.22.6',
     date: '2026-08-23',
     changes: [
-      ChangelogChange(
-        ChangelogChangeType.feature,
-        '排队任务支持编辑和删除，修改通过服务端队列实时同步',
-      ),
-      ChangelogChange(
-        ChangelogChangeType.improvement,
-        '删除排队任务前增加确认提示，避免误操作',
-      ),
+      ChangelogChange(ChangelogChangeType.feature, '排队任务支持编辑和删除，修改通过服务端队列实时同步'),
+      ChangelogChange(ChangelogChangeType.improvement, '删除排队任务前增加确认提示，避免误操作'),
     ],
   ),
   ChangelogRelease(
@@ -99,10 +104,7 @@ const kChangelog = [
         ChangelogChangeType.feature,
         'AI 工作中可以继续输入任务，任务会自动排队并按顺序执行',
       ),
-      ChangelogChange(
-        ChangelogChangeType.feature,
-        '新增任务队列展示区域，可查看排队数量和待处理内容',
-      ),
+      ChangelogChange(ChangelogChangeType.feature, '新增任务队列展示区域，可查看排队数量和待处理内容'),
     ],
   ),
   ChangelogRelease(
@@ -187,10 +189,7 @@ const kChangelog = [
         ChangelogChangeType.feature,
         '图片全屏预览页新增下载按钮，可直接保存到手机系统相册',
       ),
-      ChangelogChange(
-        ChangelogChangeType.improvement,
-        '增加保存进度、成功提示以及相册权限失败指引',
-      ),
+      ChangelogChange(ChangelogChangeType.improvement, '增加保存进度、成功提示以及相册权限失败指引'),
     ],
   ),
   ChangelogRelease(

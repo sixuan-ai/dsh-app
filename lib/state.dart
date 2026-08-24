@@ -516,9 +516,7 @@ class AppState extends ChangeNotifier {
       onMuxFrame: _onMuxFrame,
       onHostFrame: _onHostFrame,
       onStreamClosed: (_) {},
-      onReconnect: () {
-        unawaited(refreshSessions().catchError((_) {}));
-      },
+      onReconnect: _refreshSessionsIgnoringFailure,
     )..start();
   }
 
@@ -532,6 +530,11 @@ class AppState extends ChangeNotifier {
   void resyncAfterResume() {
     if (!_streamsActive || _api == null) return;
     _replaceStreams();
+    _refreshSessionsIgnoringFailure();
+  }
+
+  void _refreshSessionsIgnoringFailure() {
+    // The cached sidebar remains usable when a background refresh fails.
     unawaited(refreshSessions().catchError((_) {}));
   }
 

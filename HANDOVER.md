@@ -1,7 +1,7 @@
 # xHarness 项目交接文档
 
 > 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
-> 最后更新：2026-08-24（v1.22.9+70；App 发布提交以 main 最新为准）
+> 最后更新：2026-08-24（v1.22.10+71；App 发布提交以 main 最新为准）
 
 ## 0. 三十秒速览
 
@@ -10,10 +10,10 @@
 当前最新正式版：
 
 ```text
-版本: v1.22.9
-versionCode: 2070
-APK: https://dsh.ainotex.com/releases/dsh-app-1.22.9.apk
-SHA-256: 5893a76a526f2d3d197dfe03797c63b4714a7a2704c7ce4dfa17aa52232ee969
+版本: v1.22.10
+versionCode: 2071
+APK: https://dsh.ainotex.com/releases/dsh-app-1.22.10.apk
+SHA-256: 1fb316d75c5b786e9aaf784a0e8aeaca5f211147cd2141a0a69cc5fcf8f9d2c8
 Git: 以 main 最新发布提交为准
 ```
 
@@ -143,6 +143,12 @@ export PATH="/home/x/flutter/bin:$PATH"
 - Android 使用正式签名，签名文件只在本地，不在 Git 仓库。
 
 ## 3. 最近版本记录
+
+### v1.22.10
+
+- 阶段性完成事件解析、聊天折叠、下行帧路由和连接生命周期模块化。
+- 新增连接 controller 的重连、稳定重置、恢复替换和旧流失效测试。
+- 按领域整理连接 controller 测试入口，并补充静默后台刷新失败说明。
 
 ### v1.22.9
 
@@ -375,7 +381,7 @@ curl -fsS https://dsh.ainotex.com/app/content/ai/agents.json | python3 -m json.t
 
 ```text
 请先阅读 /home/x/code/pd02/dsh_mobile/HANDOVER.md，接手 xHarness。
-当前最新版本是 v1.22.9+70；交接文档以仓库 main 分支最新内容为准。
+当前最新版本是 v1.22.10+71；交接文档以仓库 main 分支最新内容为准。
 先不要改 DSH Web 进程，也不要重启 127.0.0.1:3080。
 我希望继续处理：____。
 ```
