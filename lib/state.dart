@@ -11,6 +11,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
+import 'src/frame_router.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
@@ -1753,137 +1754,142 @@ class AppState extends ChangeNotifier {
 
   void _onHostFrame(ServerFrame frame) {
     final p = frame.payload;
-    switch (p['type']) {
-      case 'host/session-added':
-        final id = p['sessionId'] as String;
-        final projectionValues = (p['projections'] as Map?)?['values'] as Map?;
-        if (p['origin'] == 'subagent' ||
-            projectionValues?['subagent'] != null) {
-          sessions.removeWhere((row) => row.sessionId == id);
+    final action = routeHostFrame(p);
+    switch (action) {
+      case HostSessionAdded(
+        :final sessionId,
+        :final isSubagent,
+        :final blank,
+        :final cwd,
+      ):
+        if (isSubagent) {
+          sessions.removeWhere((row) => row.sessionId == sessionId);
           unawaited(refreshSubagents());
           return;
         }
-        if (_rowOf(id) == null) {
+        if (_rowOf(sessionId) == null) {
           sessions.insert(
             0,
             SessionRow(
-              sessionId: id,
+              sessionId: sessionId,
               updatedAt: DateTime.now().millisecondsSinceEpoch,
               running: false,
-              blank: p['blank'] == true,
-              cwd: p['cwd'] as String?,
+              blank: blank,
+              cwd: cwd,
             ),
           );
         }
-      case 'host/session-removed':
-        sessions.removeWhere((row) => row.sessionId == p['sessionId']);
-      case 'host/session-status':
-        final statusId = p['sessionId'] as String;
-        final row = _rowOf(statusId);
-        if (subagents.any((entry) => entry.id == statusId)) {
+      case HostSessionRemoved(:final sessionId):
+        sessions.removeWhere((row) => row.sessionId == sessionId);
+      case HostSessionStatus(:final sessionId, :final running):
+        final row = _rowOf(sessionId);
+        if (subagents.any((entry) => entry.id == sessionId)) {
           unawaited(refreshSubagents());
         }
         if (row != null) {
-          row.running = p['running'] == true;
-          if (row.running) {
+          row.running = running;
+          if (running) {
             row.blank = false;
             row.updatedAt = DateTime.now().millisecondsSinceEpoch;
           }
         }
-      case 'host/agent-error':
-        if (p['sessionId'] == selectedSessionId) {
-          final raw = p['message'] as String? ?? '未知错误';
-          final sessionId = p['sessionId'] as String;
-          if (_consumeDuplicateError(_turnErrorNotices, sessionId, raw)) {
+      case HostAgentError(:final sessionId, :final message):
+        if (sessionId == selectedSessionId) {
+          if (_consumeDuplicateError(_turnErrorNotices, sessionId, message)) {
             break;
           }
           _agentErrorNotices[sessionId] = (
-            message: raw,
+            message: message,
             at: DateTime.now().millisecondsSinceEpoch,
           );
           items.add(
             ChatItem.notice(
               id: 'agenterr-${frame.rpcId}',
-              text: _friendlyAgentError(raw),
+              text: _friendlyAgentError(message),
               isError: true,
               retryText: _latestRetryablePrompt(),
             ),
           );
         }
-      default:
+      case null:
         return;
     }
     notifyListeners();
   }
 
   void _onMuxFrame(ServerFrame frame) {
-    final p = frame.payload;
-    final sessionId = p['sessionId'] as String?;
-    switch (p['type']) {
-      case 'session/subscribed':
+    final action = routeMuxFrame(frame.payload);
+    switch (action) {
+      case MuxSubscribed(:final sessionId, :final lastSeq):
         if (sessionId != null) {
-          final lastSeq = (p['lastSeq'] as num?)?.toInt() ?? -1;
           _subscribedLastSeqs[sessionId] = lastSeq;
           if (sessionId == selectedSessionId && lastSeq > _lastLiveSeq) {
             unawaited(syncTail(sessionId));
           }
         }
-      case 'session/event':
-        final event = (p['event'] as Map).cast<String, dynamic>();
-        final eventSession = sessionId;
-        // Track titles and blank flips list-wide; fold chat items only for the open session.
-        if (event['type'] == 'session/title' && eventSession != null) {
+      case MuxSessionEvent(:final sessionId, :final event):
+        if (event['type'] == 'session/title' && sessionId != null) {
           final data = (event['data'] as Map).cast<String, dynamic>();
-          _rowOf(eventSession)?.title = data['title'] as String?;
+          _rowOf(sessionId)?.title = data['title'] as String?;
         }
-        if (eventSession == selectedSessionId) {
-          _foldEvent(event);
-        }
-      case 'session/projection':
+        if (sessionId == selectedSessionId) _foldEvent(event);
+      case MuxProjection(
+        :final sessionId,
+        :final key,
+        :final seq,
+        :final value,
+      ):
         if (sessionId != null) {
-          final key = p['key'] as String? ?? '';
-          final seq = (p['seq'] as num?)?.toInt() ?? 0;
           final table = projections.putIfAbsent(sessionId, () => {});
           final cell = table[key];
           if (cell == null || seq >= cell.seq) {
-            table[key] = ProjectionCell(p['value'], seq);
+            table[key] = ProjectionCell(value, seq);
           }
-          if (key == 'title') _rowOf(sessionId)?.title = p['value'] as String?;
-          if (key == 'tokenUsage') _trackPetTokens(sessionId, p['value']);
+          if (key == 'title') _rowOf(sessionId)?.title = value as String?;
+          if (key == 'tokenUsage') _trackPetTokens(sessionId, value);
         }
-      case 'approval/requested':
+      case MuxApprovalRequested(
+        :final sessionId,
+        :final approvalId,
+        :final toolName,
+        :final reason,
+      ):
+        if (sessionId == null) return;
         approvals.removeWhere(
-          (a) => a.rpcId == frame.rpcId || a.approvalId == p['approvalId'],
+          (approval) =>
+              approval.rpcId == frame.rpcId ||
+              approval.approvalId == approvalId,
         );
         approvals.add(
           PendingApproval(
             rpcId: frame.rpcId,
-            sessionId: sessionId!,
-            approvalId: p['approvalId'] as String,
-            toolName: p['toolName'] as String,
-            reason: p['reason'] as String?,
+            sessionId: sessionId,
+            approvalId: approvalId,
+            toolName: toolName,
+            reason: reason,
           ),
         );
-      case 'approval/resolved':
-        approvals.removeWhere((a) => a.approvalId == p['approvalId']);
-      case 'question/requested':
-        questions.removeWhere((q) => q.rpcId == frame.rpcId);
-        questions.add(
+      case MuxApprovalResolved(:final approvalId):
+        approvals.removeWhere((approval) => approval.approvalId == approvalId);
+      case MuxQuestionRequested(:final sessionId, :final questions):
+        if (sessionId == null) return;
+        this.questions.removeWhere((question) => question.rpcId == frame.rpcId);
+        this.questions.add(
           PendingQuestion(
             rpcId: frame.rpcId,
-            sessionId: sessionId!,
-            questions: (p['questions'] as List).cast<Map<String, dynamic>>(),
+            sessionId: sessionId,
+            questions: questions,
           ),
         );
-      case 'question/resolved':
-        questions.removeWhere((q) => q.rpcId == p['questionRpcId']);
-      case 'session/queue':
+      case MuxQuestionResolved(:final questionRpcId):
+        questions.removeWhere((question) => question.rpcId == questionRpcId);
+      case MuxQueueSnapshot(:final sessionId, :final items):
         if (sessionId == selectedSessionId) {
           queuedTasks
             ..clear()
-            ..addAll(parseQueuedTasks(p['items']));
+            ..addAll(parseQueuedTasks(items));
         }
-      default:
+      case null:
         return;
     }
     notifyListeners();
