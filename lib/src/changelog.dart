@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.29.0';
+const kAppVersion = '1.29.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.29.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复已完成任务仍显示在队列列表的问题：重新订阅时重置队列、插队消息转为正式消息时自动移除',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.29.0',
     date: '2026-08-25',

@@ -553,6 +553,90 @@ void main() {
       expect(app.queuedTasks, isEmpty);
       expect(app.hasQueuedTasks, isFalse);
     });
+
+    test('resubscription resets a stale queue snapshot', () {
+      final app = AppState();
+      app.selectedSessionId = 's1';
+      app.muxFrameForTest(
+        ServerFrame(
+          rpcId: 'queue-1',
+          method: 'events.mux',
+          payload: {
+            'type': 'session/queue',
+            'sessionId': 's1',
+            'items': [
+              {
+                'id': 'm1',
+                'placement': 'queued',
+                'message': {
+                  'content': [
+                    {'type': 'text', 'text': '任务'},
+                  ],
+                },
+              },
+            ],
+          },
+        ),
+      );
+      expect(app.queuedTasks, hasLength(1));
+
+      // An empty queue sends no session/queue frame; resubscription is the
+      // reset point, otherwise the stale row would linger after a reconnect.
+      app.muxFrameForTest(
+        ServerFrame(
+          rpcId: 'sub-1',
+          method: 'events.mux',
+          payload: {
+            'type': 'session/subscribed',
+            'sessionId': 's1',
+            'lastSeq': 5,
+          },
+        ),
+      );
+      expect(app.queuedTasks, isEmpty);
+    });
+
+    test('durable user/message retires the matching steering row', () {
+      final app = AppState();
+      app.selectedSessionId = 's1';
+      app.muxFrameForTest(
+        ServerFrame(
+          rpcId: 'queue-1',
+          method: 'events.mux',
+          payload: {
+            'type': 'session/queue',
+            'sessionId': 's1',
+            'items': [
+              {
+                'id': 'sm1',
+                'placement': 'steering',
+                'message': {
+                  'content': [
+                    {'type': 'text', 'text': '插队任务'},
+                  ],
+                },
+              },
+              {
+                'id': 'qm1',
+                'placement': 'queued',
+                'message': {
+                  'content': [
+                    {'type': 'text', 'text': '排队任务'},
+                  ],
+                },
+              },
+            ],
+          },
+        ),
+      );
+      expect(app.queuedTasks, hasLength(2));
+
+      // The steering message becomes durable: retire it, keep queued rows
+      // (they are managed by inbox-splice frames instead).
+      app.foldForTest(event(1, 'user/message', {'id': 'sm1', 'text': '插队任务'}));
+      expect(app.queuedTasks, hasLength(1));
+      expect(app.queuedTasks.single.id, 'qm1');
+    });
   });
 
   group('command lifecycle', () {

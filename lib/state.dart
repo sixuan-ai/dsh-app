@@ -1838,8 +1838,15 @@ class AppState extends ChangeNotifier {
       case MuxSubscribed(:final sessionId, :final lastSeq):
         if (sessionId != null) {
           _subscribedLastSeqs[sessionId] = lastSeq;
-          if (sessionId == selectedSessionId && lastSeq > _lastLiveSeq) {
-            unawaited(syncTail(sessionId));
+          if (sessionId == selectedSessionId) {
+            // The host resets the queue baseline on (re)subscription; the next
+            // session/queue frame re-establishes it. An empty queue sends no
+            // frame ("absence is how the client reads no tasks"), so without
+            // this reset a stale snapshot would linger after a reconnect.
+            queuedTasks.clear();
+            if (lastSeq > _lastLiveSeq) {
+              unawaited(syncTail(sessionId));
+            }
           }
         }
       case MuxSessionEvent(:final sessionId, :final event):
@@ -1934,6 +1941,17 @@ class AppState extends ChangeNotifier {
     final type = event['type'] as String;
     final data = (event['data'] as Map?)?.cast<String, dynamic>() ?? const {};
     final seq = event['seq'] as int? ?? 0;
+    // A queued steering message retires from the transient queue once its
+    // durable user/message enters the log (mirrors the host client mirror's
+    // acceptDurable). queued rows are handled by the inbox-splice frames.
+    if (type == 'user/message' && into == null) {
+      final messageId = data['id'] as String?;
+      if (messageId != null) {
+        queuedTasks.removeWhere(
+          (task) => task.placement == 'steering' && task.id == messageId,
+        );
+      }
+    }
     if (into == null && _loadingTail) {
       // A history tail load clears [items] on commit; hold live events until then.
       _liveBuffer.add(event);
