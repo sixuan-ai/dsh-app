@@ -1,0 +1,673 @@
+/// Chat composer, quick commands, images, and permission controls.
+library;
+
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+
+import 'src/theme.dart';
+import 'state.dart';
+
+class Composer extends StatefulWidget {
+  const Composer({super.key, required this.state});
+
+  final AppState state;
+
+  @override
+  State<Composer> createState() => _ComposerState();
+}
+
+class _ComposerState extends State<Composer> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  final List<PromptImage> _images = [];
+  bool _picking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _openCommands() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      // Without this the sheet caps at half the screen and the sheet's own
+      // column cannot scroll, so long server catalogs (e.g. /permission at
+      // the tail) were clipped away with no way to reach them.
+      isScrollControlled: true,
+      builder: (sheetContext) => _CommandsSheet(
+        state: widget.state,
+        onRun: (command) {
+          Navigator.of(sheetContext).pop();
+          widget.state.runCommand('/$command');
+        },
+        onOpenPermissions: () {
+          Navigator.of(sheetContext).pop();
+          _openPermissions();
+        },
+        onInsert: (command) {
+          Navigator.of(sheetContext).pop();
+          _controller.text = '/$command ';
+          _controller.selection = TextSelection.collapsed(
+            offset: _controller.text.length,
+          );
+          _focusNode.requestFocus();
+        },
+      ),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    if (_picking || _images.length >= 4) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('拍照'),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    setState(() => _picking = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 88,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) throw StateError('无法读取图片');
+      final normalized = img.bakeOrientation(decoded);
+      final encoded = img.encodeJpg(normalized, quality: 88);
+      if (encoded.length > 8 * 1024 * 1024) {
+        throw StateError('图片超过 8 MB,请换一张');
+      }
+      if (!mounted) return;
+      setState(() {
+        _images.add(
+          PromptImage(
+            mediaType: 'image/jpeg',
+            data: base64Encode(encoded),
+            name: picked.name,
+            width: normalized.width,
+            height: normalized.height,
+          ),
+        );
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('选择图片失败: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _openPermissions() async {
+    final preset = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => PermissionSheet(
+        onPick: (preset) => Navigator.of(sheetContext).pop(preset),
+      ),
+    );
+    if (preset == null || !mounted) return;
+    if (preset == 'danger-full-access') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('开启完全访问?'),
+          content: const Text('开启后 DSH 可读写设备上的所有文件，并且不再弹出审批确认。仅在信任当前任务时开启。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('开启'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await widget.state.runCommand('/permission $preset');
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty && _images.isEmpty) return;
+    final images = List<PromptImage>.of(_images);
+    _controller.clear();
+    setState(() => _images.clear());
+    HapticFeedback.lightImpact();
+    if (text.startsWith('/') && images.isEmpty) {
+      // Slash commands render their own echo + progress + result in chat.
+      widget.state.runCommand(text);
+      return;
+    }
+    final sent = await widget.state.sendPrompt(text, images: images);
+    if (!sent && mounted) {
+      setState(() {
+        if (_controller.text.isEmpty) _controller.text = text;
+        _images.insertAll(0, images);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.state.selectedSessionId != null;
+    final canSend =
+        enabled && (_controller.text.trim().isNotEmpty || _images.isNotEmpty);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: P.card,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: P.isDark ? P.fillMedium : P.divider),
+            boxShadow: P.cardShadow,
+          ),
+          padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_images.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    height: 76,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(left: 10, bottom: 5),
+                      itemCount: _images.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 6),
+                      itemBuilder: (_, index) {
+                        final image = _images[index];
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(
+                                base64Decode(image.data),
+                                width: 68,
+                                height: 68,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: IconButton(
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.cancel, size: 19),
+                                color: P.danger,
+                                onPressed: () =>
+                                    setState(() => _images.removeAt(index)),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: IconButton(
+                      tooltip: '快捷命令',
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: P.textSecondary,
+                      onPressed: enabled ? _openCommands : null,
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      enabled: enabled,
+                      minLines: 1,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.newline,
+                      style: const TextStyle(fontSize: 15.5),
+                      decoration: InputDecoration(
+                        hintText: enabled ? '发消息给 DSH…' : '先选择或新建一个会话',
+                        hintStyle: TextStyle(color: P.textTertiary),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  if (widget.state.selectedRunning)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6, bottom: 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: P.danger.withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: P.danger.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: IconButton(
+                          tooltip: '停止生成',
+                          icon: Icon(Icons.stop_rounded, color: P.danger),
+                          onPressed: () => widget.state.cancelTurn(),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: IconButton(
+                      tooltip: '添加图片',
+                      icon: _picking
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.image_outlined),
+                      color: P.textSecondary,
+                      onPressed: enabled && !_picking && _images.length < 4
+                          ? _pickImage
+                          : null,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    // Container, not Ink: on Xiaomi HyperOS the Ink+gradient
+                    // decoration silently fails to paint, leaving the white
+                    // (onAccent) arrow on a white card — an invisible but still
+                    // tappable send button (v1.10.0 field report).
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: canSend ? P.brandGradient : null,
+                        color: canSend ? null : P.fillLight,
+                        shape: BoxShape.circle,
+                        boxShadow: canSend ? [P.brandGlow] : null,
+                      ),
+                      child: IconButton(
+                        tooltip: '发送',
+                        icon: Icon(
+                          Icons.arrow_upward_rounded,
+                          color: canSend ? P.onAccent : P.textTertiary,
+                        ),
+                        onPressed: canSend ? _send : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One slash command offered by the composer sheet.
+class _SlashCommand {
+  const _SlashCommand(
+    this.name,
+    this.icon,
+    this.description, {
+    this.hasInput = false,
+  });
+
+  final String name;
+  final IconData icon;
+  final String description;
+
+  /// Commands with input insert the prefix instead of sending directly.
+  final bool hasInput;
+}
+
+const _slashCommands = [
+  _SlashCommand('compact', Icons.compress, '压缩较早的对话历史,释放上下文空间'),
+  _SlashCommand('plan', Icons.map_outlined, '进入或退出计划模式'),
+  _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标', hasInput: true),
+  _SlashCommand(
+    'permission',
+    Icons.shield_outlined,
+    '切换权限模式(如 /permission danger-full-access)',
+    hasInput: true,
+  ),
+  _SlashCommand(
+    'feedback',
+    Icons.rate_review_outlined,
+    '记录对本会话的反馈',
+    hasInput: true,
+  ),
+];
+
+/// Permission-mode sheet (drawer → 权限模式): one tap per preset; the pick
+/// rides the /permission command, so the chat shows the usual command card.
+class PermissionSheet extends StatelessWidget {
+  const PermissionSheet({super.key, required this.onPick});
+
+  /// Called with the chosen preset name ('workspace-write' etc.).
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '权限模式',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '控制当前会话的文件访问范围与审批策略',
+              style: TextStyle(fontSize: 12, color: P.textTertiary),
+            ),
+            const SizedBox(height: 12),
+            _PermissionOption(
+              icon: Icons.edit_note,
+              title: '工作区写入',
+              preset: 'workspace-write',
+              description: '只能写当前工作区;越权操作会先弹审批询问你',
+              onPick: onPick,
+            ),
+            const SizedBox(height: 6),
+            _PermissionOption(
+              icon: Icons.lock_open_outlined,
+              title: '完全访问',
+              preset: 'danger-full-access',
+              description: '全部文件可读写,且不再弹审批(需二次确认)',
+              onPick: onPick,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionOption extends StatelessWidget {
+  const _PermissionOption({
+    required this.icon,
+    required this.title,
+    required this.preset,
+    required this.description,
+    required this.onPick,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// Preset name passed to /permission.
+  final String preset;
+  final String description;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: P.fillSubtle,
+      borderRadius: BorderRadius.circular(14),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: P.brandGradient,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: P.onAccent),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          description,
+          style: TextStyle(fontSize: 12, color: P.textSecondary),
+        ),
+        onTap: () => onPick(preset),
+      ),
+    );
+  }
+}
+
+/// Quick-command sheet opened from the composer's + button. The catalog
+/// loads live from the host (commands/list); the built-in list is the
+/// offline fallback.
+class _CommandsSheet extends StatefulWidget {
+  const _CommandsSheet({
+    required this.state,
+    required this.onRun,
+    required this.onInsert,
+    required this.onOpenPermissions,
+  });
+
+  final AppState state;
+
+  /// Executes `/<name>` immediately.
+  final ValueChanged<String> onRun;
+
+  /// Inserts `/<name> ` into the composer for argument entry.
+  final ValueChanged<String> onInsert;
+
+  /// Opens the current session's permission preset picker.
+  final VoidCallback onOpenPermissions;
+
+  @override
+  State<_CommandsSheet> createState() => _CommandsSheetState();
+}
+
+class _CommandsSheetState extends State<_CommandsSheet> {
+  List<_SlashCommand> _commands = _slashCommands;
+
+  static const _icons = <String, IconData>{
+    'compact': Icons.compress,
+    'plan': Icons.map_outlined,
+    'goal': Icons.flag_outlined,
+    'feedback': Icons.rate_review_outlined,
+    'export': Icons.download_outlined,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final catalog = await widget.state.listCommands();
+      if (!mounted || catalog.isEmpty) return;
+      setState(() {
+        _commands = [
+          for (final entry in catalog)
+            _SlashCommand(
+              entry['name'] as String? ?? '',
+              _icons[entry['name']] ?? Icons.terminal,
+              entry['description'] as String? ?? '',
+              hasInput: entry['input'] != null,
+            ),
+        ];
+      });
+    } catch (_) {
+      // Keep the built-in fallback list.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '快捷命令',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '以 / 开头的消息会作为命令执行,不会发送给模型',
+              style: TextStyle(fontSize: 12, color: P.textTertiary),
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: P.fillSubtle,
+              borderRadius: BorderRadius.circular(14),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: P.isDark
+                        ? P.success.withValues(alpha: 0.18)
+                        : P.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                    color: P.success,
+                  ),
+                ),
+                title: const Text(
+                  '权限模式',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  '切换工作区写入或完全访问',
+                  style: TextStyle(fontSize: 12, color: P.textSecondary),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: P.textTertiary,
+                ),
+                onTap: widget.onOpenPermissions,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Bounded, scrollable list: the catalog comes from the server and
+            // grows over time; a fixed Column clipped past the sheet height.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
+              ),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final command in _commands)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Material(
+                        color: P.fillSubtle,
+                        borderRadius: BorderRadius.circular(14),
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              gradient: P.brandGradient,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              command.icon,
+                              size: 18,
+                              color: P.onAccent,
+                            ),
+                          ),
+                          title: Text(
+                            '/${command.name}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            command.description,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: P.textSecondary,
+                            ),
+                          ),
+                          trailing: Icon(
+                            command.hasInput
+                                ? Icons.edit_outlined
+                                : Icons.play_arrow_rounded,
+                            size: 18,
+                            color: P.textTertiary,
+                          ),
+                          onTap: () => command.hasInput
+                              ? widget.onInsert(command.name)
+                              : widget.onRun(command.name),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

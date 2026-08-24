@@ -1,7 +1,7 @@
 # xHarness 项目交接文档
 
 > 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
-> 最后更新：2026-08-23（v1.22.7+68；App 发布提交以 main 最新为准）
+> 最后更新：2026-08-24（v1.22.8+69；App 发布提交以 main 最新为准）
 
 ## 0. 三十秒速览
 
@@ -10,10 +10,10 @@
 当前最新正式版：
 
 ```text
-版本: v1.22.7
-versionCode: 2068
-APK: https://dsh.ainotex.com/releases/dsh-app-1.22.7.apk
-SHA-256: 499a121a30fe7232ec82176378e3f0d90dd4237905e3983602dac719ff9b9e0c
+版本: v1.22.8
+versionCode: 2069
+APK: https://dsh.ainotex.com/releases/dsh-app-1.22.8.apk
+SHA-256: 8fac456b8c7c7ab5dcaa23c8bbb8ccf7a59eb4ec93e075ce68829ae223b99a04
 Git: 以 main 最新发布提交为准
 ```
 
@@ -143,6 +143,12 @@ export PATH="/home/x/flutter/bin:$PATH"
 - Android 使用正式签名，签名文件只在本地，不在 Git 仓库。
 
 ## 3. 最近版本记录
+
+### v1.22.8
+
+- `Composer`、图片选择和发送交互移出 `main.dart`。
+- 快捷命令目录与权限模式组件归入独立 `composer.dart` 模块。
+- `main.dart` 减少约 660 行，现有界面与行为保持不变。
 
 ### v1.22.7
 
@@ -362,7 +368,7 @@ curl -fsS https://dsh.ainotex.com/app/content/ai/agents.json | python3 -m json.t
 
 ```text
 请先阅读 /home/x/code/pd02/dsh_mobile/HANDOVER.md，接手 xHarness。
-当前最新版本是 v1.22.7+68；交接文档以仓库 main 分支最新内容为准。
+当前最新版本是 v1.22.8+69；交接文档以仓库 main 分支最新内容为准。
 先不要改 DSH Web 进程，也不要重启 127.0.0.1:3080。
 我希望继续处理：____。
 ```
