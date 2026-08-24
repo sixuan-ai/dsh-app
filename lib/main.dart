@@ -175,6 +175,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final Set<String> _shownApprovals = {};
   final Set<String> _shownQuestions = {};
   String? _modelsLoadedFor;
+  bool _levelUpScheduled = false;
 
   /// Newer release known to the server; drives the green dot on the
   /// 检查更新 drawer entry. Set by the launch check and the periodic timer.
@@ -209,10 +210,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    state.addListener(_onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowWhatsNew();
       _maybeShowQuickStart();
       _checkForUpdate();
+      _onStateChanged();
     });
     // Silent re-check every 30 minutes; a find raises the green dot.
     _updateTimer = Timer.periodic(
@@ -232,8 +235,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void dispose() {
     _updateTimer?.cancel();
     _socialTimer?.cancel();
+    state.removeListener(_onStateChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onStateChanged() {
+    _maybeShowInteractions();
+    final sessionId = state.selectedSessionId;
+    if (sessionId != null && sessionId != _modelsLoadedFor) {
+      _modelsLoadedFor = sessionId;
+      unawaited(state.loadModels());
+    }
+    if (state.lastLevelUp != null && !_levelUpScheduled) {
+      _levelUpScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _levelUpScheduled = false;
+        if (!mounted) return;
+        final levelUp = state.lastLevelUp;
+        if (levelUp == null) return;
+        state.clearLevelUp();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '🎉 升级啦! 已达到 Lv.${levelUp.level} · ${levelUp.title}(共 ${levelUp.count} 次对话)',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _checkLocalConnection() async {
@@ -831,27 +862,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return AnimatedBuilder(
       animation: state,
       builder: (context, _) {
-        _maybeShowInteractions();
-        final levelUp = state.lastLevelUp;
-        if (levelUp != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            state.clearLevelUp();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '🎉 升级啦! 已达到 Lv.${levelUp.level} · ${levelUp.title}(共 ${levelUp.count} 次对话)',
-                ),
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          });
-        }
         final sessionId = state.selectedSessionId;
-        if (sessionId != null && sessionId != _modelsLoadedFor) {
-          _modelsLoadedFor = sessionId;
-          unawaited(state.loadModels());
-        }
         final row = _selectedRow();
         final title = row?.title?.isNotEmpty == true
             ? row!.title!
