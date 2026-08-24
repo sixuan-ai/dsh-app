@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.29';
+const kAppVersion = '1.23.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.23.0',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增目录浏览页：树形查看电脑上的目录，支持隐藏文件开关与路径复制',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增网络诊断页：8 次探测统计最小/平均/最大延迟、抖动和成功率',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.29',
     date: '2026-08-24',
