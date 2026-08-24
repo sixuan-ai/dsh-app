@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.14';
+const kAppVersion = '1.22.15';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.15',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '将图片方向修正与 JPEG 压缩移出界面线程，降低添加大图时的卡顿',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.14',
     date: '2026-08-24',
