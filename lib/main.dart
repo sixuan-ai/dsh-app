@@ -46,6 +46,18 @@ const _nativeNetworkChannel = MethodChannel(
   'dev.dsh.dsh_mobile/native_network',
 );
 
+/// Maps the live server URL back to the connection-mode key used across the
+/// app ('lan' / 'direct' / 'public'). The mode is derived from the URL the
+/// socket actually holds — never from a separately persisted flag — so the
+/// connection center always agrees with where the app is really connected.
+String connectionModeForUrl(String serverUrl, {String? localUrl}) {
+  if (serverUrl.isNotEmpty && serverUrl == localUrl) return 'lan';
+  if (serverUrl == kDirectServerUrl || serverUrl == kDirectServerFallbackUrl) {
+    return 'direct';
+  }
+  return 'public';
+}
+
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
 /// download tests; production uses the public domain.
@@ -210,8 +222,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _checkingLocal = false;
   bool _localAvailable = false;
   String? _localUrl;
-  String _connectionMode = 'public';
   String? _remoteUrl;
+
+  /// Route the app is actually on, derived from the live server URL so the
+  /// connection center can never disagree with the socket the app holds.
+  /// A separately persisted flag can go stale (a switch tears HomePage down
+  /// and rebuilds it mid-reconnect), so the URL is the source of truth.
+  String get _connectionMode =>
+      connectionModeForUrl(state.serverUrl, localUrl: _localUrl);
 
   AppState get state => widget.state;
 
@@ -220,6 +238,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     state.addListener(_onStateChanged);
+    unawaited(_restoreConnectionState());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowWhatsNew();
       _maybeShowQuickStart();
@@ -276,21 +295,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Loads the persisted route targets right away so the derived mode and the
+  /// public-switch destination are correct even before the LAN probe finishes.
+  Future<void> _restoreConnectionState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _remoteUrl = prefs.getString('remoteServerUrl');
+      _localUrl = prefs.getString('lanServerUrl');
+    });
+  }
+
   Future<void> _checkLocalConnection() async {
     if (_checkingLocal || !mounted) return;
     final prefs = await SharedPreferences.getInstance();
     final localUrl = prefs.getString('lanServerUrl');
-    final mode = prefs.getString('connectionMode') ?? 'public';
     final remoteUrl = prefs.getString('remoteServerUrl');
+    setState(() {
+      _localUrl = localUrl;
+      _remoteUrl = remoteUrl;
+    });
     if (localUrl == null || localUrl.isEmpty) {
       if (mounted) setState(() => _localAvailable = false);
       return;
     }
     setState(() {
       _checkingLocal = true;
-      _localUrl = localUrl;
-      _connectionMode = mode;
-      _remoteUrl = remoteUrl;
     });
     final available = await state.probeServer(
       localUrl,
@@ -355,7 +385,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ).showSnackBar(const SnackBar(content: Text('没有可用的连接地址，请先完成连接配置')));
       return;
     }
-    final previousMode = _connectionMode;
     var ok = false;
     String? nativeProbeSummary;
     if (mode == 'direct') {
@@ -385,7 +414,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       await prefs.setString('connectionMode', mode);
       await prefs.setString('serverUrl', target!);
       if (!mounted) return;
-      setState(() => _connectionMode = mode);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (mode) {
@@ -396,7 +424,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       );
     } else {
-      setState(() => _connectionMode = previousMode);
       final reason = state.lastProbeError;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
