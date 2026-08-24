@@ -6,6 +6,23 @@ import 'session_event_parser.dart';
 
 enum ConversationFoldResult { unhandled, handled, stop }
 
+class LocalCommandRows {
+  const LocalCommandRows({
+    required this.line,
+    required this.echo,
+    required this.status,
+  });
+
+  final String line;
+  final ChatItem echo;
+  final ChatItem status;
+}
+
+typedef TakeLocalCommand = LocalCommandRows? Function(String name);
+typedef ReplaceConversationItem =
+    void Function(ChatItem oldItem, ChatItem replacement);
+typedef TurnErrorHandler = void Function(String rawMessage, int seq);
+
 ConversationFoldResult foldCoreConversationEvent({
   required String type,
   required Map<String, dynamic> data,
@@ -16,6 +33,9 @@ ConversationFoldResult foldCoreConversationEvent({
   required Map<String, ChatItem> streams,
   required Map<String, ChatItem> toolItems,
   required Map<String, ChatItem> pendingPrompts,
+  TakeLocalCommand? takeLocalCommand,
+  ReplaceConversationItem? replaceItem,
+  TurnErrorHandler? onTurnError,
 }) {
   switch (type) {
     case 'user/message':
@@ -138,6 +158,93 @@ ConversationFoldResult foldCoreConversationEvent({
             ..resultIsError = parsed.isError
             ..completed = true,
         );
+      }
+      return ConversationFoldResult.handled;
+    case 'turn/end':
+      if (live) {
+        final turn = data['turn'];
+        final prefix = turn == null ? null : '$turn:';
+        final streamKeys = streams.keys
+            .where((key) => prefix == null || key.startsWith(prefix))
+            .toList();
+        for (final key in streamKeys) {
+          final stream = streams.remove(key);
+          if (stream != null) target.remove(stream);
+        }
+        final reason = (data['reason'] as Map?)?.cast<String, dynamic>();
+        if (reason?['kind'] == 'error') {
+          final failure = (reason?['error'] as Map?)?.cast<String, dynamic>();
+          onTurnError?.call(failure?['message'] as String? ?? '未知错误', seq);
+        }
+      }
+      return ConversationFoldResult.handled;
+    case 'command/run':
+      final commandId = data['commandId'] as String? ?? '';
+      final name = data['name'] as String? ?? '';
+      if (commandId.isEmpty || name.isEmpty) return ConversationFoldResult.stop;
+      if (target.any((item) => item.id == 'cmdrun-$commandId')) {
+        return ConversationFoldResult.stop;
+      }
+      final args = data['args'] as String?;
+      final line = '/$name${args ?? ''}'.trimRight();
+      final local = live ? takeLocalCommand?.call(name) : null;
+      final shown = local?.line ?? line;
+      final echo = ChatItem.user(id: 'cmdin-$commandId', text: shown);
+      final status = ChatItem.notice(
+        id: 'cmdrun-$commandId',
+        text: '正在执行 $shown …',
+      )..pending = true;
+      if (local != null && replaceItem != null) {
+        replaceItem(local.echo, echo);
+        replaceItem(local.status, status);
+      } else {
+        target
+          ..add(echo)
+          ..add(status);
+      }
+      return ConversationFoldResult.handled;
+    case 'command/done':
+      final commandId = data['commandId'] as String? ?? '';
+      final text = data['text'] as String? ?? '';
+      final isError = data['kind'] == 'error';
+      ChatItem? status;
+      for (final candidate in target) {
+        if (candidate.id == 'cmdrun-$commandId') {
+          status = candidate;
+          break;
+        }
+      }
+      if (status != null) {
+        status
+          ..text = text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成')
+          ..isError = isError
+          ..pending = false;
+      } else if (text.isNotEmpty) {
+        target.add(
+          ChatItem.notice(
+            id: 'cmddone-$commandId',
+            text: text,
+            isError: isError,
+          ),
+        );
+      }
+      return ConversationFoldResult.handled;
+    case 'todo/write':
+      if (!live) return ConversationFoldResult.stop;
+      final todos = (data['todos'] as List?) ?? const [];
+      if (todos.isNotEmpty) {
+        final lines = todos
+            .whereType<Map>()
+            .map((todo) {
+              final mark = switch (todo['status']) {
+                'completed' => '☑',
+                'in_progress' => '◐',
+                _ => '☐',
+              };
+              return '$mark ${todo['content']}';
+            })
+            .join('\n');
+        target.add(ChatItem.notice(id: 'todo-$seq', text: lines));
       }
       return ConversationFoldResult.handled;
     default:

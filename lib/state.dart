@@ -1949,6 +1949,38 @@ class AppState extends ChangeNotifier {
       streams: _streams,
       toolItems: _toolItems,
       pendingPrompts: _pendingPrompts,
+      takeLocalCommand: (name) {
+        final local = _takeLocalCommand(name);
+        return local == null
+            ? null
+            : LocalCommandRows(
+                line: local.line,
+                echo: local.echo,
+                status: local.status,
+              );
+      },
+      replaceItem: _replaceItem,
+      onTurnError: (raw, errorSeq) {
+        final sessionId = selectedSessionId;
+        if (sessionId != null &&
+            _consumeDuplicateError(_agentErrorNotices, sessionId, raw)) {
+          return;
+        }
+        if (sessionId != null) {
+          _turnErrorNotices[sessionId] = (
+            message: raw,
+            at: DateTime.now().millisecondsSinceEpoch,
+          );
+        }
+        items.add(
+          ChatItem.notice(
+            id: 'turnerr-$errorSeq',
+            text: _friendlyAgentError(raw),
+            isError: true,
+            retryText: _latestRetryablePrompt(),
+          ),
+        );
+      },
     );
     if (coreResult == ConversationFoldResult.stop) return;
     if (coreResult == ConversationFoldResult.handled) {
@@ -1961,122 +1993,6 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    switch (type) {
-      case 'turn/end':
-        if (into == null) {
-          final turn = data['turn'];
-          final prefix = turn == null ? null : '$turn:';
-          final streamKeys = _streams.keys
-              .where((key) => prefix == null || key.startsWith(prefix))
-              .toList();
-          for (final key in streamKeys) {
-            final stream = _streams.remove(key);
-            if (stream != null) items.remove(stream);
-          }
-        }
-        final reason = (data['reason'] as Map?)?.cast<String, dynamic>();
-        if (reason?['kind'] == 'error' && into == null) {
-          final failure = (reason?['error'] as Map?)?.cast<String, dynamic>();
-          final raw = failure?['message'] as String? ?? '未知错误';
-          final sessionId = selectedSessionId;
-          if (sessionId != null &&
-              _consumeDuplicateError(_agentErrorNotices, sessionId, raw)) {
-            break;
-          }
-          if (sessionId != null) {
-            _turnErrorNotices[sessionId] = (
-              message: raw,
-              at: DateTime.now().millisecondsSinceEpoch,
-            );
-          }
-          items.add(
-            ChatItem.notice(
-              id: 'turnerr-$seq',
-              text: _friendlyAgentError(raw),
-              isError: true,
-              retryText: _latestRetryablePrompt(),
-            ),
-          );
-        }
-      case 'command/run':
-        // A resolved slash command entered its handler: echo the line as a
-        // user-style bubble plus a pending status notice, paired with the
-        // command/done row by commandId.
-        final commandId = data['commandId'] as String? ?? '';
-        final name = data['name'] as String? ?? '';
-        if (commandId.isEmpty || name.isEmpty) break;
-        var represented = false;
-        for (final candidate in target) {
-          if (candidate.id == 'cmdrun-$commandId') {
-            represented = true;
-            break;
-          }
-        }
-        if (represented) break; // late duplicate after the RPC settled locally
-        final args = data['args'] as String?;
-        final line = '/$name${args ?? ''}'.trimRight();
-        final local = into == null ? _takeLocalCommand(name) : null;
-        final shown = local?.line ?? line;
-        final echo = ChatItem.user(id: 'cmdin-$commandId', text: shown);
-        final status = ChatItem.notice(
-          id: 'cmdrun-$commandId',
-          text: '正在执行 $shown …',
-        )..pending = true;
-        if (local != null) {
-          _replaceItem(local.echo, echo);
-          _replaceItem(local.status, status);
-        } else {
-          target.add(echo);
-          target.add(status);
-        }
-      case 'command/done':
-        // Slash command outcome: settle the paired pending status in place,
-        // or render a standalone result row when the run predates the window.
-        final commandId = data['commandId'] as String? ?? '';
-        final text = data['text'] as String? ?? '';
-        final isError = data['kind'] == 'error';
-        ChatItem? status;
-        for (final candidate in target) {
-          if (candidate.id == 'cmdrun-$commandId') {
-            status = candidate;
-            break;
-          }
-        }
-        if (status != null) {
-          status
-            ..text = text.isNotEmpty ? text : (isError ? '命令执行失败' : '执行完成')
-            ..isError = isError
-            ..pending = false;
-        } else if (text.isNotEmpty) {
-          target.add(
-            ChatItem.notice(
-              id: 'cmddone-$commandId',
-              text: text,
-              isError: isError,
-            ),
-          );
-        }
-      case 'todo/write':
-        if (into == null) {
-          final todos = (data['todos'] as List?) ?? const [];
-          if (todos.isNotEmpty) {
-            final lines = todos
-                .whereType<Map>()
-                .map((t) {
-                  final mark = switch (t['status']) {
-                    'completed' => '☑',
-                    'in_progress' => '◐',
-                    _ => '☐',
-                  };
-                  return '$mark ${t['content']}';
-                })
-                .join('\n');
-            items.add(ChatItem.notice(id: 'todo-$seq', text: lines));
-          }
-        }
-      default:
-        break;
-    }
     if (eventTime != null) {
       for (var i = targetBefore; i < target.length; i++) {
         target[i].time ??= eventTime;
