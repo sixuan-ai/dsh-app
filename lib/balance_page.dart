@@ -1,19 +1,16 @@
-/// DeepSeek API balance viewer: queries the official `/user/balance` endpoint
-/// with a user-provided API key stored on-device only.
+/// DeepSeek API balance viewer. The balance is queried through the DSH host's
+/// own auth gateway (`/api/balance`), which reads the DSH credentials store
+/// server-side — the API key never reaches the phone.
 library;
 
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'main.dart' show kDefaultServerUrl;
 import 'src/l10n.dart';
 import 'src/theme.dart';
-
-/// Balance endpoint and key storage key.
-const kDeepSeekBalanceUrl = 'https://api.deepseek.com/user/balance';
-const kDeepSeekApiKeyPref = 'deepseekApiKey';
 
 /// One currency's balance row as returned by the official API.
 class BalanceEntry {
@@ -53,7 +50,11 @@ class BalanceResult {
 }
 
 class BalancePage extends StatefulWidget {
-  const BalancePage({super.key, this.client});
+  const BalancePage({super.key, this.username, this.password, this.client});
+
+  /// DSH login credentials, forwarded as Basic auth to the host gateway.
+  final String? username;
+  final String? password;
 
   /// Injectable transport for tests; defaults to the global http.
   final http.Client? client;
@@ -63,52 +64,28 @@ class BalancePage extends StatefulWidget {
 }
 
 class _BalancePageState extends State<BalancePage> {
-  final TextEditingController _key = TextEditingController();
-  bool _obscureKey = true;
   bool _loading = false;
   BalanceResult? _result;
   String? _error;
 
   http.Client get _client => widget.client ?? http.Client();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadKey();
-  }
-
-  @override
-  void dispose() {
-    _key.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(kDeepSeekApiKeyPref) ?? '';
-    if (!mounted) return;
-    setState(() => _key.text = saved);
-  }
-
   Future<void> _query() async {
-    final key = _key.text.trim();
-    if (key.isEmpty) {
-      _toast(S.balanceNoKey);
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(kDeepSeekApiKeyPref, key);
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
+      final headers = <String, String>{'Accept': 'application/json'};
+      final user = widget.username;
+      final pass = widget.password;
+      if (user != null && pass != null) {
+        headers['Authorization'] =
+            'Basic ${base64Encode(utf8.encode('$user:$pass'))}';
+      }
       final response = await _client
-          .get(
-            Uri.parse(kDeepSeekBalanceUrl),
-            headers: {'Authorization': 'Bearer $key'},
-          )
-          .timeout(const Duration(seconds: 15));
+          .get(Uri.parse('$kDefaultServerUrl/api/balance'), headers: headers)
+          .timeout(const Duration(seconds: 20));
       if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
@@ -116,26 +93,18 @@ class _BalancePageState extends State<BalancePage> {
             (jsonDecode(response.body) as Map).cast<String, dynamic>(),
           );
         });
-      } else if (response.statusCode == 401) {
-        setState(() => _error = S.balanceKeyInvalid);
+      } else if (response.statusCode == 503) {
+        setState(() => _error = S.balanceServerNoKey);
       } else {
         setState(
-          () => _error = '${S.balanceQueryFailed}${response.statusCode}',
+          () => _error = '${S.balanceQueryFailed}(${response.statusCode})',
         );
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _error = S.balanceQueryFailed);
-      }
+      if (mounted) setState(() => _error = S.balanceQueryFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
   }
 
   @override
@@ -147,41 +116,28 @@ class _BalancePageState extends State<BalancePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              S.balanceKeyLabel,
-              style: TextStyle(color: P.textSecondary, fontSize: 13.5),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _key,
-              obscureText: _obscureKey,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                hintText: S.balanceKeyHint,
-                filled: true,
-                fillColor: P.fillSubtle,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: IconButton(
-                  tooltip: _obscureKey ? S.showPassword : S.hidePassword,
-                  icon: Icon(
-                    _obscureKey
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 19,
-                    color: P.textTertiary,
-                  ),
-                  onPressed: () => setState(() => _obscureKey = !_obscureKey),
-                ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: P.fillSubtle,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              S.balanceKeyLocalNote,
-              style: TextStyle(color: P.textTertiary, fontSize: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.lock_outline, size: 16, color: P.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      S.balanceServerNote,
+                      style: TextStyle(
+                        color: P.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             FilledButton(

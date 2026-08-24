@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.26.0';
+const kAppVersion = '1.27.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.27.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        'API 余额改为通过电脑上的 DSH 直接查询：无需再填写密钥，密钥始终留在电脑上',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.26.0',
     date: '2026-08-25',

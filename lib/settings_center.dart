@@ -118,7 +118,12 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               icon: Icons.account_balance_wallet_outlined,
               title: S.balanceTitle,
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const BalancePage()),
+                MaterialPageRoute<void>(
+                  builder: (_) => BalancePage(
+                    username: widget.state.authUsername,
+                    password: widget.state.authPassword,
+                  ),
+                ),
               ),
             ),
             _SectionHeader(S.help),
