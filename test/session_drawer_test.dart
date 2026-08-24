@@ -1,4 +1,5 @@
 import 'package:dsh_mobile/session_drawer.dart';
+import 'package:dsh_mobile/src/l10n.dart';
 import 'package:dsh_mobile/src/theme.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ void main() {
           body: SessionDrawer(
             state: state,
             theme: theme,
+            language: LanguageController(),
             onLogout: () {},
             onNewSession: () {},
             onCheckUpdate: () {},
@@ -54,6 +56,7 @@ void main() {
           body: SessionDrawer(
             state: state,
             theme: ThemeController(),
+            language: LanguageController(),
             onLogout: () {},
             onNewSession: () {},
             onCheckUpdate: () {},

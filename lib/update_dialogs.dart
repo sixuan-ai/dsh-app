@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'src/formatters.dart';
+import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'src/updater.dart';
 
@@ -55,7 +56,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '发现新版本',
+                  S.updateAvailableTitle,
                   style: TextStyle(
                     color: P.onAccent,
                     fontSize: 16.5,
@@ -99,7 +100,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          '安装包 ${formatBytes(info.size!)}',
+                          '${S.installPackage} ${formatBytes(info.size!)}',
                           style: TextStyle(
                             fontSize: 11.5,
                             color: P.textTertiary,
@@ -156,7 +157,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              '立即更新',
+                              S.updateNow,
                               style: TextStyle(
                                 color: P.onAccent,
                                 fontSize: 15,
@@ -174,7 +175,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text(
-                      '稍后',
+                      S.later,
                       style: TextStyle(color: P.textTertiary, fontSize: 13.5),
                     ),
                   ),
@@ -278,7 +279,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '正在下载更新',
+              S.downloadingUpdate,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 3),
@@ -332,7 +333,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                   FilledButton.icon(
                     onPressed: _start,
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('重试'),
+                    label: Text(S.retry),
                     style: FilledButton.styleFrom(
                       backgroundColor: P.accent,
                       foregroundColor: P.onAccent,

@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'connection_center_banner.dart';
 
@@ -29,9 +30,9 @@ class ConnectionCenterSheet extends StatelessWidget {
   final VoidCallback? onSwitchDirect;
 
   String get _currentLabel => switch (connectionMode) {
-    'lan' => '本地电脑',
-    'direct' => '深圳服务器',
-    _ => '香港服务器',
+    'lan' => S.localComputer,
+    'direct' => S.szServer,
+    _ => S.hkServer,
   };
 
   @override
@@ -44,27 +45,24 @@ class ConnectionCenterSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '连接中心',
+              S.connectionCenter,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            Text(
-              '切换连接不会退出账号。正在生成内容时建议等待完成后再切换。',
-              style: TextStyle(color: P.textSecondary),
-            ),
+            Text(S.switchTip, style: TextStyle(color: P.textSecondary)),
             const SizedBox(height: 14),
             CurrentConnectionBanner(label: _currentLabel),
             const SizedBox(height: 14),
             _ConnectionCard(
               icon: Icons.cloud_outlined,
-              title: '香港服务器',
+              title: S.hkServer,
               subtitle: connectionMode == 'public'
-                  ? '当前正在使用'
-                  : '通过香港服务器中转，适合外出使用',
+                  ? S.currentlyUsing
+                  : S.hkServerDesc,
               active: connectionMode == 'public',
-              actionLabel: '切换回香港服务器',
+              actionLabel: S.switchBackToHk,
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchRemote();
@@ -74,10 +72,12 @@ class ConnectionCenterSheet extends StatelessWidget {
               const SizedBox(height: 10),
               _ConnectionCard(
                 icon: Icons.bolt_rounded,
-                title: '深圳服务器',
-                subtitle: connectionMode == 'direct' ? '当前正在使用' : '国内直连，延迟更低更稳',
+                title: S.szServer,
+                subtitle: connectionMode == 'direct'
+                    ? S.currentlyUsing
+                    : S.szServerDesc,
                 active: connectionMode == 'direct',
-                actionLabel: '切换到深圳服务器',
+                actionLabel: S.switchToSz,
                 onSwitch: () {
                   Navigator.pop(context);
                   onSwitchDirect!();
@@ -87,18 +87,18 @@ class ConnectionCenterSheet extends StatelessWidget {
             const SizedBox(height: 10),
             _ConnectionCard(
               icon: Icons.lan_outlined,
-              title: '本地电脑',
+              title: S.localComputer,
               subtitle: connectionMode == 'lan'
-                  ? '当前正在使用'
+                  ? S.currentlyUsing
                   : checkingLocal
-                  ? '正在检查电脑…'
+                  ? S.checkingLocal
                   : localAvailable
-                  ? '本地电脑可用，通常速度更快'
-                  : '当前未检测到本地电脑',
+                  ? S.localDescAvailable
+                  : S.localDescNone,
               active: connectionMode == 'lan',
               available: localAvailable,
               checking: checkingLocal,
-              actionLabel: '切换到本地电脑',
+              actionLabel: S.switchToLocal,
               onSwitch: () {
                 Navigator.pop(context);
                 onSwitchLocal();
@@ -113,7 +113,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                   onRefreshLocal();
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text('重新检测本地连接'),
+                label: Text(S.retestLocal),
               ),
             ),
           ],

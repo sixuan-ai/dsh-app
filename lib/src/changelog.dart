@@ -25,10 +25,28 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.24.8';
+const kAppVersion = '1.25.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.25.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增设置中心：可切换语言（跟随系统 / 简体中文 / English）、切换主题、以及连接与帮助入口',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增用户反馈页面：选择类型并描述问题，提交后同步到服务器',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增联系客服页面：聚合站内反馈、社区、教程与更新日志入口',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.24.8',
     date: '2026-08-25',

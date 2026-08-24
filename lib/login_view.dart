@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'brand_mark.dart';
 import 'connection_guide.dart';
 import 'src/protocol.dart';
+import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'state.dart';
 
@@ -189,7 +190,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '用手机安全连接并操作你自己的电脑',
+                          S.tagline,
                           textAlign: TextAlign.center,
                           style: TextStyle(color: P.textSecondary),
                         ),
@@ -207,16 +208,16 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                           child: Column(
                             children: [
                               SegmentedButton<String>(
-                                segments: const [
+                                segments: [
                                   ButtonSegment(
                                     value: 'public',
-                                    icon: Icon(Icons.public),
-                                    label: Text('远程连接'),
+                                    icon: const Icon(Icons.public),
+                                    label: Text(S.remoteConnection),
                                   ),
                                   ButtonSegment(
                                     value: 'lan',
-                                    icon: Icon(Icons.wifi),
-                                    label: Text('本地连接'),
+                                    icon: const Icon(Icons.wifi),
+                                    label: Text(S.localConnection),
                                   ),
                                 ],
                                 selected: {_connectionMode},
@@ -246,8 +247,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     Expanded(
                                       child: Text(
                                         _connectionMode == 'lan'
-                                            ? '适合在家使用：手机和电脑同一 Wi-Fi，速度快，但离开家后不可用'
-                                            : '适合外出使用：由官网找到你的电脑，安全要求更高，电脑需要保持在线',
+                                            ? S.lanHomeDesc
+                                            : S.remoteOutDesc,
                                         style: TextStyle(
                                           color: P.textSecondary,
                                           fontSize: 12.5,
@@ -256,7 +257,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     ),
                                     TextButton(
                                       onPressed: () => _showConnectionGuide(),
-                                      child: const Text('怎么配置？'),
+                                      child: Text(S.howToConfig),
                                     ),
                                   ],
                                 ),
@@ -283,9 +284,9 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                         color: P.danger,
                                       ),
                                       const SizedBox(width: 8),
-                                      const Expanded(
+                                      Expanded(
                                         child: Text(
-                                          '当前本地连接适合可信家庭网络。不要在酒店、商场或公共 Wi-Fi 使用，也不要把电脑端口直接开放到互联网。',
+                                          S.lanSecurityWarning,
                                           style: TextStyle(
                                             fontSize: 12.2,
                                             height: 1.4,
@@ -300,7 +301,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                   controller: _lanUrl,
                                   keyboardType: TextInputType.url,
                                   decoration: _loginDecoration(
-                                    '电脑地址，例如 192.168.1.100:3080',
+                                    S.lanUrlHint,
                                     Icons.lan_outlined,
                                   ),
                                 ),
@@ -310,7 +311,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                 controller: _user,
                                 autofillHints: const [AutofillHints.username],
                                 decoration: _loginDecoration(
-                                  '用户名',
+                                  S.username,
                                   Icons.person_outline,
                                 ),
                               ),
@@ -322,11 +323,13 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                 onSubmitted: (_) => _connect(),
                                 decoration:
                                     _loginDecoration(
-                                      '密码',
+                                      S.password,
                                       Icons.lock_outline,
                                     ).copyWith(
                                       suffixIcon: IconButton(
-                                        tooltip: _obscurePass ? '显示密码' : '隐藏密码',
+                                        tooltip: _obscurePass
+                                            ? S.showPassword
+                                            : S.hidePassword,
                                         icon: Icon(
                                           _obscurePass
                                               ? Icons.visibility_off_outlined

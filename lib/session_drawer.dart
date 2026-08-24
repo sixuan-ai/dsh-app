@@ -12,8 +12,10 @@ import 'composer.dart';
 import 'directory_tree_page.dart';
 import 'network_diagnostics_page.dart';
 import 'pet_page.dart';
+import 'settings_center.dart';
 import 'src/ai_hub_pages.dart';
 import 'social_page.dart';
+import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'src/session_list_projection.dart';
 import 'state.dart';
@@ -27,6 +29,7 @@ class SessionDrawer extends StatefulWidget {
     super.key,
     required this.state,
     required this.theme,
+    required this.language,
     required this.onLogout,
     required this.onNewSession,
     required this.onCheckUpdate,
@@ -41,6 +44,7 @@ class SessionDrawer extends StatefulWidget {
 
   final AppState state;
   final ThemeController theme;
+  final LanguageController language;
   final VoidCallback onLogout;
 
   /// Opens the new-session directory picker (HomePage owns the context).
@@ -131,18 +135,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('开启完全访问?'),
-          content: const Text(
-            '开启后 DSH 可读写设备上所有文件,且不再弹出审批确认。仅在信任当前任务时开启,可随时切回工作区写入。',
-          ),
+          title: Text(S.enableFullAccess),
+          content: Text(S.fullAccessWarning),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
+              child: Text(S.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('开启'),
+              child: Text(S.enable),
             ),
           ],
         ),
@@ -161,9 +163,31 @@ class _SessionDrawerState extends State<SessionDrawer> {
       builder: (sheetContext) => _MoreSheet(
         actions: [
           _MoreAction(
+            icon: Icons.settings_outlined,
+            label: S.settings,
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsCenterPage(
+                    language: widget.language,
+                    theme: widget.theme,
+                    state: state,
+                    socialBaseUrl: widget.socialBaseUrl,
+                    onConnectionCenter: widget.onConnectionCenter,
+                    onCheckUpdate: widget.onCheckUpdate,
+                    connectionGuideBuilder: widget.connectionGuideBuilder,
+                    changelogBuilder: widget.changelogBuilder,
+                  ),
+                ),
+              );
+            },
+          ),
+          _MoreAction(
             icon: Icons.alt_route,
-            label: '连接与安全',
-            caption: '本地 / 远程',
+            label: S.connectionSafety,
+            caption: S.localRemote,
             onTap: () {
               Navigator.of(sheetContext).pop();
               widget.onConnectionCenter();
@@ -171,8 +195,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.menu_book_outlined,
-            label: '连接教程',
-            caption: '电脑配置',
+            label: S.connectionTutorial,
+            caption: S.computerConfig,
             onTap: () {
               Navigator.of(sheetContext).pop();
               showModalBottomSheet<void>(
@@ -185,7 +209,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.palette_outlined,
-            label: '主题',
+            label: S.theme,
             caption: kAppThemes
                 .firstWhere(
                   (s) => s.id == widget.theme.themeId,
@@ -203,8 +227,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.newspaper_outlined,
-            label: 'AI 日报',
-            caption: '实时聚合',
+            label: S.aiDaily,
+            caption: S.realtimeFeed,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -215,8 +239,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.school_outlined,
-            label: 'AI 知识学习',
-            caption: 'Agent 教程',
+            label: S.aiLearning,
+            caption: S.agentTutorial,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -227,7 +251,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.pets,
-            label: '宠物',
+            label: S.pet,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -238,8 +262,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.folder_open_outlined,
-            label: '目录浏览',
-            caption: '电脑上的目录',
+            label: S.directoryBrowse,
+            caption: S.computerDirectories,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -253,8 +277,8 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.network_check_rounded,
-            label: '网络诊断',
-            caption: '延迟与抖动',
+            label: S.networkDiagnosis,
+            caption: S.latencyJitter,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -267,7 +291,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.shield_outlined,
-            label: '权限模式',
+            label: S.permissionMode,
             onTap: () {
               Navigator.of(sheetContext).pop();
               _openPermissions();
@@ -277,7 +301,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           if (defaultTargetPlatform == TargetPlatform.android)
             _MoreAction(
               icon: Icons.system_update_alt,
-              label: '检查更新',
+              label: S.checkUpdate,
               dot: widget.updateAvailable,
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -287,7 +311,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ),
           _MoreAction(
             icon: Icons.new_releases_outlined,
-            label: '更新日志',
+            label: S.updateLog,
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
@@ -298,7 +322,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
           ),
           _MoreAction(
             icon: Icons.logout,
-            label: '退出登录',
+            label: S.logout,
             danger: true,
             onTap: () {
               Navigator.of(sheetContext).pop();
@@ -793,14 +817,14 @@ class _ThemeSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '选择主题',
+                  S.pickTheme,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '立即生效,自动保存',
+                  S.appliesInstantly,
                   style: TextStyle(color: P.textTertiary, fontSize: 12.5),
                 ),
                 const SizedBox(height: 16),

@@ -13,6 +13,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
+import 'src/l10n.dart';
 import 'login_view.dart';
 import 'connection_guide.dart';
 import 'connection_center.dart';
@@ -79,18 +80,21 @@ class DshApp extends StatefulWidget {
 class _DshAppState extends State<DshApp> {
   final AppState appState = AppState();
   final ThemeController theme = ThemeController();
+  final LanguageController language = LanguageController();
   bool _restored = false;
   bool _hasCreds = false;
 
   @override
   void initState() {
     super.initState();
-    theme.addListener(_onThemeChanged);
+    theme.addListener(_onAppearanceChanged);
+    language.addListener(_onAppearanceChanged);
     unawaited(theme.load());
+    unawaited(language.load());
     _restore();
   }
 
-  void _onThemeChanged() => setState(() {});
+  void _onAppearanceChanged() => setState(() {});
 
   Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -113,27 +117,32 @@ class _DshAppState extends State<DshApp> {
 
   @override
   void dispose() {
-    theme.removeListener(_onThemeChanged);
+    theme.removeListener(_onAppearanceChanged);
     theme.dispose();
+    language.removeListener(_onAppearanceChanged);
+    language.dispose();
     appState.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Publish the active palette before the tree reads it; a theme change
-    // rebuilds from this root, so every P read observes the new palette.
+    // Publish the active palette and strings before the tree reads them; an
+    // appearance change rebuilds from this root, so every P/S read observes
+    // the new theme and language.
     P = theme.palette;
+    S = language.s;
     return MaterialApp(
       title: 'xHarness',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(P),
+      locale: language.locale,
       home: AnimatedBuilder(
         animation: appState,
         builder: (context, _) {
           if (!_restored) return const _Splash(label: '正在启动…');
           if (appState.connected) {
-            return HomePage(state: appState, theme: theme);
+            return HomePage(state: appState, theme: theme, language: language);
           }
           if (_hasCreds && appState.connecting) {
             return const _Splash(label: '正在连接服务器…');
@@ -183,10 +192,16 @@ class _Splash extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.state, required this.theme});
+  const HomePage({
+    super.key,
+    required this.state,
+    required this.theme,
+    required this.language,
+  });
 
   final AppState state;
   final ThemeController theme;
+  final LanguageController language;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -382,7 +397,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('没有可用的连接地址，请先完成连接配置')));
+      ).showSnackBar(SnackBar(content: Text(S.noConnectionTarget)));
       return;
     }
     var ok = false;
@@ -417,9 +432,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (mode) {
-            'lan' => '已切换到本地连接',
-            'direct' => '已切换到深圳直连',
-            _ => '已切换到远程连接',
+            'lan' => S.switchedToLocal,
+            'direct' => S.switchedToSz,
+            _ => S.switchedToRemote,
           }),
         ),
       );
@@ -429,7 +444,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         SnackBar(
           content: Text(
             nativeProbeSummary ??
-                (reason == null ? '切换失败，已保持原来的连接' : '切换失败: $reason'),
+                (reason == null
+                    ? S.switchFailedKeep
+                    : '${S.switchFailed}$reason'),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -968,6 +985,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       drawerBuilder: (context) => SessionDrawer(
         state: state,
         theme: widget.theme,
+        language: widget.language,
         onLogout: _logout,
         onNewSession: _showNewSessionSheet,
         onCheckUpdate: () => _checkForUpdate(manual: true),
