@@ -1,9 +1,7 @@
 /// Session drawer, workspace groups, and session management actions.
 library;
 
-import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +13,7 @@ import 'pet_page.dart';
 import 'src/ai_hub_pages.dart';
 import 'social_page.dart';
 import 'src/theme.dart';
+import 'src/session_list_projection.dart';
 import 'state.dart';
 
 // ---------------------------------------------------------------------------
@@ -94,9 +93,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
     }
   }
 
-  void _openCommunity() {
+  Future<void> _openCommunity() async {
     Navigator.of(context).pop();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CommunityPage(
           state: state,
@@ -105,6 +104,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
         ),
       ),
     );
+    if (mounted) await _loadProfile();
   }
 
   /// Permission-mode switcher: a sheet of presets riding the host's
@@ -298,7 +298,6 @@ class _SessionDrawerState extends State<SessionDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    unawaited(_loadProfile());
     final host = Uri.parse(
       state.serverUrl.isEmpty
           ? widget.socialBaseUrl.replaceFirst(RegExp(r'/social$'), '')
@@ -545,36 +544,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
   /// Groups filtered sessions by workspace directory (cwd), mirroring the
   /// web client; sessions without one collect in an 未分组 section.
   List<Widget> _groupedSessionTiles(BuildContext context) {
-    final filtered =
-        state.sessions.where((row) {
-          final archived = state.archivedSessionIds.contains(row.sessionId);
-          return switch (_sessionFilter) {
-            1 => !archived && row.running,
-            2 => archived,
-            3 => !archived && state.pinnedSessionIds.contains(row.sessionId),
-            _ => !archived,
-          };
-        }).toList()..sort((a, b) {
-          final ap = state.pinnedSessionIds.contains(a.sessionId);
-          final bp = state.pinnedSessionIds.contains(b.sessionId);
-          if (ap != bp) return bp ? 1 : -1;
-          return b.updatedAt.compareTo(a.updatedAt);
-        });
-    final groups = <String, List<SessionRow>>{};
-    for (final row in filtered) {
-      groups.putIfAbsent(row.cwd ?? '', () => []).add(row);
-    }
-    final keys = groups.keys.toList()
-      ..sort((a, b) {
-        if (a.isEmpty) return 1;
-        if (b.isEmpty) return -1;
-        final aTime = groups[a]!.map((r) => r.updatedAt).fold(0, math.max);
-        final bTime = groups[b]!.map((r) => r.updatedAt).fold(0, math.max);
-        return bTime.compareTo(aTime);
-      });
+    final groups = projectSessionGroups(
+      sessions: state.sessions,
+      archivedSessionIds: state.archivedSessionIds,
+      pinnedSessionIds: state.pinnedSessionIds,
+      filter: SessionListFilter.values[_sessionFilter],
+    );
     final tiles = <Widget>[];
-    for (final key in keys) {
-      final rows = groups[key]!;
+    for (final entry in groups.entries) {
+      final key = entry.key;
+      final rows = entry.value;
       tiles.add(_workspaceHeader(key, rows.length));
       if (!_collapsed.contains(key)) {
         for (final row in rows) {
