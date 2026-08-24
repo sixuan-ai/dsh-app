@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
+import 'src/connection_backoff.dart';
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
 import 'src/frame_router.dart';
@@ -568,10 +569,11 @@ class AppState extends ChangeNotifier {
 
   void _scheduleReconnect() {
     if (!_streamsActive || _reconnectTimer != null) return;
-    final base = math.min(2000 * math.pow(2, _reconnectAttempts), 30000);
+    final delay = reconnectDelayForAttempt(
+      _reconnectAttempts,
+      jitterUnit: math.Random().nextDouble() * 2 - 1,
+    );
     _reconnectAttempts++;
-    final jitter = (base * 0.25 * (math.Random().nextDouble() * 2 - 1));
-    final delay = Duration(milliseconds: (base + jitter).round());
     _reconnectTimer = Timer(delay, () async {
       _reconnectTimer = null;
       if (!_streamsActive || _api == null) return;
