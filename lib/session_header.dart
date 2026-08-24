@@ -4,6 +4,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'session_mode_badge.dart';
 import 'state.dart';
@@ -36,6 +37,50 @@ class SessionHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight + 0.5);
 
+  /// Shows the full session title (truncated in the bar) for reading.
+  void _showFullTitle(BuildContext context) {
+    String? cwd;
+    for (final row in state.sessions) {
+      if (row.sessionId == state.selectedSessionId) {
+        cwd = row.cwd;
+        break;
+      }
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(S.sessionName),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              title,
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            ),
+            if (cwd != null && cwd.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                cwd,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: P.textTertiary,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(S.confirm),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionId = state.selectedSessionId;
@@ -46,12 +91,19 @@ class SessionHeader extends StatelessWidget implements PreferredSizeWidget {
           Row(
             children: [
               Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
+                child: Tooltip(
+                  message: title,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _showFullTitle(context),
+                    child: Text(
+                      title,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),

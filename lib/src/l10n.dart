@@ -162,6 +162,7 @@ class Strings {
     required this.modeGoal,
     required this.modePlan,
     required this.modeAuto,
+    required this.sessionName,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -283,6 +284,7 @@ class Strings {
   final String modeGoal;
   final String modePlan;
   final String modeAuto;
+  final String sessionName;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -404,6 +406,7 @@ class Strings {
     modeGoal: '目标模式',
     modePlan: '计划模式',
     modeAuto: '自动模式',
+    sessionName: '会话名称',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -529,6 +532,7 @@ class Strings {
     modeGoal: 'Goal mode',
     modePlan: 'Plan mode',
     modeAuto: 'Auto mode',
+    sessionName: 'Session name',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

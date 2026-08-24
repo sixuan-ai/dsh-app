@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.28.0';
+const kAppVersion = '1.28.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.28.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '顶部栏点击会话标题可查看完整会话名（长按也有提示），不再被截断后看不到',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.28.0',
     date: '2026-08-25',
