@@ -67,4 +67,22 @@ void main() {
     expect(find.text('图片结果'), findsOneWidget);
     expect(find.text('image_tool'), findsWidgets);
   });
+
+  testWidgets('shows empty and loading states in ChatList', (tester) async {
+    final state = AppState();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ChatList(state: state)),
+      ),
+    );
+    expect(find.text('发送消息开始对话'), findsOneWidget);
+
+    final loadingState = AppState()..loadingHistory = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ChatList(state: loadingState)),
+      ),
+    );
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
 }
