@@ -169,14 +169,10 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: _useDefault
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-              : P.fillSubtle,
+          color: _useDefault ? P.accent.withValues(alpha: 0.10) : P.fillSubtle,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: _useDefault
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
-                : P.fillLight,
+            color: _useDefault ? P.accent.withValues(alpha: 0.35) : P.fillLight,
           ),
         ),
         child: Row(
@@ -184,9 +180,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
             Icon(
               _useDefault ? Icons.check_box : Icons.check_box_outline_blank,
               size: 20,
-              color: _useDefault
-                  ? Theme.of(context).colorScheme.primary
-                  : P.textTertiary,
+              color: _useDefault ? P.accentLight : P.textTertiary,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -225,14 +219,10 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.16)
-                : P.fillSubtle,
+            color: selected ? P.accent.withValues(alpha: 0.10) : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
-                  : P.fillLight,
+              color: selected ? P.accent.withValues(alpha: 0.35) : P.fillLight,
             ),
           ),
           child: Row(
@@ -240,9 +230,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
               Icon(
                 selected ? Icons.radio_button_checked : Icons.radio_button_off,
                 size: 20,
-                color: selected
-                    ? Theme.of(context).colorScheme.primary
-                    : P.textTertiary,
+                color: selected ? P.accentLight : P.textTertiary,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -285,16 +273,12 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: _customMode
-                  ? Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.16)
+                  ? P.accent.withValues(alpha: 0.10)
                   : P.fillSubtle,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _customMode
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.6)
+                    ? P.accent.withValues(alpha: 0.35)
                     : P.fillLight,
               ),
             ),
@@ -305,9 +289,7 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_off,
                   size: 20,
-                  color: _customMode
-                      ? Theme.of(context).colorScheme.primary
-                      : P.textTertiary,
+                  color: _customMode ? P.accentLight : P.textTertiary,
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -340,6 +322,13 @@ class _NewSessionSheetState extends State<NewSessionSheet> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(color: P.fillLight),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: P.accent.withValues(alpha: 0.65),
+                    width: 1.2,
+                  ),
                 ),
               ),
             ),
