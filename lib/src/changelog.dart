@@ -25,10 +25,17 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.23.0';
+const kAppVersion = '1.23.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.23.1',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(ChangelogChangeType.fix, '目录浏览在电脑未开启远程浏览能力时显示明确的中文引导说明'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.23.0',
     date: '2026-08-24',
