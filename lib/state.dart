@@ -17,6 +17,7 @@ import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
 import 'src/queue.dart';
+import 'src/session_connection_controller.dart';
 import 'src/session_event_parser.dart';
 
 export 'src/conversation.dart'
@@ -357,14 +358,12 @@ class AppState extends ChangeNotifier {
   final Map<String, ChatItem> _toolItems = {};
   final Map<String, int> _sessionTailSeqs = {};
   final Map<String, int> _subscribedLastSeqs = {};
-  StreamSubscription<ServerFrame>? _muxSub;
-  StreamSubscription<ServerFrame>? _hostSub;
+  SessionConnectionController? _connectionController;
   bool _streamsActive = false;
   bool _tailSyncInFlight = false;
   bool _gapFillInFlight = false;
   int? _historyGapBeforeSeq;
   int? _historyGapAfterSeq;
-  int _streamGeneration = 0;
   Timer? _reconnectTimer;
 
   /// Prompts sent from this app, persisted locally; drives the user level.
@@ -475,16 +474,13 @@ class AppState extends ChangeNotifier {
 
   void disconnect() {
     _streamsActive = false;
-    _streamGeneration++;
     _reconnectTimer?.cancel();
     _backoffResetTimer?.cancel();
     _reconnectAttempts = 0;
     _saveTimer?.cancel();
     _saveTimer = null;
-    unawaited(_muxSub?.cancel());
-    unawaited(_hostSub?.cancel());
-    _muxSub = null;
-    _hostSub = null;
+    _connectionController?.stop();
+    _connectionController = null;
     _api?.close();
     _api = null;
     unawaited(_store?.close());
@@ -518,36 +514,18 @@ class AppState extends ChangeNotifier {
   }
 
   void _startStreams() {
-    final generation = ++_streamGeneration;
-    _muxSub = _api!.muxStream().listen(
-      _onMuxFrame,
-      onError: (_) {
-        if (generation == _streamGeneration) _scheduleReconnect();
-      },
-      onDone: () {
-        if (generation == _streamGeneration) _scheduleReconnect();
-      },
-    );
-    _hostSub = _api!.hostStream().listen(
-      _onHostFrame,
-      onError: (_) {
-        if (generation == _streamGeneration) _scheduleReconnect();
-      },
-      onDone: () {
-        if (generation == _streamGeneration) _scheduleReconnect();
-      },
-    );
+    final api = _api!;
+    _connectionController = SessionConnectionController(
+      muxStream: api.muxStream,
+      hostStream: api.hostStream,
+      onMuxFrame: _onMuxFrame,
+      onHostFrame: _onHostFrame,
+      onStreamClosed: (_) => _scheduleReconnect(),
+    )..start();
   }
 
   void _replaceStreams() {
-    final mux = _muxSub;
-    final host = _hostSub;
-    _muxSub = null;
-    _hostSub = null;
-    _streamGeneration++;
-    unawaited(mux?.cancel());
-    unawaited(host?.cancel());
-    _startStreams();
+    _connectionController?.replaceStreams();
   }
 
   /// Mobile OS may suspend the sockets while the screen is locked. On resume,

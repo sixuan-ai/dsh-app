@@ -36,8 +36,8 @@ onConnectionLost(Object? error)
 ## 实施步骤
 
 1. [已完成] 提取不依赖 `AppState` 的退避计算函数并测试初始值、翻倍、上限、负 attempt 和 jitter 边界。
-2. 建立可注入 stream factory 和 timer scheduler 的 controller。
-3. 用 controller 替换 `_startStreams()` 和 `_replaceStreams()`，保持 `connect()`/`disconnect()` API 不变。
+2. [已完成] 建立可注入 stream factory 的 controller，并覆盖 stream 生命周期；timer scheduler 仍由 AppState 暂时持有。
+3. [已完成] 用 controller 替换 `_startStreams()` 和 `_replaceStreams()`，保持 `connect()`/`disconnect()` API 不变。
 4. 迁移 `resyncAfterResume()` 和 `_scheduleReconnect()`。
 5. 增加旧 generation 回调、重复断线、stop 后不重连和 resume 替换 stream 测试。
 6. 完整验证后再删除 `AppState` 中的 subscription、timer 和 generation 字段。
