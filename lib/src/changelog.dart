@@ -25,10 +25,17 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.22.28';
+const kAppVersion = '1.22.29';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.22.29',
+    date: '2026-08-24',
+    changes: [
+      ChangelogChange(ChangelogChangeType.improvement, '界面打磨：聊天空状态增加品牌图标引导'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.22.28',
     date: '2026-08-24',
