@@ -330,6 +330,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     decoration: BoxDecoration(
       color: P.onAccent.withValues(alpha: 0.15),
       borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: P.onAccent.withValues(alpha: 0.25)),
     ),
     child: Text(text, style: TextStyle(color: P.onAccent, fontSize: 12)),
   );
@@ -548,6 +549,7 @@ class _ActionButton extends StatelessWidget {
     return Material(
       color: P.card,
       borderRadius: BorderRadius.circular(16),
+      elevation: 0,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -556,6 +558,7 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: P.fillLight),
+            boxShadow: P.cardShadow,
           ),
           child: Column(
             children: [

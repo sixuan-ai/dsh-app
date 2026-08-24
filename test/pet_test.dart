@@ -79,8 +79,10 @@ void main() {
       expect(petLevelForTokens(0), 1);
       expect(petLevelProgressForTokens(0), 0);
       expect(petLevelForTokens(kPetTokensPerLevel + 400000), 2);
-      expect(petLevelProgressForTokens(kPetTokensPerLevel + 400000),
-          closeTo(0.4, 1e-9));
+      expect(
+        petLevelProgressForTokens(kPetTokensPerLevel + 400000),
+        closeTo(0.4, 1e-9),
+      );
       // Negative input is clamped, never a sub-1 level.
       expect(petLevelForTokens(-5), 1);
     });
@@ -90,12 +92,20 @@ void main() {
       expect(spirit.stageForTokens(0).name, '灵蛋'); // Lv.1
       expect(spirit.stageForTokens(2 * kPetTokensPerLevel).name, '小哈仔'); // Lv.3
       expect(spirit.stageForTokens(5 * kPetTokensPerLevel).name, '哈灵猫'); // Lv.6
-      expect(spirit.stageForTokens(9 * kPetTokensPerLevel).name, '威哈虎'); // Lv.10
-      expect(spirit.stageForTokens(14 * kPetTokensPerLevel).name, '哈灵龙皇'); // Lv.15
+      expect(
+        spirit.stageForTokens(9 * kPetTokensPerLevel).name,
+        '威哈虎',
+      ); // Lv.10
+      expect(
+        spirit.stageForTokens(14 * kPetTokensPerLevel).name,
+        '哈灵龙皇',
+      ); // Lv.15
       // Just below a boundary still belongs to the previous form.
       expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '小哈仔');
-      expect(petStageIndexForTokens(14 * kPetTokensPerLevel),
-          kPetStageMinLevels.length - 1);
+      expect(
+        petStageIndexForTokens(14 * kPetTokensPerLevel),
+        kPetStageMinLevels.length - 1,
+      );
     });
 
     test('species registry: five mystery-egg chains, shared thresholds', () {
@@ -140,11 +150,15 @@ void main() {
       expect(kPetBotNicknames.every((n) => n.isNotEmpty), isTrue);
     });
 
-    test('species counter wheel is cyclic in registry order', () {      for (var i = 0; i < kPetSpecies.length; i++) {
+    test('species counter wheel is cyclic in registry order', () {
+      for (var i = 0; i < kPetSpecies.length; i++) {
         final attacker = kPetSpecies[i].id;
         final prey = kPetSpecies[(i + 1) % kPetSpecies.length].id;
-        expect(petSpeciesCounters(attacker, prey), isTrue,
-            reason: '$attacker counters $prey');
+        expect(
+          petSpeciesCounters(attacker, prey),
+          isTrue,
+          reason: '$attacker counters $prey',
+        );
         expect(petSpeciesCounters(prey, attacker), isFalse);
       }
       expect(petSpeciesCounters('unknown', 'spirit'), isFalse);
@@ -161,8 +175,7 @@ void main() {
       }
     });
 
-    test('battle simulation: a much stronger player wins, log is complete',
-        () {
+    test('battle simulation: a much stronger player wins, log is complete', () {
       final rng = math.Random(3);
       final player = Pet.newborn('小哈', 0, speciesId: 'spirit');
       final wild = Pet.newborn('野怪', 0, speciesId: 'dog')
@@ -180,8 +193,10 @@ void main() {
       expect(result.rounds, isNotEmpty);
       // Rounds alternate attackers and end with someone at 0 HP.
       for (var i = 1; i < result.rounds.length; i++) {
-        expect(result.rounds[i].attackerIsPlayer,
-            isNot(result.rounds[i - 1].attackerIsPlayer));
+        expect(
+          result.rounds[i].attackerIsPlayer,
+          isNot(result.rounds[i - 1].attackerIsPlayer),
+        );
       }
       expect(result.rounds.last.wildHp, 0);
       // spirit counters cat (next in wheel), and dog is two steps away:
@@ -205,8 +220,10 @@ void main() {
         random: rng,
       );
       expect(result.playerWon, isFalse);
-      expect(result.rounds.any((r) => r.countered && !r.attackerIsPlayer),
-          isTrue);
+      expect(
+        result.rounds.any((r) => r.countered && !r.attackerIsPlayer),
+        isTrue,
+      );
       expect(result.rounds.last.playerHp, 0);
     });
     test('rename trims and rejects blanks', () {
@@ -283,8 +300,7 @@ void main() {
     });
 
     test('fromJson ignores the retired v1.10.0 growth key', () {
-      final pet = Pet.fromJson(
-          const {'name': '豆豆', 'growth': 42}, 5000);
+      final pet = Pet.fromJson(const {'name': '豆豆', 'growth': 42}, 5000);
       expect(pet.name, '豆豆');
       expect(pet.toJson().containsKey('growth'), isFalse);
     });
@@ -345,24 +361,28 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: PetPage()));
     // The breathing loop never settles; advance on a real async zone instead.
     await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
     await tester.pump();
 
     // Adoption view first.
     expect(find.text('领养'), findsOneWidget);
     await tester.tap(find.text('领养'));
     await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
     await tester.pump();
 
     // Pet view with stats and actions.
     expect(find.text('小哈'), findsWidgets);
+    expect(find.text('相伴第 1 天'), findsOneWidget);
     expect(find.text('喂食'), findsOneWidget);
     expect(find.text('玩耍'), findsOneWidget);
     expect(find.text('洗澡'), findsOneWidget);
     await tester.tap(find.text('喂食'));
     await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
     await tester.pump();
     expect(find.text('成长 Lv.1'), findsOneWidget);
   });

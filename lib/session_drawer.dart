@@ -829,6 +829,15 @@ class _ThemeCard extends StatelessWidget {
             color: selected ? palette.accent : P.divider,
             width: selected ? 2 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: palette.accent.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
