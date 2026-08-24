@@ -19,4 +19,26 @@ void main() {
     expect(find.text('example.com · 自动匹配你的实例'), findsOneWidget);
     expect(find.text('连接'), findsOneWidget);
   });
+
+  testWidgets('password field toggles visibility', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ServerSetupPage(
+          state: AppState(),
+          defaultServerUrl: 'https://example.com',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    TextField passwordField() =>
+        tester.widget<TextField>(find.widgetWithText(TextField, '密码'));
+    expect(passwordField().obscureText, isTrue);
+    await tester.tap(find.byTooltip('显示密码'));
+    await tester.pump();
+    expect(passwordField().obscureText, isFalse);
+    await tester.tap(find.byTooltip('隐藏密码'));
+    await tester.pump();
+    expect(passwordField().obscureText, isTrue);
+  });
 }

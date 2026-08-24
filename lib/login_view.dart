@@ -33,6 +33,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
   final _pass = TextEditingController();
   final _lanUrl = TextEditingController();
   String _connectionMode = 'public';
+  bool _obscurePass = true;
 
   @override
   void initState() {
@@ -313,13 +314,28 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               const SizedBox(height: 12),
                               TextField(
                                 controller: _pass,
-                                obscureText: true,
+                                obscureText: _obscurePass,
                                 autofillHints: const [AutofillHints.password],
                                 onSubmitted: (_) => _connect(),
-                                decoration: _loginDecoration(
-                                  '密码',
-                                  Icons.lock_outline,
-                                ),
+                                decoration:
+                                    _loginDecoration(
+                                      '密码',
+                                      Icons.lock_outline,
+                                    ).copyWith(
+                                      suffixIcon: IconButton(
+                                        tooltip: _obscurePass ? '显示密码' : '隐藏密码',
+                                        icon: Icon(
+                                          _obscurePass
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined,
+                                          size: 19,
+                                          color: P.textTertiary,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscurePass = !_obscurePass,
+                                        ),
+                                      ),
+                                    ),
                               ),
                               if (error != null) ...[
                                 const SizedBox(height: 16),
@@ -446,6 +462,7 @@ class GradientActionButton extends StatelessWidget {
           gradient: enabled ? P.brandGradient : null,
           color: enabled ? null : P.fillLight,
           borderRadius: BorderRadius.circular(14),
+          boxShadow: enabled ? [P.brandGlow] : null,
         ),
         child: ElevatedButton(
           onPressed: enabled ? onPressed : null,
