@@ -148,13 +148,28 @@ class _GuideStep extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 15,
-            backgroundColor: P.accent,
-            foregroundColor: P.onAccent,
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              gradient: P.brandGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: P.accent.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
             child: Text(
               '$number',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: P.onAccent,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -185,8 +200,9 @@ class _GuideStep extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: P.fillLight,
+                        color: P.code,
                         borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: P.fillLight),
                       ),
                       child: Row(
                         children: [
@@ -199,7 +215,7 @@ class _GuideStep extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Icon(Icons.copy, size: 16),
+                          Icon(Icons.copy, size: 16, color: P.accentLight),
                         ],
                       ),
                     ),

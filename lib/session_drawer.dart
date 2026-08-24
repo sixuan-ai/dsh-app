@@ -1177,7 +1177,7 @@ class _MoreCell extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: action.danger
                       ? P.danger.withValues(alpha: 0.1)
-                      : P.fillSubtle,
+                      : P.accent.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(action.icon, size: 22, color: fg),
