@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.33.1';
+const kAppVersion = '1.33.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.33.2',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复 App 新建会话后网页端显示为「未分组」的问题:创建时自动匹配服务器工作区并同步 workspace 归属',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.33.1',
     date: '2026-08-25',

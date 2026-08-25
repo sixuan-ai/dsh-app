@@ -404,6 +404,11 @@ class AppState extends ChangeNotifier {
   String? authUsername;
   String? authPassword;
 
+  /// DSH's default working directory from host.describe. It lets a default
+  /// session resolve to a registered workspace instead of becoming an
+  /// ungrouped cwd-only session.
+  String? _hostCwd;
+
   LocalStore? _store;
   Timer? _saveTimer;
 
@@ -518,7 +523,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final api = DshApi(url, username: username, password: password);
-      await api.call('host.describe', {});
+      final host = await api.call('host.describe', {}) as Map<String, dynamic>;
+      _hostCwd = host['cwd'] as String?;
       _api = api;
       authUsername = username;
       authPassword = password;
@@ -548,6 +554,7 @@ class AppState extends ChangeNotifier {
     _connectionController = null;
     _api?.close();
     _api = null;
+    _hostCwd = null;
     unawaited(_store?.close());
     _store = null;
     authUsername = null;
@@ -1569,17 +1576,50 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Creates a fresh session and selects it. [workspaceId] / [cwd] pin the
-  /// working directory; both omitted uses the host default workspace.
+  /// Resolves a path to the server-owned workspace registry. The app drawer
+  /// can group by cwd locally, but the web UI groups by workspace.sessionIds;
+  /// only session.create(workspaceId: ...) attaches the new session there.
+  Future<String?> _workspaceIdForPath(String path) async {
+    final api = _api;
+    if (api == null || path.isEmpty) return null;
+    try {
+      final value =
+          await api.call('workspace.list', {}) as Map<String, dynamic>;
+      for (final raw in (value['items'] as List? ?? const [])) {
+        final workspace = (raw as Map).cast<String, dynamic>();
+        if (workspace['path'] == path) {
+          return workspace['workspaceId'] as String?;
+        }
+      }
+    } catch (_) {
+      // Workspace metadata is optional; cwd remains a safe fallback.
+    }
+    return null;
+  }
+
+  /// Creates a fresh session and selects it. Paths that already belong to a
+  /// registered workspace are sent as workspaceId so web and app grouping
+  /// agree. Truly custom paths retain the cwd-only behavior.
   Future<void> createSession({String? workspaceId, String? cwd}) async {
     final api = _api;
     if (api == null) return;
+
+    var resolvedWorkspaceId = workspaceId;
+    var resolvedCwd = cwd;
+    if (resolvedWorkspaceId == null) {
+      final path = resolvedCwd ?? _hostCwd;
+      if (path != null && path.isNotEmpty) {
+        resolvedWorkspaceId = await _workspaceIdForPath(path);
+        if (resolvedWorkspaceId != null) resolvedCwd = null;
+      }
+    }
+
+    final payload = <String, dynamic>{
+      'workspaceId': ?resolvedWorkspaceId,
+      if (resolvedWorkspaceId == null) 'cwd': ?resolvedCwd,
+    };
     final value =
-        await api.call('session.create', {
-              'workspaceId': ?workspaceId,
-              'cwd': ?cwd,
-            })
-            as Map<String, dynamic>;
+        await api.call('session.create', payload) as Map<String, dynamic>;
     final id = value['sessionId'] as String;
     await refreshSessions();
     await openSession(id);
