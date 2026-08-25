@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.31.1';
+const kAppVersion = '1.31.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.31.2',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '优化本地 SQLite 存储：长会话缓存序列化移入后台线程，消除保存时的界面卡顿；数据库启用 WAL 提升并发读写性能',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.31.1',
     date: '2026-08-25',

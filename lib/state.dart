@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -901,15 +902,21 @@ class AppState extends ChangeNotifier {
     // capped by chatItemToJson, while image bytes remain host-backed metadata.
     _sessionTailSeqs[sessionId] = _lastLiveSeq;
     try {
-      await store.saveChatItems(
-        sessionId,
-        jsonEncode({
-          'items': [for (final item in persistable) chatItemToJson(item)],
-          'oldestSeq': _oldestSeq,
-          'latestSeq': _lastLiveSeq,
-          'hasMore': hasMoreHistory,
+      // Map conversion is cheap and must happen on the UI isolate (ChatItem is
+      // not sendable); only the expensive jsonEncode runs on a worker isolate.
+      final itemsJson = [for (final item in persistable) chatItemToJson(item)];
+      final oldestSeq = _oldestSeq;
+      final latestSeq = _lastLiveSeq;
+      final hasMore = hasMoreHistory;
+      final payload = await Isolate.run(
+        () => jsonEncode({
+          'items': itemsJson,
+          'oldestSeq': oldestSeq,
+          'latestSeq': latestSeq,
+          'hasMore': hasMore,
         }),
       );
+      await store.saveChatItems(sessionId, payload);
     } catch (_) {
       // Best-effort cache.
     }
