@@ -19,6 +19,7 @@ class ConnectionCenterSheet extends StatelessWidget {
     this.onSwitchDirect,
     this.localUrl,
     this.onSetLocalAddress,
+    this.onAutoSearchLocal,
   });
 
   final String connectionMode;
@@ -36,6 +37,9 @@ class ConnectionCenterSheet extends StatelessWidget {
 
   /// Opens the local-address editor (HomePage owns the dialog).
   final VoidCallback? onSetLocalAddress;
+
+  /// Runs mDNS discovery for DSH hosts on the LAN.
+  final VoidCallback? onAutoSearchLocal;
 
   String get _currentLabel => switch (connectionMode) {
     'lan' => S.localComputer,
@@ -125,6 +129,20 @@ class ConnectionCenterSheet extends StatelessWidget {
                   },
                   icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
                   label: Text(S.setLocalAddress),
+                ),
+              ),
+            ],
+            if (onAutoSearchLocal != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onAutoSearchLocal!();
+                  },
+                  icon: const Icon(Icons.wifi_find_outlined, size: 18),
+                  label: Text(S.autoSearchLocal),
                 ),
               ),
             ],

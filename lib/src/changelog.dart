@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.30.0';
+const kAppVersion = '1.31.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.31.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '连接中心新增“自动搜索局域网设备”：通过 mDNS 自动发现电脑上的 DSH，点击即可连接，无需手动输入地址',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.30.0',
     date: '2026-08-25',

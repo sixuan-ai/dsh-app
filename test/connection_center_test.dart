@@ -108,4 +108,27 @@ void main() {
     await tester.tap(find.text(S.setLocalAddress));
     expect(setAddressCalled, isTrue);
   });
+  testWidgets('auto-search button triggers discovery', (tester) async {
+    var searchCalled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConnectionCenterSheet(
+            connectionMode: 'public',
+            checkingLocal: false,
+            localAvailable: false,
+            onSwitchRemote: () {},
+            onSwitchLocal: () {},
+            onRefreshLocal: () {},
+            onSetLocalAddress: () {},
+            onAutoSearchLocal: () => searchCalled = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text(S.autoSearchLocal), findsOneWidget);
+    await tester.tap(find.text(S.autoSearchLocal));
+    expect(searchCalled, isTrue);
+  });
 }

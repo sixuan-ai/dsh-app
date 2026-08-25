@@ -1,7 +1,9 @@
 package dev.dsh.dsh_mobile
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -28,6 +30,17 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // mDNS discovery (multicast_dns) needs a multicast lock on Android:
+        // without it the socket never receives multicast responses.
+        try {
+            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            wifi.createMulticastLock("dsh-mdns").apply {
+                setReferenceCounted(true)
+                acquire()
+            }
+        } catch (_: Exception) {
+            // Multicast stays unavailable; discovery degrades gracefully.
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "dev.dsh.dsh_mobile/installer",

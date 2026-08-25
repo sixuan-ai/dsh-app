@@ -178,6 +178,10 @@ class Strings {
     required this.setLocalAddress,
     required this.localAddressEmpty,
     required this.localAddressSaved,
+    required this.autoSearchLocal,
+    required this.searchingDevices,
+    required this.noDeviceFound,
+    required this.deviceList,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -315,6 +319,10 @@ class Strings {
   final String setLocalAddress;
   final String localAddressEmpty;
   final String localAddressSaved;
+  final String autoSearchLocal;
+  final String searchingDevices;
+  final String noDeviceFound;
+  final String deviceList;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -453,6 +461,10 @@ class Strings {
     setLocalAddress: '设置本地地址',
     localAddressEmpty: '尚未设置本地地址',
     localAddressSaved: '已保存并检测',
+    autoSearchLocal: '自动搜索局域网设备',
+    searchingDevices: '正在搜索局域网设备…',
+    noDeviceFound: '未发现 DSH 设备，请确认电脑已开启局域网监听',
+    deviceList: '发现以下设备，点击使用',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -596,6 +608,10 @@ class Strings {
     setLocalAddress: 'Set local address',
     localAddressEmpty: 'No local address set',
     localAddressSaved: 'Saved and probed',
+    autoSearchLocal: 'Search LAN devices',
+    searchingDevices: 'Searching for devices…',
+    noDeviceFound: 'No DSH device found. Make sure the PC listens on the LAN',
+    deviceList: 'Devices found, tap to use',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

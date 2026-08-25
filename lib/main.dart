@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/changelog.dart';
 import 'src/l10n.dart';
+import 'src/lan_discovery.dart';
 import 'login_view.dart';
 import 'connection_guide.dart';
 import 'connection_center.dart';
@@ -474,6 +475,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         onSwitchDirect: () => _switchConnection('direct'),
         onRefreshLocal: _checkLocalConnection,
         onSetLocalAddress: _setLocalAddress,
+        onAutoSearchLocal: _autoSearchLocal,
+      ),
+    );
+  }
+
+  /// Runs mDNS discovery and lets the user pick the local DSH host.
+  Future<void> _autoSearchLocal() async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _LanSearchSheet(
+        onPick: (device) async {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('lanServerUrl', device.url);
+          if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+          await _checkLocalConnection();
+        },
       ),
     );
   }
@@ -1062,3 +1081,105 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 // ---------------------------------------------------------------------------
 // Slash commands
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// LAN discovery sheet
+// ---------------------------------------------------------------------------
+
+/// mDNS search sheet: discovers DSH hosts on the LAN and lets the user pick
+/// one. [discover] is injectable for tests.
+class _LanSearchSheet extends StatefulWidget {
+  const _LanSearchSheet({required this.onPick});
+
+  final ValueChanged<LanDshDevice> onPick;
+
+  @override
+  State<_LanSearchSheet> createState() => _LanSearchSheetState();
+}
+
+class _LanSearchSheetState extends State<_LanSearchSheet> {
+  List<LanDshDevice>? _devices;
+
+  @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  Future<void> _search() async {
+    setState(() => _devices = null);
+    final devices = await discoverDshDevices();
+    if (mounted) setState(() => _devices = devices);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final devices = _devices;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              S.autoSearchLocal,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            if (devices == null)
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    S.searchingDevices,
+                    style: TextStyle(color: P.textSecondary),
+                  ),
+                ],
+              )
+            else if (devices.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  S.noDeviceFound,
+                  style: TextStyle(color: P.textTertiary, fontSize: 13),
+                ),
+              )
+            else ...[
+              Text(
+                S.deviceList,
+                style: TextStyle(color: P.textTertiary, fontSize: 12.5),
+              ),
+              const SizedBox(height: 8),
+              for (final device in devices)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Icon(Icons.computer, color: P.accentLight),
+                    title: Text(device.name),
+                    subtitle: Text(
+                      device.url,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: P.textTertiary,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => widget.onPick(device),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
