@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'balance_page.dart';
 import 'dsh_update_page.dart';
@@ -45,10 +46,38 @@ class SettingsCenterPage extends StatefulWidget {
 class _SettingsCenterPageState extends State<SettingsCenterPage> {
   String? _version;
 
+  /// Developer mode switch: off by default, persisted across launches.
+  /// When on, the app debugging tools (host DSH status/logs/restart) become
+  /// reachable below the switch.
+  bool _devMode = false;
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadVersion());
+    unawaited(_loadDevMode());
+  }
+
+  Future<void> _loadDevMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('devMode') ?? false;
+      if (mounted && enabled != _devMode) {
+        setState(() => _devMode = enabled);
+      }
+    } catch (_) {
+      // Prefs unavailable: keep the in-memory default.
+    }
+  }
+
+  Future<void> _setDevMode(bool value) async {
+    setState(() => _devMode = value);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('devMode', value);
+    } catch (_) {
+      // Best-effort persistence.
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -129,18 +158,6 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               ),
             ),
             _EntryTile(
-              icon: Icons.developer_mode_outlined,
-              title: S.devTools,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => DevToolsPage(
-                    username: widget.state.authUsername,
-                    password: widget.state.authPassword,
-                  ),
-                ),
-              ),
-            ),
-            _EntryTile(
               icon: Icons.terminal_outlined,
               title: S.dshUpdate,
               onTap: () => Navigator.of(context).push(
@@ -152,6 +169,36 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
                 ),
               ),
             ),
+            _SectionHeader(S.developerSection),
+            SwitchListTile(
+              secondary: Icon(
+                Icons.developer_mode_outlined,
+                color: P.textSecondary,
+              ),
+              title: Text(S.developerMode),
+              subtitle: Text(
+                S.developerModeHint,
+                style: TextStyle(color: P.textTertiary, fontSize: 12.5),
+              ),
+              value: _devMode,
+              onChanged: (value) {
+                HapticFeedback.selectionClick();
+                unawaited(_setDevMode(value));
+              },
+            ),
+            if (_devMode)
+              _EntryTile(
+                icon: Icons.terminal_outlined,
+                title: S.devTools,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DevToolsPage(
+                      username: widget.state.authUsername,
+                      password: widget.state.authPassword,
+                    ),
+                  ),
+                ),
+              ),
             _SectionHeader(S.help),
             _EntryTile(
               icon: Icons.feedback_outlined,

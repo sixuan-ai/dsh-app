@@ -183,6 +183,9 @@ class Strings {
     required this.noDeviceFound,
     required this.deviceList,
     required this.devTools,
+    required this.developerSection,
+    required this.developerMode,
+    required this.developerModeHint,
     required this.dshProcessRunning,
     required this.dshProcessStopped,
     required this.dshPid,
@@ -340,6 +343,9 @@ class Strings {
   final String noDeviceFound;
   final String deviceList;
   final String devTools;
+  final String developerSection;
+  final String developerMode;
+  final String developerModeHint;
   final String dshProcessRunning;
   final String dshProcessStopped;
   final String dshPid;
@@ -498,6 +504,9 @@ class Strings {
     noDeviceFound: '未发现 DSH 设备，请确认电脑已开启局域网监听',
     deviceList: '发现以下设备，点击使用',
     devTools: '开发者工具',
+    developerSection: '开发者',
+    developerMode: '开发者模式',
+    developerModeHint: '开启后显示 App 调试工具',
     dshProcessRunning: 'DSH 运行中',
     dshProcessStopped: 'DSH 已停止',
     dshPid: 'PID',
@@ -660,7 +669,10 @@ class Strings {
     searchingDevices: 'Searching for devices…',
     noDeviceFound: 'No DSH device found. Make sure the PC listens on the LAN',
     deviceList: 'Devices found, tap to use',
-    devTools: 'Developer Tools',
+    devTools: 'Developer tools',
+    developerSection: 'Developer',
+    developerMode: 'Developer mode',
+    developerModeHint: 'Turn on to show app debugging tools',
     dshProcessRunning: 'DSH running',
     dshProcessStopped: 'DSH stopped',
     dshPid: 'PID',

@@ -3,6 +3,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dsh_mobile/src/localstore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,7 +35,12 @@ void main() {
   var dbCounter = 0;
   late LocalStore store;
 
-  setUp(() {
+  setUp(() async {
+    // The ffi factory persists database files under .dart_tool; wipe them so
+    // every run starts from a fresh on-disk state (migration tests must not
+    // find yesterday's already-migrated files).
+    final dir = Directory(await getDatabasesPath());
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
     store = LocalStore(dbFileName: 'localstore_test_${dbCounter++}.db');
   });
 

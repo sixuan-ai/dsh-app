@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.32.1';
+const kAppVersion = '1.33.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.33.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '设置新增「开发者模式」开关:默认关闭、界面更简洁,开启后显示开发者工具入口(状态/日志/重启),开关状态自动记住',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.32.1',
     date: '2026-08-25',
