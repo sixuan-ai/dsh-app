@@ -182,6 +182,22 @@ class Strings {
     required this.searchingDevices,
     required this.noDeviceFound,
     required this.deviceList,
+    required this.devTools,
+    required this.dshProcessRunning,
+    required this.dshProcessStopped,
+    required this.dshPid,
+    required this.dshUptime,
+    required this.dshMemory,
+    required this.dshCpu,
+    required this.logsTitle,
+    required this.proxyLogs,
+    required this.dshLogs,
+    required this.autoRefresh,
+    required this.restartDsh,
+    required this.restartConfirm,
+    required this.restartSuccess,
+    required this.restartFailed,
+    required this.devToolsFetchFailed,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -323,6 +339,22 @@ class Strings {
   final String searchingDevices;
   final String noDeviceFound;
   final String deviceList;
+  final String devTools;
+  final String dshProcessRunning;
+  final String dshProcessStopped;
+  final String dshPid;
+  final String dshUptime;
+  final String dshMemory;
+  final String dshCpu;
+  final String logsTitle;
+  final String proxyLogs;
+  final String dshLogs;
+  final String autoRefresh;
+  final String restartDsh;
+  final String restartConfirm;
+  final String restartSuccess;
+  final String restartFailed;
+  final String devToolsFetchFailed;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -465,6 +497,22 @@ class Strings {
     searchingDevices: '正在搜索局域网设备…',
     noDeviceFound: '未发现 DSH 设备，请确认电脑已开启局域网监听',
     deviceList: '发现以下设备，点击使用',
+    devTools: '开发者工具',
+    dshProcessRunning: 'DSH 运行中',
+    dshProcessStopped: 'DSH 已停止',
+    dshPid: 'PID',
+    dshUptime: '运行',
+    dshMemory: '内存',
+    dshCpu: 'CPU',
+    logsTitle: '实时日志',
+    proxyLogs: '请求日志（认证代理）',
+    dshLogs: 'DSH 进程日志',
+    autoRefresh: '自动刷新',
+    restartDsh: '重启 DSH',
+    restartConfirm: '重启会中断当前连接并自动恢复，确定要重启电脑上的 DSH 吗？',
+    restartSuccess: '已重启 DSH',
+    restartFailed: '重启失败',
+    devToolsFetchFailed: '获取状态失败',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -612,6 +660,23 @@ class Strings {
     searchingDevices: 'Searching for devices…',
     noDeviceFound: 'No DSH device found. Make sure the PC listens on the LAN',
     deviceList: 'Devices found, tap to use',
+    devTools: 'Developer Tools',
+    dshProcessRunning: 'DSH running',
+    dshProcessStopped: 'DSH stopped',
+    dshPid: 'PID',
+    dshUptime: 'Up',
+    dshMemory: 'Mem',
+    dshCpu: 'CPU',
+    logsTitle: 'Live logs',
+    proxyLogs: 'Request logs (auth proxy)',
+    dshLogs: 'DSH process logs',
+    autoRefresh: 'Auto',
+    restartDsh: 'Restart DSH',
+    restartConfirm:
+        'Restarting interrupts the current connection and recovers automatically. Restart DSH on the PC?',
+    restartSuccess: 'DSH restarted',
+    restartFailed: 'Restart failed',
+    devToolsFetchFailed: 'Failed to fetch status',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

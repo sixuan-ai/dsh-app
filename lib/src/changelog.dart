@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.31.2';
+const kAppVersion = '1.32.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.32.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增开发者工具：实时查看电脑上 DSH 的运行状态（版本/内存/CPU/运行时长）、请求与进程日志（3 秒自动刷新），并支持一键重启 DSH',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.31.2',
     date: '2026-08-25',

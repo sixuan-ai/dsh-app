@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'balance_page.dart';
 import 'dsh_update_page.dart';
+import 'dev_tools_page.dart';
 import 'feedback_page.dart';
 import 'support_page.dart';
 import 'src/l10n.dart';
@@ -121,6 +122,18 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => BalancePage(
+                    username: widget.state.authUsername,
+                    password: widget.state.authPassword,
+                  ),
+                ),
+              ),
+            ),
+            _EntryTile(
+              icon: Icons.developer_mode_outlined,
+              title: S.devTools,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => DevToolsPage(
                     username: widget.state.authUsername,
                     password: widget.state.authPassword,
                   ),
