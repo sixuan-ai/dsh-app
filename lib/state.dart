@@ -852,31 +852,15 @@ class AppState extends ChangeNotifier {
     final store = _store;
     if (store == null) return null;
     try {
-      final raw = await store.loadChatItems(sessionId);
-      if (raw == null) return null;
-      final decoded = jsonDecode(raw);
+      final cached = await store.loadChatItems(sessionId);
+      if (cached == null) return null;
       // v1 caches were a bare item list. They remain useful for instant paint,
       // but cannot safely drive the server's beforeSeq pagination cursor.
-      if (decoded is List) {
-        return _CachedHistory(
-          items: [
-            for (final entry in decoded)
-              chatItemFromJson((entry as Map).cast<String, dynamic>()),
-          ],
-          oldestSeq: null,
-          latestSeq: null,
-          hasMore: false,
-        );
-      }
-      final map = (decoded as Map).cast<String, dynamic>();
       return _CachedHistory(
-        items: [
-          for (final entry in (map['items'] as List? ?? const []))
-            chatItemFromJson((entry as Map).cast<String, dynamic>()),
-        ],
-        oldestSeq: (map['oldestSeq'] as num?)?.toInt(),
-        latestSeq: (map['latestSeq'] as num?)?.toInt(),
-        hasMore: map['hasMore'] == true,
+        items: [for (final entry in cached.itemJsons) chatItemFromJson(entry)],
+        oldestSeq: cached.oldestSeq,
+        latestSeq: cached.latestSeq,
+        hasMore: cached.hasMore,
       );
     } catch (_) {
       return null;
@@ -904,19 +888,28 @@ class AppState extends ChangeNotifier {
     try {
       // Map conversion is cheap and must happen on the UI isolate (ChatItem is
       // not sendable); only the expensive jsonEncode runs on a worker isolate.
-      final itemsJson = [for (final item in persistable) chatItemToJson(item)];
+      final chunkMaps = <List<Map<String, dynamic>>>[];
+      for (var i = 0; i < persistable.length; i += kChatChunkSize) {
+        final end = i + kChatChunkSize > persistable.length
+            ? persistable.length
+            : i + kChatChunkSize;
+        chunkMaps.add([
+          for (final item in persistable.sublist(i, end)) chatItemToJson(item),
+        ]);
+      }
       final oldestSeq = _oldestSeq;
       final latestSeq = _lastLiveSeq;
       final hasMore = hasMoreHistory;
-      final payload = await Isolate.run(
-        () => jsonEncode({
-          'items': itemsJson,
-          'oldestSeq': oldestSeq,
-          'latestSeq': latestSeq,
-          'hasMore': hasMore,
-        }),
+      final chunkJsons = await Isolate.run(
+        () => [for (final chunk in chunkMaps) jsonEncode(chunk)],
       );
-      await store.saveChatItems(sessionId, payload);
+      await store.saveChatItems(
+        sessionId,
+        chunkJsons,
+        oldestSeq: oldestSeq,
+        latestSeq: latestSeq,
+        hasMore: hasMore,
+      );
     } catch (_) {
       // Best-effort cache.
     }

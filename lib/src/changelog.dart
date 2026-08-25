@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.32.0';
+const kAppVersion = '1.32.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.32.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '本地缓存分块存储:长会话保存时只重写有变化的部分,大幅减少磁盘写入量;旧缓存自动迁移到新格式,无需重新下载',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.32.0',
     date: '2026-08-25',
