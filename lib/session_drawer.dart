@@ -597,22 +597,21 @@ class _SessionDrawerState extends State<SessionDrawer> {
     );
   }
 
-  /// Groups filtered sessions by workspace directory (cwd), mirroring the
-  /// web client; sessions without one collect in an 未分组 section.
+  /// Groups filtered sessions by the server workspace registry (title and
+  /// order); sessions no workspace accounts for fall back to cwd buckets.
   List<Widget> _groupedSessionTiles(BuildContext context) {
     final groups = projectSessionGroups(
       sessions: state.sessions,
+      workspaces: state.workspaces,
       archivedSessionIds: state.archivedSessionIds,
       pinnedSessionIds: state.pinnedSessionIds,
       filter: SessionListFilter.values[_sessionFilter],
     );
     final tiles = <Widget>[];
-    for (final entry in groups.entries) {
-      final key = entry.key;
-      final rows = entry.value;
-      tiles.add(_workspaceHeader(key, rows.length));
-      if (!_collapsed.contains(key)) {
-        for (final row in rows) {
+    for (final group in groups) {
+      tiles.add(_workspaceHeader(group, group.rows.length));
+      if (!_collapsed.contains(group.key)) {
+        for (final row in group.rows) {
           tiles.add(_sessionTile(context, row));
         }
       }
@@ -620,15 +619,13 @@ class _SessionDrawerState extends State<SessionDrawer> {
     return tiles;
   }
 
-  Widget _workspaceHeader(String cwd, int count) {
-    final parts = cwd.split('/').where((s) => s.isNotEmpty).toList();
-    final name = cwd.isEmpty ? '未分组' : (parts.isEmpty ? cwd : parts.last);
-    final collapsed = _collapsed.contains(cwd);
+  Widget _workspaceHeader(ProjectedGroup group, int count) {
+    final collapsed = _collapsed.contains(group.key);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => _toggleCollapsed(cwd),
+        onTap: () => _toggleCollapsed(group.key),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: Row(
@@ -642,16 +639,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
               const SizedBox(width: 2),
               Icon(
-                cwd.isEmpty ? Icons.inbox_outlined : Icons.folder_outlined,
+                group.isWorkspace ? Icons.folder_outlined : Icons.inbox_outlined,
                 size: 14,
                 color: P.accentLight,
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Tooltip(
-                  message: cwd.isEmpty ? '未分组' : cwd,
+                  message: group.path ?? '未分组',
                   child: Text(
-                    name,
+                    group.title,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,

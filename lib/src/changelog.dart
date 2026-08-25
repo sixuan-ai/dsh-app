@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.33.2';
+const kAppVersion = '1.34.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.34.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '会话分组与网页端完全对齐:抽屉直接使用服务器工作区注册表(标题与排序),旧会话按目录自动归入对应工作区;自定义目录新建会话时会自动注册为工作区,不再产生网页端的「未分组」',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.33.2',
     date: '2026-08-25',

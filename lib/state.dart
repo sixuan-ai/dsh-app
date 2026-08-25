@@ -666,8 +666,9 @@ class AppState extends ChangeNotifier {
     }
     sessions.removeWhere((row) => !seen.contains(row.sessionId));
     sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    // Archive membership is owned by the workspace registry, not session.list.
-    // Keep the cached set on a transient failure so archived rows do not flash.
+    // Archive membership and workspace grouping are owned by the workspace
+    // registry, not session.list. Keep the cached state on a transient
+    // failure so groups do not flash.
     try {
       final workspaceValue =
           await api.call('workspace.list', {}) as Map<String, dynamic>;
@@ -677,6 +678,9 @@ class AppState extends ChangeNotifier {
           ((workspaceValue['archivedSessionIds'] as List?) ?? const [])
               .cast<String>(),
         );
+      workspaces = ((workspaceValue['items'] as List?) ?? const [])
+          .map((w) => (w as Map).cast<String, dynamic>())
+          .toList();
       await _saveSessionMetadata();
     } catch (_) {
       // Session refresh remains usable when the workspace registry is down.
@@ -1597,9 +1601,27 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  /// Ensures a registered workspace exists at [path] and returns its id.
+  /// The server resolves an existing workspace at the same path, so this is
+  /// idempotent; null means the path could not be registered (cwd fallback).
+  Future<String?> _ensureWorkspaceAt(String path) async {
+    final api = _api;
+    if (api == null || path.isEmpty) return null;
+    try {
+      final value = await api.call('workspace.create', {
+        'path': path,
+      }) as Map<String, dynamic>;
+      final workspace = value['workspace'] as Map?;
+      return workspace?['workspaceId'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Creates a fresh session and selects it. Paths that already belong to a
   /// registered workspace are sent as workspaceId so web and app grouping
-  /// agree. Truly custom paths retain the cwd-only behavior.
+  /// agree; unregistered custom paths register a workspace first, and only a
+  /// failed registration falls back to a cwd-only session.
   Future<void> createSession({String? workspaceId, String? cwd}) async {
     final api = _api;
     if (api == null) return;
@@ -1610,6 +1632,7 @@ class AppState extends ChangeNotifier {
       final path = resolvedCwd ?? _hostCwd;
       if (path != null && path.isNotEmpty) {
         resolvedWorkspaceId = await _workspaceIdForPath(path);
+        resolvedWorkspaceId ??= await _ensureWorkspaceAt(path);
         if (resolvedWorkspaceId != null) resolvedCwd = null;
       }
     }
