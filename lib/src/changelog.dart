@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.33.0';
+const kAppVersion = '1.33.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.33.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复「更多功能」面板在部分屏幕比例下内容溢出的问题,现在可以滚动查看全部功能',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.33.0',
     date: '2026-08-25',
