@@ -1672,7 +1672,8 @@ class AppState extends ChangeNotifier {
         );
       await _saveSessionMetadata();
     } catch (_) {
-      workspaces = [];
+      // Keep whatever loaded before the failure; the registry list stays
+      // usable even when persistence or the refresh itself hiccups.
     } finally {
       loadingWorkspaces = false;
       notifyListeners();
@@ -1722,14 +1723,20 @@ class AppState extends ChangeNotifier {
   Future<void> _saveSessionMetadata() async {
     final store = _store;
     if (store == null) return;
-    await store.kvWrite(
-      'pinnedSessionIds',
-      jsonEncode(pinnedSessionIds.toList()),
-    );
-    await store.kvWrite(
-      'archivedSessionIds',
-      jsonEncode(archivedSessionIds.toList()),
-    );
+    // Best-effort: a store failure must never roll back in-memory workspace
+    // or archive state that callers parsed from the server response.
+    try {
+      await store.kvWrite(
+        'pinnedSessionIds',
+        jsonEncode(pinnedSessionIds.toList()),
+      );
+      await store.kvWrite(
+        'archivedSessionIds',
+        jsonEncode(archivedSessionIds.toList()),
+      );
+    } catch (_) {
+      // Local cache only.
+    }
   }
 
   /// Loads the model catalog of the selected session.

@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.34.0';
+const kAppVersion = '1.34.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.34.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复 Android 真机上本地数据库打开失败的问题(WAL 设置语句不兼容),自 1.31.2 起会话缓存实际未生效;修复后冷启动秒开缓存恢复、工作区列表正常显示',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.34.0',
     date: '2026-08-25',

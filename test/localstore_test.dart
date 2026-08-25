@@ -271,6 +271,20 @@ void main() {
       await store.kvWrite('a', '2');
       expect(await store.kvRead('a'), '2');
     });
+
+    test('opens with WAL journal mode (Android rejects execute pragmas)',
+        () async {
+      // The Android bridge throws on value-returning statements passed to
+      // execute(), so the pragmas must go through rawQuery; WAL must still
+      // end up enabled in the database file itself.
+      await store.kvWrite('probe', 'ok');
+      final db = await openDatabase(
+        p.join(await getDatabasesPath(), store.dbFileName),
+      );
+      final mode = await db.rawQuery('PRAGMA journal_mode');
+      await db.close();
+      expect(mode.first['journal_mode'].toString().toLowerCase(), 'wal');
+    });
   });
 
   test('fnv1a64 is stable and discriminates content', () {

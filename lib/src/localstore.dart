@@ -85,9 +85,11 @@ class LocalStore {
       },
       onConfigure: (db) async {
         // WAL keeps reads/writes concurrent; busy_timeout avoids spurious
-        // SQLITE_BUSY under the debounced snapshot writer.
-        await db.execute('PRAGMA journal_mode=WAL');
-        await db.execute('PRAGMA busy_timeout=3000');
+        // SQLITE_BUSY under the debounced snapshot writer. Both pragmas go
+        // through rawQuery: journal_mode returns a result row, and Android's
+        // SQLite bridge rejects value-returning statements in execute().
+        await db.rawQuery('PRAGMA journal_mode=WAL');
+        await db.rawQuery('PRAGMA busy_timeout=3000');
       },
     );
   }
