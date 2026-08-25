@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.31.0';
+const kAppVersion = '1.31.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.31.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '自动搜索可靠性：mDNS 失败或超时时自动回退到局域网端口扫描（部分手机/路由器会过滤组播），并修复超时卡死',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.31.0',
     date: '2026-08-25',

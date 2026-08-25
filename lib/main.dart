@@ -1108,7 +1108,7 @@ class _LanSearchSheetState extends State<_LanSearchSheet> {
 
   Future<void> _search() async {
     setState(() => _devices = null);
-    final devices = await discoverDshDevices();
+    final devices = await discoverLocalDsh();
     if (mounted) setState(() => _devices = devices);
   }
 
