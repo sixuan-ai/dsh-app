@@ -1,6 +1,8 @@
 /// OTA update availability and download-progress dialogs.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'src/formatters.dart';
@@ -215,10 +217,20 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
   int _lastSampled = 0;
   int _lastSampleTime = 0;
 
+  /// Shown when nothing has arrived yet after a few seconds.
+  bool _slowHint = false;
+  Timer? _slowHintTimer;
+
   @override
   void initState() {
     super.initState();
     _start();
+  }
+
+  @override
+  void dispose() {
+    _slowHintTimer?.cancel();
+    super.dispose();
   }
 
   void _sampleSpeed(int received) {
@@ -243,6 +255,13 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
       _total = null;
       _speed = null;
       _lastSampleTime = 0;
+      _slowHint = false;
+    });
+    _slowHintTimer?.cancel();
+    _slowHintTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted && _error == null && _received == 0) {
+        setState(() => _slowHint = true);
+      }
     });
     try {
       final file = await widget.checker.downloadApk(
@@ -397,7 +416,9 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
               ),
               const SizedBox(height: 4),
               Text(
-                '完成后将自动打开安装界面',
+                _slowHint
+                    ? '网络较慢,连接无响应会自动重试…'
+                    : '完成后将自动打开安装界面',
                 style: TextStyle(fontSize: 11, color: P.textTertiary),
               ),
             ],

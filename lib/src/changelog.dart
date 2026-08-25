@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.35.0';
+const kAppVersion = '1.35.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.35.1',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复应用内更新下载可能卡在 0% 的问题:下载新增连接超时与停滞检测,无响应会自动重试一次,网络慢时也有提示',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.35.0',
     date: '2026-08-25',

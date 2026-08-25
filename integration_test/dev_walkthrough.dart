@@ -15,6 +15,7 @@ import 'package:dsh_mobile/src/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -147,5 +148,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(S.devTools), findsNothing);
     await mark('07_dev_mode_off_again');
+  });
+
+  /// Boots the real app with the neon theme pre-selected so the walkthrough
+  /// captures a real neon login screen (brand gradient + glow).
+  testWidgets('phase 8: neon theme preview', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final previous = prefs.getString('themeId');
+    await prefs.setString('themeId', 'neon');
+    addTearDown(() async {
+      if (previous == null) {
+        await prefs.remove('themeId');
+      } else {
+        await prefs.setString('themeId', previous);
+      }
+    });
+    await tester.pumpWidget(const DshApp());
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await mark('08_theme_neon');
   });
 }
