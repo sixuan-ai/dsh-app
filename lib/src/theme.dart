@@ -231,6 +231,30 @@ const _sakura = AppPalette(
   success: Color(0xFF2E9E5B),
 );
 
+/// 炫彩霓光: near-black indigo night with neon cyan→magenta brand gradient.
+/// Bright accents sit on dark surfaces, so onAccent is near-black for
+/// readable labels on neon-filled controls.
+const _neon = AppPalette(
+  brightness: Brightness.dark,
+  bg: Color(0xFF0A0A14),
+  card: Color(0xFF14142A),
+  cardAlt: Color(0xFF1B1B38),
+  code: Color(0xFF101024),
+  text: Color(0xFFF2F5FF),
+  textSecondary: Color(0xFFAEB4D8),
+  textTertiary: Color(0xFF6B729E),
+  accent: Color(0xFF00E5FF),
+  accent2: Color(0xFFFF2ED1),
+  accentLight: Color(0xFF4DF3FF),
+  onAccent: Color(0xFF001318),
+  divider: Color(0xFF26264A),
+  fillSubtle: Color(0x08FFFFFF),
+  fillLight: Color(0x0FFFFFFF),
+  fillMedium: Color(0x17FFFFFF),
+  danger: Color(0xFFFF3D71),
+  success: Color(0xFF3DFF9E),
+);
+
 /// Built-in themes in picker order. The first entry is the default.
 const kAppThemes = [
   AppThemeSpec(
@@ -241,6 +265,8 @@ const kAppThemes = [
       id: 'eyecare', name: '护眼绿', subtitle: '柔和舒缓', palette: _eyecare),
   AppThemeSpec(
       id: 'sakura', name: '樱花粉', subtitle: '温柔甜美', palette: _sakura),
+  AppThemeSpec(
+      id: 'neon', name: '炫彩霓光', subtitle: '赛博霓虹', palette: _neon),
 ];
 
 /// Resolves a stored theme id to its palette (unknown ids fall back to the

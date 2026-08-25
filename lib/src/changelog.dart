@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.34.1';
+const kAppVersion = '1.35.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.35.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增「炫彩霓光」主题:深邃夜空底 + 霓虹青→品红渐变强调色与发光控件,赛博霓虹风格',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.34.1',
     date: '2026-08-25',
