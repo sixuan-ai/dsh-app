@@ -17,6 +17,8 @@ class ConnectionCenterSheet extends StatelessWidget {
     required this.onSwitchLocal,
     required this.onRefreshLocal,
     this.onSwitchDirect,
+    this.localUrl,
+    this.onSetLocalAddress,
   });
 
   final String connectionMode;
@@ -28,6 +30,12 @@ class ConnectionCenterSheet extends StatelessWidget {
 
   /// Switches to the direct Shenzhen relay (low-latency route).
   final VoidCallback? onSwitchDirect;
+
+  /// Persisted LAN address of the local computer (empty when unset).
+  final String? localUrl;
+
+  /// Opens the local-address editor (HomePage owns the dialog).
+  final VoidCallback? onSetLocalAddress;
 
   String get _currentLabel => switch (connectionMode) {
     'lan' => S.localComputer,
@@ -94,7 +102,9 @@ class ConnectionCenterSheet extends StatelessWidget {
                   ? S.checkingLocal
                   : localAvailable
                   ? S.localDescAvailable
-                  : S.localDescNone,
+                  : (localUrl == null || localUrl!.isEmpty)
+                  ? S.localAddressEmpty
+                  : localUrl!,
               active: connectionMode == 'lan',
               available: localAvailable,
               checking: checkingLocal,
@@ -104,6 +114,20 @@ class ConnectionCenterSheet extends StatelessWidget {
                 onSwitchLocal();
               },
             ),
+            if (onSetLocalAddress != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onSetLocalAddress!();
+                  },
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                  label: Text(S.setLocalAddress),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,

@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.29.1';
+const kAppVersion = '1.30.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.30.0',
+    date: '2026-08-25',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '支持局域网直连电脑：连接中心可填写电脑局域网地址并检测（电脑端 DSH 需开启局域网监听，见连接教程）',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.29.1',
     date: '2026-08-25',

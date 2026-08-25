@@ -173,6 +173,11 @@ class Strings {
     required this.dshReleaseNotes,
     required this.dshCheckFailed,
     required this.refresh,
+    required this.localAddressTitle,
+    required this.localAddressHint,
+    required this.setLocalAddress,
+    required this.localAddressEmpty,
+    required this.localAddressSaved,
     required this.tagline,
     required this.remoteConnection,
     required this.localConnection,
@@ -305,6 +310,11 @@ class Strings {
   final String dshReleaseNotes;
   final String dshCheckFailed;
   final String refresh;
+  final String localAddressTitle;
+  final String localAddressHint;
+  final String setLocalAddress;
+  final String localAddressEmpty;
+  final String localAddressSaved;
   final String tagline;
   final String remoteConnection;
   final String localConnection;
@@ -437,6 +447,12 @@ class Strings {
     dshReleaseNotes: '更新说明',
     dshCheckFailed: '检查失败',
     refresh: '刷新',
+    localAddressTitle: '本地电脑地址',
+    localAddressHint:
+        '电脑在局域网中的地址，例如 http://172.16.3.193:3081（电脑端 DSH 需已开启局域网监听）',
+    setLocalAddress: '设置本地地址',
+    localAddressEmpty: '尚未设置本地地址',
+    localAddressSaved: '已保存并检测',
     tagline: '用手机安全连接并操作你自己的电脑',
     remoteConnection: '远程连接',
     localConnection: '本地连接',
@@ -574,6 +590,12 @@ class Strings {
     dshReleaseNotes: 'Release notes',
     dshCheckFailed: 'Check failed',
     refresh: 'Refresh',
+    localAddressTitle: 'Local PC address',
+    localAddressHint:
+        "Your PC's LAN address, e.g. http://172.16.3.193:3081 (the PC DSH must listen on the LAN)",
+    setLocalAddress: 'Set local address',
+    localAddressEmpty: 'No local address set',
+    localAddressSaved: 'Saved and probed',
     tagline: 'Securely connect to and control your own PC from your phone',
     remoteConnection: 'Remote',
     localConnection: 'Local',

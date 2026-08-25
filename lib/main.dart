@@ -468,10 +468,53 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         connectionMode: _connectionMode,
         checkingLocal: _checkingLocal,
         localAvailable: _localAvailable,
+        localUrl: _localUrl,
         onSwitchRemote: () => _switchConnection('public'),
         onSwitchLocal: () => _switchConnection('lan'),
         onSwitchDirect: () => _switchConnection('direct'),
         onRefreshLocal: _checkLocalConnection,
+        onSetLocalAddress: _setLocalAddress,
+      ),
+    );
+  }
+
+  /// Edits the LAN address of the local computer, persists it, and probes it.
+  Future<void> _setLocalAddress() async {
+    final controller = TextEditingController(text: _localUrl ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(S.localAddressTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(hintText: S.localAddressHint),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(S.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: Text(S.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    final url = result?.trim() ?? '';
+    if (url.isEmpty || !mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lanServerUrl', url);
+    await _checkLocalConnection();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_localAvailable ? S.localAddressSaved : S.localDescNone),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

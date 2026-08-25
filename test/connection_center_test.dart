@@ -1,4 +1,5 @@
 import 'package:dsh_mobile/connection_center.dart';
+import 'package:dsh_mobile/src/l10n.dart';
 import 'package:dsh_mobile/src/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,7 +25,7 @@ void main() {
 
     expect(find.text('连接中心'), findsOneWidget);
     expect(find.text('当前正在使用'), findsOneWidget);
-    expect(find.text('当前未检测到本地电脑'), findsOneWidget);
+    expect(find.text(S.localAddressEmpty), findsOneWidget);
     expect(find.text('重新检测本地连接'), findsOneWidget);
   });
 
@@ -79,5 +80,32 @@ void main() {
     expect(find.text('切换到深圳服务器'), findsNothing);
     final directTitle = tester.widgetList<Text>(find.text('深圳服务器')).last;
     expect(directTitle.style?.color, P.accentLight);
+  });
+
+  testWidgets('local card shows the address and a set-address action', (
+    tester,
+  ) async {
+    var setAddressCalled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ConnectionCenterSheet(
+            connectionMode: 'public',
+            checkingLocal: false,
+            localAvailable: false,
+            localUrl: 'http://172.16.3.193:3081',
+            onSwitchRemote: () {},
+            onSwitchLocal: () {},
+            onRefreshLocal: () {},
+            onSetLocalAddress: () => setAddressCalled = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('http://172.16.3.193:3081'), findsOneWidget);
+    expect(find.text(S.setLocalAddress), findsOneWidget);
+    await tester.tap(find.text(S.setLocalAddress));
+    expect(setAddressCalled, isTrue);
   });
 }
