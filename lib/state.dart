@@ -380,6 +380,7 @@ class AppState extends ChangeNotifier {
   final Map<String, int> _sessionTailSeqs = {};
   final Map<String, int> _subscribedLastSeqs = {};
   SessionConnectionController? _connectionController;
+  StreamSubscription<dynamic>? _sessionFollowSub;
   bool _streamsActive = false;
   bool _tailSyncInFlight = false;
   bool _gapFillInFlight = false;
@@ -430,7 +431,7 @@ class AppState extends ChangeNotifier {
     try {
       final api = DshApi(url, username: username, password: password);
       try {
-        await api.call('host.describe', {}).timeout(timeout);
+        await api.hostReady().timeout(timeout);
         lastProbeError = null;
         return true;
       } finally {
@@ -461,7 +462,7 @@ class AppState extends ChangeNotifier {
     final client = _api;
     if (client == null) throw StateError('未连接服务器');
     final stopwatch = Stopwatch()..start();
-    await client.call('host.describe', {});
+    await client.hostReady();
     return stopwatch.elapsedMilliseconds;
   }
 
@@ -523,7 +524,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final api = DshApi(url, username: username, password: password);
-      final host = await api.call('host.describe', {}) as Map<String, dynamic>;
+      final host = await api.hostReady();
       _hostCwd = host['cwd'] as String?;
       _api = api;
       authUsername = username;
@@ -551,6 +552,8 @@ class AppState extends ChangeNotifier {
     _saveTimer?.cancel();
     _saveTimer = null;
     _connectionController?.stop();
+    unawaited(_sessionFollowSub?.cancel());
+    _sessionFollowSub = null;
     _connectionController = null;
     _api?.close();
     _api = null;
@@ -854,8 +857,9 @@ class AppState extends ChangeNotifier {
     if (subscribedLastSeq != null && subscribedLastSeq > _lastLiveSeq) {
       unawaited(syncTail(sessionId));
     }
-    // Cached pages are authoritative for already loaded history; live frames
-    // continue to update the tail without re-downloading it on every open.
+    // Cached pages are authoritative for already loaded history; the new
+    // protocol carries live Session events on a per-session follow stream.
+    _startSessionFollow(sessionId);
     unawaited(refreshSubagents());
   }
 
@@ -926,6 +930,47 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  void _startSessionFollow(String sessionId) {
+    unawaited(_sessionFollowSub?.cancel());
+    final api = _api;
+    if (api == null) return;
+    _sessionFollowSub = api
+        .sessionFollow(sessionId)
+        .listen(
+          (value) {
+            if (selectedSessionId != sessionId || value is! Map) return;
+            final frame = value.cast<String, dynamic>();
+            if (frame['type'] == 'snapshot') {
+              final cursor = (frame['cursor'] as num?)?.toInt();
+              if (cursor != null) _subscribedLastSeqs[sessionId] = cursor;
+              _seedProjections(
+                sessionId,
+                (frame['projections'] as Map?)?.cast<String, dynamic>(),
+              );
+              return;
+            }
+            if (frame['type'] == 'event' && frame['event'] is Map) {
+              _onMuxFrame(
+                ServerFrame(
+                  rpcId: mintRpcId('follow'),
+                  method: 'session/event',
+                  payload: {
+                    'type': 'session/event',
+                    'sessionId': sessionId,
+                    'event': (frame['event'] as Map).cast<String, dynamic>(),
+                  },
+                ),
+              );
+            }
+          },
+          onError: (_) {
+            if (selectedSessionId == sessionId) {
+              // The next reconnect/open retries the per-session follow stream.
+            }
+          },
+        );
+  }
+
   /// Fetches only the newest message group after a reconnect and merges it
   /// into the local window. This keeps long conversations visible while the
   /// network catches up, instead of clearing the chat and downloading a full
@@ -946,12 +991,7 @@ class AppState extends ChangeNotifier {
     var succeeded = false;
     final localTailBeforeSync = _lastLiveSeq;
     try {
-      final value =
-          await api.call('session.history', {
-                'sessionId': target,
-                'maxMessages': 3,
-              })
-              as Map<String, dynamic>;
+      final value = await api.sessionHistory(target, maxMessages: 3);
       if (selectedSessionId != target) return;
       final entries = (value['events'] as List).cast<Map<String, dynamic>>();
       final incoming = <_TailItem>[];
@@ -1031,13 +1071,11 @@ class AppState extends ChangeNotifier {
           pages < 8) {
         final beforeSeq = _historyGapBeforeSeq!;
         final afterSeq = _historyGapAfterSeq ?? -1;
-        final value =
-            await api.call('session.history', {
-                  'sessionId': sessionId,
-                  'beforeSeq': beforeSeq,
-                  'maxMessages': 10,
-                })
-                as Map<String, dynamic>;
+        final value = await api.sessionHistory(
+          sessionId,
+          beforeSeq: beforeSeq,
+          maxMessages: 10,
+        );
         if (selectedSessionId != sessionId) return;
         final entries = (value['events'] as List).cast<Map<String, dynamic>>();
         if (entries.isEmpty) {
@@ -1191,8 +1229,11 @@ class AppState extends ChangeNotifier {
         // beforeSeq pages align to message boundaries; use the oldest known seq.
         payload['beforeSeq'] = _oldestSeq;
       }
-      final value =
-          await api.call('session.history', payload) as Map<String, dynamic>;
+      final value = await api.sessionHistory(
+        sessionId,
+        beforeSeq: payload['beforeSeq'] as int?,
+        maxMessages: payload['maxMessages'] as int?,
+      );
       final entries = (value['events'] as List).cast<Map<String, dynamic>>();
       hasMoreHistory = value['hasMore'] == true;
       final folded = <ChatItem>[];
@@ -1608,9 +1649,9 @@ class AppState extends ChangeNotifier {
     final api = _api;
     if (api == null || path.isEmpty) return null;
     try {
-      final value = await api.call('workspace.create', {
-        'path': path,
-      }) as Map<String, dynamic>;
+      final value =
+          await api.call('workspace.create', {'path': path})
+              as Map<String, dynamic>;
       final workspace = value['workspace'] as Map?;
       return workspace?['workspaceId'] as String?;
     } catch (_) {
