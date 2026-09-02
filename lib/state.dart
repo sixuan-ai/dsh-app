@@ -1837,12 +1837,22 @@ class AppState extends ChangeNotifier {
   Future<void> answerApproval(PendingApproval approval, String outcome) async {
     approvals.remove(approval);
     notifyListeners();
-    final accepted = await _api?.respond(approval.rpcId, {
-      'sessionId': approval.sessionId,
-      'approvalId': approval.approvalId,
-      'outcome': outcome,
-    });
-    if (accepted == false) {
+    try {
+      final accepted =
+          await _api?.answerRemoteEvent(approval.rpcId, value: outcome) ??
+          false;
+      if (accepted == false) {
+        items.add(
+          ChatItem.notice(
+            id: 'stale-approval-${approval.rpcId}',
+            text: '这条审批已失效(服务可能已重启或该轮已取消),无需处理',
+          ),
+        );
+        notifyListeners();
+      }
+    } on DshError {
+      // The gateway no longer tracks the event (stale): mirror the rejected
+      // respond path so the user knows the answer did not land.
       items.add(
         ChatItem.notice(
           id: 'stale-approval-${approval.rpcId}',
@@ -1861,11 +1871,21 @@ class AppState extends ChangeNotifier {
   ) async {
     questions.remove(question);
     notifyListeners();
-    final accepted = await _api?.respond(question.rpcId, {
-      'sessionId': question.sessionId,
-      'answer': {'answers': answers},
-    });
-    if (accepted == false) {
+    try {
+      final accepted =
+          await _api
+              ?.answerRemoteEvent(question.rpcId, value: {'answers': answers}) ??
+          false;
+      if (accepted == false) {
+        items.add(
+          ChatItem.notice(
+            id: 'stale-question-${question.rpcId}',
+            text: '这个提问已失效(服务可能已重启或该轮已取消),你的回答未送达',
+          ),
+        );
+        notifyListeners();
+      }
+    } on DshError {
       items.add(
         ChatItem.notice(
           id: 'stale-question-${question.rpcId}',
@@ -1937,6 +1957,47 @@ class AppState extends ChangeNotifier {
             ),
           );
         }
+      case HostApprovalRequested(
+        :final sessionId,
+        :final approvalId,
+        :final toolName,
+        :final reason,
+      ):
+        approvals.removeWhere(
+          (approval) =>
+              approval.rpcId == frame.rpcId ||
+              approval.approvalId == approvalId,
+        );
+        approvals.add(
+          PendingApproval(
+            rpcId: frame.rpcId,
+            sessionId: sessionId,
+            approvalId: approvalId,
+            toolName: toolName,
+            reason: reason,
+          ),
+        );
+      case HostQuestionRequested(
+        :final sessionId,
+        :final rpcId,
+        :final questions,
+      ):
+        this.questions.removeWhere(
+          (question) => question.rpcId == frame.rpcId || question.rpcId == rpcId,
+        );
+        this.questions.add(
+          PendingQuestion(
+            rpcId: frame.rpcId,
+            sessionId: sessionId,
+            questions: questions,
+          ),
+        );
+      case HostInteractionCancelled(:final eventId):
+        approvals.removeWhere(
+          (approval) =>
+              approval.rpcId == eventId || approval.approvalId == eventId,
+        );
+        questions.removeWhere((question) => question.rpcId == eventId);
       case null:
         return;
     }

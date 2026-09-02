@@ -36,6 +36,38 @@ class HostAgentError extends HostFrameAction {
   final String message;
 }
 
+/// A pending approval delivered as a waterfall Remote event ($events).
+class HostApprovalRequested extends HostFrameAction {
+  const HostApprovalRequested({
+    required this.sessionId,
+    required this.approvalId,
+    required this.toolName,
+    this.reason,
+  });
+  final String sessionId;
+  final String approvalId;
+  final String toolName;
+  final String? reason;
+}
+
+/// A pending ask-user question batch delivered as a waterfall Remote event.
+class HostQuestionRequested extends HostFrameAction {
+  const HostQuestionRequested({
+    required this.sessionId,
+    required this.rpcId,
+    required this.questions,
+  });
+  final String sessionId;
+  final String rpcId;
+  final List<Map<String, dynamic>> questions;
+}
+
+/// The gateway cancelled a pending waterfall event (agent stopped waiting).
+class HostInteractionCancelled extends HostFrameAction {
+  const HostInteractionCancelled(this.eventId);
+  final String eventId;
+}
+
 HostFrameAction? routeHostFrame(Map<String, dynamic> payload) {
   switch (payload['type']) {
     case 'host/session-added':
@@ -59,6 +91,24 @@ HostFrameAction? routeHostFrame(Map<String, dynamic> payload) {
         sessionId: payload['sessionId'] as String,
         message: payload['message'] as String? ?? '未知错误',
       );
+    case 'approval/requested':
+      return HostApprovalRequested(
+        sessionId: payload['sessionId'] as String,
+        approvalId: payload['approvalId'] as String,
+        toolName: payload['toolName'] as String,
+        reason: payload['reason'] as String?,
+      );
+    case 'question/requested':
+      return HostQuestionRequested(
+        sessionId: payload['sessionId'] as String,
+        rpcId: payload['rpcId'] as String? ?? '',
+        questions: (payload['questions'] as List? ?? const [])
+            .whereType<Map>()
+            .map((q) => q.cast<String, dynamic>())
+            .toList(),
+      );
+    case 'interaction/cancelled':
+      return HostInteractionCancelled(payload['eventId'] as String);
     default:
       return null;
   }

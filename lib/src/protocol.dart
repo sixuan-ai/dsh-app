@@ -80,6 +80,11 @@ class DshApi {
   final http.Client _http = http.Client();
   final Map<String, int> _followCursors = {};
   Map<String, dynamic>? _host;
+  String? _clientId;
+
+  /// The gateway issues a per-connection client id in the `$events` ready
+  /// frame; answering a waterfall Remote event echoes it back.
+  String? get clientId => _clientId;
 
   Map<String, String> get _jsonHeaders {
     final headers = <String, String>{'content-type': 'application/json'};
@@ -109,6 +114,7 @@ class DshApi {
     await for (final value in remoteStream('\$events', {'args': {}})) {
       if (value is Map && value['type'] == 'ready') {
         final host = (value['host'] as Map?)?.cast<String, dynamic>() ?? {};
+        _clientId ??= value['clientId'] as String?;
         _host = {'home': host['home'], 'cwd': host['home'], 'host': host};
         return Map<String, dynamic>.from(_host!);
       }
@@ -284,14 +290,111 @@ class DshApi {
   }
 
   /// Compatibility host stream: `$events` emit frames -> old host frames.
+  /// Waterfall Remote events (approval/request, user-questions/request) and
+  /// their cancellation are translated into dedicated host frames; answering
+  /// them goes through [answerRemoteEvent].
   Stream<ServerFrame> hostStream() async* {
     await for (final value in remoteStream('\$events', {'args': {}})) {
-      if (value is! Map || value['type'] != 'emit') continue;
-      final event = value['event'] as String? ?? '';
-      final args = (value['args'] as List?) ?? const [];
-      final payload = _hostEvent(event, args);
-      if (payload != null) yield _frame(event, payload);
+      if (value is! Map) continue;
+      final type = value['type'];
+      if (type == 'ready') {
+        final id = value['clientId'] as String?;
+        if (id != null) _clientId = id;
+        continue;
+      }
+      if (type == 'emit') {
+        final event = value['event'] as String? ?? '';
+        final args = (value['args'] as List?) ?? const [];
+        final payload = _hostEvent(event, args);
+        if (payload != null) yield _frame(event, payload);
+        continue;
+      }
+      if (type == 'waterfall') {
+        final event = value['event'] as String? ?? '';
+        final eventId = value['eventId'] as String? ?? '';
+        final agentId = value['agentId'] as String? ?? '';
+        final request =
+            (value['request'] as Map?)?.cast<String, dynamic>() ?? {};
+        // The frame rpcId carries the waterfall eventId so the state layer
+        // can answer the event through $events/result.
+        if (event == 'approval/request') {
+          yield ServerFrame(
+            rpcId: eventId,
+            method: 'approval/requested',
+            payload: {
+              'type': 'approval/requested',
+              'sessionId': agentId,
+              'approvalId': eventId,
+              'toolName': request['toolName'] as String? ?? '',
+              'reason': request['reason'] as String?,
+            },
+          );
+        } else if (event == 'user-questions/request') {
+          yield ServerFrame(
+            rpcId: eventId,
+            method: 'question/requested',
+            payload: {
+              'type': 'question/requested',
+              'sessionId': agentId,
+              'questions': request['questions'] ?? const [],
+            },
+          );
+        }
+        continue;
+      }
+      if (type == 'cancel') {
+        final eventId = value['eventId'] as String?;
+        if (eventId != null) {
+          yield ServerFrame(
+            rpcId: eventId,
+            method: 'interaction/cancelled',
+            payload: {'type': 'interaction/cancelled', 'eventId': eventId},
+          );
+        }
+      }
     }
+  }
+
+  /// Answers a pending waterfall Remote event (`$events/result`): a question
+  /// batch or an approval request raised by an agent. Returns false when the
+  /// gateway no longer tracks that event (stale/answered elsewhere).
+  Future<bool> answerRemoteEvent(
+    String eventId, {
+    dynamic value,
+    bool reject = false,
+    String? error,
+  }) async {
+    if (eventId.isEmpty) return false;
+    final response = await _http.post(
+      base.resolve('/api/\$events/result'),
+      headers: _jsonHeaders,
+      body: jsonEncode({
+        'type': 'client-request',
+        'rpcId': mintRpcId('answer'),
+        'method': '\$events/result',
+        'payload': {
+          'args': {
+            'clientId': _clientId,
+            'eventId': eventId,
+            'outcome': reject
+                ? {
+                    'kind': 'rejected',
+                    'error': error ?? {'code': 'client/rejected'},
+                  }
+                : {'kind': 'result', 'value': value},
+          },
+        },
+      }),
+    );
+    if (response.statusCode != 200) return false;
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final result = (body['result'] as Map?)?.cast<String, dynamic>();
+    if (result?['ok'] == true) return true;
+    final err = (result?['error'] as Map?)?.cast<String, dynamic>();
+    throw DshError(
+      err?['code'] as String? ?? 'remote-error',
+      err?['message'] as String? ?? 'Remote event answer rejected',
+    );
   }
 
   Stream<dynamic> sessionFollow(String sessionId) =>

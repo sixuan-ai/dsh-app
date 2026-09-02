@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.35.2';
+const kAppVersion = '1.35.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.35.3',
+    date: '2026-09-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复 Agent 提问/审批在手机上不弹窗:新版服务器把提问与审批改为 \$events 流的瀑布事件(waterfall),App 已适配并按新通道回传答案',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.35.2',
     date: '2026-09-02',
