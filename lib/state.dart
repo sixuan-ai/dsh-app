@@ -193,6 +193,18 @@ typedef QueueMutationCall =
 class AppState extends ChangeNotifier {
   AppState({@visibleForTesting this._queueMutationCall});
 
+  /// Test-only wiring: attach a live API and start the downlink loops without
+  /// touching the local store (same effect as [connect] minus persistence).
+  @visibleForTesting
+  void attachApiForTest(DshApi api) {
+    disconnect();
+    _hostCwd = '/home/x';
+    _api = api;
+    _streamsActive = true;
+    _startStreams();
+    notifyListeners();
+  }
+
   DshApi? _api;
   final QueueMutationCall? _queueMutationCall;
   String serverUrl = '';
