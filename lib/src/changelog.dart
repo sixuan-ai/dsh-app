@@ -25,10 +25,28 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.35.3';
+const kAppVersion = '1.35.5';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '1.35.5',
+    date: '2026-09-12',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新用户注册:App 里用任意邮箱收验证码建账号(验证码经企业邮箱发出),注册页加入口与流程说明',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '连接更强健:连接本机 DSH 时不再需要手动填 dsh 令牌,代理会自动完成换取,重启 DSH 也不用改手机',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '注册接口加 App 凭据头,防止公网扫描滥用验证码发信',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '1.35.3',
     date: '2026-09-02',

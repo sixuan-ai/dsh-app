@@ -58,3 +58,8 @@ app.*.map.json
 # Python bytecode from the stdlib server scripts
 __pycache__/
 *.pyc
+
+# Release signing material — never commit
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
