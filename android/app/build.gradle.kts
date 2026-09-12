@@ -30,7 +30,11 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "dev.dsh.dsh_mobile"
+        // Overridable so a side-by-side test build can coexist with a
+        // store-installed copy of the same app:
+        //   flutter build apk -Pdsh.applicationId=dev.dsh.dsh_mobile.test
+        applicationId = (project.findProperty("dsh.applicationId") as String?)
+            ?: "dev.dsh.dsh_mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
