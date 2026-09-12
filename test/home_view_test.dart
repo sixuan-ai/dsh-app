@@ -16,14 +16,18 @@ void main() {
     expect(HomeHeaderSelection.from(state), before);
   });
 
-  test('composer selection compares only session and running state', () {
+  test('composer selection includes server availability', () {
     expect(
-      const ComposerSelection('session-1', true),
-      const ComposerSelection('session-1', true),
+      const ComposerSelection('session-1', true, true),
+      const ComposerSelection('session-1', true, true),
     );
     expect(
-      const ComposerSelection('session-1', true),
-      isNot(const ComposerSelection('session-1', false)),
+      const ComposerSelection('session-1', true, true),
+      isNot(const ComposerSelection('session-1', false, true)),
+    );
+    expect(
+      const ComposerSelection('session-1', true, true),
+      isNot(const ComposerSelection('session-1', true, false)),
     );
   });
 }

@@ -188,7 +188,10 @@ class _ComposerState extends State<Composer> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = widget.state.selectedSessionId != null;
+    // Cached conversations remain readable while disconnected, but sending a
+    // prompt or opening a command sheet must wait until the host is back.
+    final enabled =
+        widget.state.selectedSessionId != null && widget.state.serverAvailable;
     final focused = _focusNode.hasFocus;
     return SafeArea(
       top: false,

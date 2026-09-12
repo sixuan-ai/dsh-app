@@ -214,16 +214,20 @@ class DshApi {
       pingInterval: const Duration(seconds: 20),
       headers: _wsHeaders,
     );
-    final streamId = mintRpcId('stream');
-    channel.sink.add(
-      jsonEncode({
-        'type': 'open',
-        'streamId': streamId,
-        'endpoint': endpoint,
-        'payload': payload,
-      }),
-    );
     try {
+      // `connect()` starts asynchronously.  Awaiting `ready` moves a failed
+      // TLS/socket handshake into this stream, where the connection controller
+      // can reconnect, instead of leaving it as an unhandled Flutter error.
+      await channel.ready.timeout(const Duration(seconds: 15));
+      final streamId = mintRpcId('stream');
+      channel.sink.add(
+        jsonEncode({
+          'type': 'open',
+          'streamId': streamId,
+          'endpoint': endpoint,
+          'payload': payload,
+        }),
+      );
       await for (final data in channel.stream) {
         final frame = jsonDecode(data as String) as Map<String, dynamic>;
         if (frame['streamId'] != streamId) continue;
@@ -453,12 +457,12 @@ class DshApi {
     // carrier (gateway/signature-invalid) — call it over HTTP instead.
     final page =
         await call('session/page', {
-          'sessionId': sessionId,
-          'throughSeq': through,
-          'beforeSeq': beforeSeq,
-          'maxMessages': limit,
-        })
-        as Map<String, dynamic>;
+              'sessionId': sessionId,
+              'throughSeq': through,
+              'beforeSeq': beforeSeq,
+              'maxMessages': limit,
+            })
+            as Map<String, dynamic>;
     return {
       'events': _recordsToLegacy(page['records']),
       'hasMore': page['hasMore'] == true,

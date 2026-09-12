@@ -20,6 +20,8 @@ class HomeView extends StatelessWidget {
     required this.onNewSession,
     required this.onRename,
     required this.onRefresh,
+    required this.onRetryConnection,
+    required this.onConnectionCenter,
     required this.onCheckUpdate,
     required this.onLogout,
     required this.onSuggestion,
@@ -31,6 +33,8 @@ class HomeView extends StatelessWidget {
   final VoidCallback onNewSession;
   final VoidCallback onRename;
   final VoidCallback onRefresh;
+  final VoidCallback onRetryConnection;
+  final VoidCallback onConnectionCenter;
   final VoidCallback onCheckUpdate;
   final VoidCallback onLogout;
   final ValueChanged<String> onSuggestion;
@@ -66,6 +70,15 @@ class HomeView extends StatelessWidget {
             animation: state,
             builder: (context, _) => StatsBar(state: state),
           ),
+          AnimatedBuilder(
+            animation: state,
+            builder: (context, _) => _ConnectionStatusBanner(
+              status: state.connectionStatus,
+              detail: state.connectionError,
+              onRetry: onRetryConnection,
+              onConnectionCenter: onConnectionCenter,
+            ),
+          ),
           Expanded(
             child: AnimatedBuilder(
               animation: state,
@@ -82,6 +95,7 @@ class HomeView extends StatelessWidget {
             select: () => ComposerSelection(
               state.selectedSessionId,
               state.selectedRunning,
+              state.serverAvailable,
             ),
             builder: (context, _) => Composer(state: state),
           ),
@@ -143,17 +157,85 @@ class HomeHeaderSelection {
 }
 
 class ComposerSelection {
-  const ComposerSelection(this.sessionId, this.running);
+  const ComposerSelection(this.sessionId, this.running, this.serverAvailable);
 
   final String? sessionId;
   final bool running;
+  final bool serverAvailable;
 
   @override
   bool operator ==(Object other) =>
       other is ComposerSelection &&
       sessionId == other.sessionId &&
-      running == other.running;
+      running == other.running &&
+      serverAvailable == other.serverAvailable;
 
   @override
-  int get hashCode => Object.hash(sessionId, running);
+  int get hashCode => Object.hash(sessionId, running, serverAvailable);
+}
+
+class _ConnectionStatusBanner extends StatelessWidget {
+  const _ConnectionStatusBanner({
+    required this.status,
+    required this.detail,
+    required this.onRetry,
+    required this.onConnectionCenter,
+  });
+
+  final ServerConnectionStatus status;
+  final String? detail;
+  final VoidCallback onRetry;
+  final VoidCallback onConnectionCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    if (status == ServerConnectionStatus.online ||
+        status == ServerConnectionStatus.idle) {
+      return const SizedBox.shrink();
+    }
+    final isAuth = status == ServerConnectionStatus.authRequired;
+    final reconnecting =
+        status == ServerConnectionStatus.reconnecting ||
+        status == ServerConnectionStatus.connecting;
+    final color = reconnecting ? Colors.amber.shade800 : Colors.red.shade700;
+    final label = isAuth
+        ? '登录状态已失效，请重新连接'
+        : reconnecting
+        ? '服务连接暂时中断，正在恢复…'
+        : '服务暂时不可用，已保留本地内容';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+      padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.34)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            reconnecting
+                ? Icons.sync_problem_outlined
+                : Icons.cloud_off_outlined,
+            color: color,
+            size: 19,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color, fontSize: 12.5),
+            ),
+          ),
+          TextButton(
+            onPressed: isAuth ? onConnectionCenter : onRetry,
+            child: Text(isAuth ? '连接设置' : '立即重试'),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -103,6 +103,10 @@ class _DshAppState extends State<DshApp> {
     final pass = prefs.getString('authPass');
     if (user != null && pass != null && user.isNotEmpty) {
       _hasCreds = true;
+      // Local history is independent of the computer service. Restore it
+      // first so a returning user never waits on a transient network outage
+      // just to enter the app.
+      await appState.restoreCachedSnapshot(username: user, password: pass);
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
       final mode = prefs.getString('connectionMode') ?? 'public';
@@ -111,7 +115,9 @@ class _DshAppState extends State<DshApp> {
                 prefs.getString('serverUrl') ??
                 kDefaultServerUrl)
           : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
+      if (mounted) setState(() => _restored = true);
       unawaited(appState.connect(serverUrl, username: user, password: pass));
+      return;
     }
     if (mounted) setState(() => _restored = true);
   }
@@ -142,7 +148,8 @@ class _DshAppState extends State<DshApp> {
         animation: appState,
         builder: (context, _) {
           if (!_restored) return const _Splash(label: '正在启动…');
-          if (appState.connected) {
+          if (appState.connected ||
+              (_hasCreds && !appState.requiresAuthentication)) {
             return HomePage(state: appState, theme: theme, language: language);
           }
           if (_hasCreds && appState.connecting) {
@@ -1063,6 +1070,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       onNewSession: _newSession,
       onRename: _renameDialog,
       onRefresh: state.refreshSessions,
+      onRetryConnection: () => unawaited(state.retryConnection()),
+      onConnectionCenter: _showConnectionCenter,
       onCheckUpdate: () => _checkForUpdate(manual: true),
       onLogout: _logout,
       onSuggestion: _sendSuggestion,

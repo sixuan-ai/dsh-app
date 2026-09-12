@@ -21,7 +21,7 @@ void main() {
   testWidgets('composer keeps and enables the send button after typing', (
     tester,
   ) async {
-    final app = AppState();
+    final app = AppState()..connectionStatus = ServerConnectionStatus.online;
     app.selectedSessionId = 's1';
     await tester.pumpWidget(
       MaterialApp(
@@ -49,7 +49,7 @@ void main() {
   testWidgets('composer highlights its border while the field is focused', (
     tester,
   ) async {
-    final app = AppState();
+    final app = AppState()..connectionStatus = ServerConnectionStatus.online;
     app.selectedSessionId = 's1';
     await tester.pumpWidget(
       MaterialApp(
@@ -74,7 +74,7 @@ void main() {
   testWidgets('quick commands contain the permission settings entry', (
     tester,
   ) async {
-    final app = AppState();
+    final app = AppState()..connectionStatus = ServerConnectionStatus.online;
     app.selectedSessionId = 's1';
     await tester.pumpWidget(
       MaterialApp(
@@ -98,7 +98,7 @@ void main() {
   testWidgets('top bar task queue button opens queued contents', (
     tester,
   ) async {
-    final app = AppState();
+    final app = AppState()..connectionStatus = ServerConnectionStatus.online;
     app.selectedSessionId = 's1';
     app.queuedTasks.add(
       const QueuedTask(
@@ -237,7 +237,7 @@ void main() {
   testWidgets('composer shows the stop button alongside send while running', (
     tester,
   ) async {
-    final app = AppState();
+    final app = AppState()..connectionStatus = ServerConnectionStatus.online;
     app.selectedSessionId = 's1';
     // A running session row surfaces the stop button next to send.
     app.sessions.add(

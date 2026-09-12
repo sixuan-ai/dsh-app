@@ -12,6 +12,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
+import 'src/connection_backoff.dart';
 import 'src/directory_listing.dart';
 import 'src/frame_router.dart';
 import 'src/localstore.dart';
@@ -186,6 +187,17 @@ class _TailItem {
   final int seq;
 }
 
+/// Authentication and transport are deliberately separate.  A saved account
+/// remains usable for local history even while the computer service is down.
+enum ServerConnectionStatus {
+  idle,
+  connecting,
+  online,
+  reconnecting,
+  offline,
+  authRequired,
+}
+
 /// Root application state.
 typedef QueueMutationCall =
     Future<dynamic> Function(String method, Map<String, dynamic> payload);
@@ -200,6 +212,7 @@ class AppState extends ChangeNotifier {
     disconnect();
     _hostCwd = '/home/x';
     _api = api;
+    connectionStatus = ServerConnectionStatus.online;
     _streamsActive = true;
     _startStreams();
     notifyListeners();
@@ -210,6 +223,9 @@ class AppState extends ChangeNotifier {
   String serverUrl = '';
   bool connecting = false;
   String? connectionError;
+  ServerConnectionStatus connectionStatus = ServerConnectionStatus.idle;
+  Timer? _startupReconnectTimer;
+  int _startupReconnectAttempts = 0;
 
   final List<SessionRow> sessions = [];
   String? selectedSessionId;
@@ -393,6 +409,9 @@ class AppState extends ChangeNotifier {
   final Map<String, int> _subscribedLastSeqs = {};
   SessionConnectionController? _connectionController;
   StreamSubscription<dynamic>? _sessionFollowSub;
+  Timer? _sessionFollowRetryTimer;
+  int _sessionFollowRetryAttempts = 0;
+  int _sessionFollowGeneration = 0;
   bool _streamsActive = false;
   bool _tailSyncInFlight = false;
   bool _gapFillInFlight = false;
@@ -425,7 +444,25 @@ class AppState extends ChangeNotifier {
   LocalStore? _store;
   Timer? _saveTimer;
 
-  bool get connected => _api != null && connectionError == null;
+  bool get connected =>
+      _api != null && connectionStatus == ServerConnectionStatus.online;
+
+  bool get serverAvailable => connectionStatus == ServerConnectionStatus.online;
+
+  bool get requiresAuthentication =>
+      connectionStatus == ServerConnectionStatus.authRequired;
+
+  /// Opens the on-device snapshot before any network work. This makes a
+  /// returning user able to enter the app even if their computer is asleep.
+  Future<void> restoreCachedSnapshot({
+    String? username,
+    String? password,
+  }) async {
+    authUsername = username;
+    authPassword = password;
+    _store ??= LocalStore();
+    await _restoreLocalSnapshot();
+  }
 
   /// Failure detail of the most recent [probeServer] call (null on success),
   /// surfaced by the connection-switch UI when a switch is rejected.
@@ -529,19 +566,21 @@ class AppState extends ChangeNotifier {
   /// Connects to a server and starts the downlink loops. Optional Basic
   /// credentials are forwarded on every request and the WS handshakes.
   Future<void> connect(String url, {String? username, String? password}) async {
-    disconnect();
+    disconnect(preserveCachedContent: true, keepCredentials: true);
     connecting = true;
     connectionError = null;
+    connectionStatus = ServerConnectionStatus.connecting;
     serverUrl = url;
+    authUsername = username;
+    authPassword = password;
     notifyListeners();
+    DshApi? api;
     try {
-      final api = DshApi(url, username: username, password: password);
+      api = DshApi(url, username: username, password: password);
       final host = await api.hostReady();
       _hostCwd = host['cwd'] as String?;
       _api = api;
-      authUsername = username;
-      authPassword = password;
-      _store = LocalStore();
+      _store ??= LocalStore();
       // Paint the cached session list and prompt counter before the network
       // refresh so cold starts render instantly.
       await _restoreLocalSnapshot();
@@ -551,18 +590,76 @@ class AppState extends ChangeNotifier {
       // metadata can finish in the background without blocking first paint.
       unawaited(_refreshSessionsBestEffort());
     } catch (error) {
+      api?.close();
       connectionError = error.toString();
       _api = null;
+      connectionStatus = _isAuthenticationError(error)
+          ? ServerConnectionStatus.authRequired
+          : ServerConnectionStatus.offline;
+      if (connectionStatus != ServerConnectionStatus.authRequired) {
+        _scheduleStartupReconnect();
+      }
     } finally {
       connecting = false;
+      if (_api != null) {
+        connectionStatus = ServerConnectionStatus.online;
+        connectionError = null;
+        _startupReconnectAttempts = 0;
+      }
       notifyListeners();
     }
   }
 
-  void disconnect() {
+  bool _isAuthenticationError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('http 401') ||
+        text.contains('unauthorized') ||
+        text.contains('directory-auth');
+  }
+
+  /// Tries again in the background after a startup transport failure. The
+  /// cached home remains visible throughout, rather than sending the user
+  /// back to the account form.
+  void _scheduleStartupReconnect() {
+    if (_startupReconnectTimer != null || serverUrl.isEmpty) return;
+    final url = serverUrl;
+    final username = authUsername;
+    final password = authPassword;
+    final delay = reconnectDelayForAttempt(
+      _startupReconnectAttempts++,
+      jitterUnit: math.Random().nextDouble() * 2 - 1,
+    );
+    connectionStatus = ServerConnectionStatus.reconnecting;
+    _startupReconnectTimer = Timer(delay, () {
+      _startupReconnectTimer = null;
+      if (_api != null || serverUrl != url || requiresAuthentication) return;
+      unawaited(connect(url, username: username, password: password));
+    });
+  }
+
+  Future<void> retryConnection() async {
+    final url = serverUrl;
+    if (url.isEmpty || requiresAuthentication) return;
+    _startupReconnectTimer?.cancel();
+    _startupReconnectTimer = null;
+    _startupReconnectAttempts = 0;
+    await connect(url, username: authUsername, password: authPassword);
+  }
+
+  void disconnect({
+    bool preserveCachedContent = false,
+    bool keepCredentials = false,
+  }) {
+    _startupReconnectTimer?.cancel();
+    _startupReconnectTimer = null;
+    _startupReconnectAttempts = 0;
     _streamsActive = false;
     _saveTimer?.cancel();
     _saveTimer = null;
+    _sessionFollowGeneration++;
+    _sessionFollowRetryTimer?.cancel();
+    _sessionFollowRetryTimer = null;
+    _sessionFollowRetryAttempts = 0;
     _connectionController?.stop();
     unawaited(_sessionFollowSub?.cancel());
     _sessionFollowSub = null;
@@ -570,33 +667,41 @@ class AppState extends ChangeNotifier {
     _api?.close();
     _api = null;
     _hostCwd = null;
-    unawaited(_store?.close());
-    _store = null;
-    authUsername = null;
-    authPassword = null;
-    sessions.clear();
-    items.clear();
-    queuedTasks.clear();
-    _itemCache.clear();
+    if (!preserveCachedContent) {
+      unawaited(_store?.close());
+      _store = null;
+    }
+    if (!keepCredentials) {
+      authUsername = null;
+      authPassword = null;
+    }
+    if (!preserveCachedContent) {
+      sessions.clear();
+      items.clear();
+      queuedTasks.clear();
+      _itemCache.clear();
+      _sessionTailSeqs.clear();
+      _subscribedLastSeqs.clear();
+      _agentErrorNotices.clear();
+      _turnErrorNotices.clear();
+      approvals.clear();
+      questions.clear();
+      selectedSessionId = null;
+      _lastLiveSeq = -1;
+      _oldestSeq = 0;
+      _historyGapBeforeSeq = null;
+      _historyGapAfterSeq = null;
+    }
     _streams.clear();
     _toolItems.clear();
-    _sessionTailSeqs.clear();
-    _subscribedLastSeqs.clear();
-    _agentErrorNotices.clear();
-    _turnErrorNotices.clear();
-    approvals.clear();
-    questions.clear();
-    selectedSessionId = null;
-    _lastLiveSeq = -1;
-    _oldestSeq = 0;
     _loadingTail = false;
     _tailSyncInFlight = false;
     _gapFillInFlight = false;
-    _historyGapBeforeSeq = null;
-    _historyGapAfterSeq = null;
     syncingTail = false;
     fillingHistoryGap = false;
     _liveBuffer.clear();
+    connectionStatus = ServerConnectionStatus.idle;
+    connectionError = null;
     notifyListeners();
   }
 
@@ -605,11 +710,56 @@ class AppState extends ChangeNotifier {
     _connectionController = SessionConnectionController(
       muxStream: api.muxStream,
       hostStream: api.hostStream,
-      onMuxFrame: _onMuxFrame,
-      onHostFrame: _onHostFrame,
-      onStreamClosed: (_) {},
-      onReconnect: _refreshSessionsIgnoringFailure,
+      onMuxFrame: (frame) {
+        _markStreamOnline();
+        _onMuxFrame(frame);
+      },
+      onHostFrame: (frame) {
+        _markStreamOnline();
+        _onHostFrame(frame);
+      },
+      onStreamClosed: _markStreamInterrupted,
+      onReconnect: _recoverAfterStreamReconnect,
     )..start();
+  }
+
+  void _markStreamOnline() {
+    if (connectionStatus == ServerConnectionStatus.online &&
+        connectionError == null) {
+      return;
+    }
+    connectionStatus = ServerConnectionStatus.online;
+    connectionError = null;
+    notifyListeners();
+  }
+
+  void _markStreamInterrupted(Object? error) {
+    if (_api == null) return;
+    connectionStatus = ServerConnectionStatus.reconnecting;
+    connectionError = error?.toString() ?? '实时连接暂时中断';
+    notifyListeners();
+  }
+
+  /// Restores both the shared streams and the selected session's independent
+  /// follow stream.  The latter is intentionally separate from mux/host, so a
+  /// dropped phone socket must re-open it explicitly.
+  void _recoverAfterStreamReconnect() {
+    if (_api != null) {
+      connectionStatus = ServerConnectionStatus.connecting;
+      notifyListeners();
+    }
+    _refreshSessionsIgnoringFailure();
+    _recoverSelectedSessionFollow();
+  }
+
+  void _recoverSelectedSessionFollow() {
+    final sessionId = selectedSessionId;
+    if (sessionId == null || _api == null) return;
+    _sessionFollowRetryTimer?.cancel();
+    _sessionFollowRetryTimer = null;
+    _sessionFollowRetryAttempts = 0;
+    _startSessionFollow(sessionId);
+    unawaited(syncTail(sessionId));
   }
 
   void _replaceStreams() {
@@ -622,7 +772,7 @@ class AppState extends ChangeNotifier {
   void resyncAfterResume() {
     if (!_streamsActive || _api == null) return;
     _replaceStreams();
-    _refreshSessionsIgnoringFailure();
+    _recoverAfterStreamReconnect();
   }
 
   void _refreshSessionsIgnoringFailure() {
@@ -943,6 +1093,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _startSessionFollow(String sessionId) {
+    final generation = ++_sessionFollowGeneration;
     unawaited(_sessionFollowSub?.cancel());
     final api = _api;
     if (api == null) return;
@@ -950,11 +1101,16 @@ class AppState extends ChangeNotifier {
         .sessionFollow(sessionId)
         .listen(
           (value) {
-            if (selectedSessionId != sessionId || value is! Map) return;
+            if (generation != _sessionFollowGeneration ||
+                selectedSessionId != sessionId ||
+                value is! Map) {
+              return;
+            }
             final frame = value.cast<String, dynamic>();
             if (frame['type'] == 'snapshot') {
               final cursor = (frame['cursor'] as num?)?.toInt();
               if (cursor != null) _subscribedLastSeqs[sessionId] = cursor;
+              _sessionFollowRetryAttempts = 0;
               _seedProjections(
                 sessionId,
                 (frame['projections'] as Map?)?.cast<String, dynamic>(),
@@ -975,12 +1131,32 @@ class AppState extends ChangeNotifier {
               );
             }
           },
-          onError: (_) {
-            if (selectedSessionId == sessionId) {
-              // The next reconnect/open retries the per-session follow stream.
-            }
-          },
+          onError: (_) => _sessionFollowClosed(generation, sessionId),
+          onDone: () => _sessionFollowClosed(generation, sessionId),
         );
+  }
+
+  void _sessionFollowClosed(int generation, String sessionId) {
+    if (generation != _sessionFollowGeneration ||
+        selectedSessionId != sessionId ||
+        _api == null ||
+        _sessionFollowRetryTimer != null) {
+      return;
+    }
+    final delay = reconnectDelayForAttempt(
+      _sessionFollowRetryAttempts++,
+      jitterUnit: math.Random().nextDouble() * 2 - 1,
+    );
+    _sessionFollowRetryTimer = Timer(delay, () {
+      _sessionFollowRetryTimer = null;
+      if (generation != _sessionFollowGeneration ||
+          selectedSessionId != sessionId ||
+          _api == null) {
+        return;
+      }
+      _startSessionFollow(sessionId);
+      unawaited(syncTail(sessionId));
+    });
   }
 
   /// Fetches only the newest message group after a reconnect and merges it
@@ -1885,8 +2061,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final accepted =
-          await _api
-              ?.answerRemoteEvent(question.rpcId, value: {'answers': answers}) ??
+          await _api?.answerRemoteEvent(
+            question.rpcId,
+            value: {'answers': answers},
+          ) ??
           false;
       if (accepted == false) {
         items.add(
@@ -1995,7 +2173,8 @@ class AppState extends ChangeNotifier {
         :final questions,
       ):
         this.questions.removeWhere(
-          (question) => question.rpcId == frame.rpcId || question.rpcId == rpcId,
+          (question) =>
+              question.rpcId == frame.rpcId || question.rpcId == rpcId,
         );
         this.questions.add(
           PendingQuestion(
