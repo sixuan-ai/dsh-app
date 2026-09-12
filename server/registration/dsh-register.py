@@ -74,6 +74,18 @@ IP_HOURLY_LIMIT = int(os.environ.get("REGISTER_IP_HOURLY_LIMIT", "10"))
 MAX_ATTEMPTS = int(os.environ.get("REGISTER_MAX_ATTEMPTS", "5"))
 MIN_PASSWORD = 8
 
+# Shared secret the app presents on registration calls.
+#
+# The endpoint is reached through the public proxy, so without this anyone who
+# learns the path could trigger verification mail and burn the mailbox's sending
+# quota. Requiring a value that ships inside the app keeps the door shut to
+# drive-by callers while staying invisible to real users — it is a gate against
+# scanning, not an identity check, so it deliberately is not per-user.
+#
+# Left empty the gate is disabled (the pre-existing behaviour).
+APP_TOKEN = os.environ.get("REGISTER_APP_TOKEN", "")
+APP_TOKEN_HEADER = "x-dsh-app"
+
 # Tencent Exmail SMTP. `SMTP_PASSWORD` must be a client-specific password
 # (客户端专用密码), never the mailbox login password.
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.exmail.qq.com")
@@ -267,8 +279,23 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     # -- routes -----------------------------------------------------------
+    def _app_authorized(self) -> bool:
+        """Whether the caller presented the app's shared secret.
+
+        Checks the header rather than the body so it also covers the config
+        probe, and uses a constant-time compare.
+        """
+        if not APP_TOKEN:
+            return True
+        presented = str(self.headers.get(APP_TOKEN_HEADER, ""))
+        return hmac.compare_digest(presented, APP_TOKEN)
+
     def do_GET(self):
         if self.path.split("?")[0] == "/directory/register/config":
+            # The policy is not sensitive, but answering only the app keeps the
+            # endpoint from advertising itself to scanners.
+            if not self._app_authorized():
+                return self._json(401, {"ok": False, "error": "app-unauthorized"})
             return self._json(200, {
                 "ok": True,
                 "domains": ALLOWED_DOMAINS,
@@ -279,6 +306,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        if not self._app_authorized():
+            return self._json(401, {"ok": False, "error": "app-unauthorized",
+                                    "message": "请使用 App 注册"})
         if path == "/directory/register/request":
             return self._request_code()
         if path == "/directory/register/verify":

@@ -80,6 +80,7 @@ App 会提示「验证码请向管理员索取」。适合先把流程和 UI 验
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
+| `REGISTER_APP_TOKEN` | 空 | App 调用注册接口时携带的共享凭据（请求头 `x-dsh-app`）。**设置后公网匿名调用一律 401**；留空则不做校验 |
 | `REGISTER_ALLOWED_DOMAINS` | 空 | 逗号分隔的允许域名。**空 = 接受任意邮箱（默认，符合"用户用自己邮箱注册"）**；仅在需要限制范围时才设置 |
 | `REGISTER_DEFAULT_SUBDOMAIN` | 空 | 新账号默认实例域名。留空则账号建好但标记为未开通 |
 | `REGISTER_CODE_TTL` | 600 | 验证码有效期（秒） |
@@ -88,6 +89,29 @@ App 会提示「验证码请向管理员索取」。适合先把流程和 UI 验
 | `REGISTER_MAX_ATTEMPTS` | 5 | 单个验证码最多试错次数 |
 | `REGISTER_DB_PATH` | `/opt/dsh-register/register.db` | 账号/发码记录 |
 | `DIRECTORY_USERS_FILE` | `/etc/dsh-directory/users.json` | 登录用户表 |
+
+## 防公网滥用（App 凭据）
+
+注册接口经 nginx 暴露在公网，而注册者本身还没有账号，所以**不能**用用户身份
+鉴权。为防止路径被扫到后被反复触发发信（消耗邮箱配额），接口要求请求头
+`x-dsh-app` 携带一个**随 App 分发的共享凭据**：
+
+```
+x-dsh-app: <REGISTER_APP_TOKEN>
+```
+
+它在 App 里由 `kRegisterAppToken` 提供（可用 `--dart-define=DSH_REGISTER_APP_TOKEN=...`
+覆盖）。这挡的是**随手扫描**，不是身份认证，因此是共享值而非每用户凭据。
+
+实测（生产）：
+
+| 调用方式 | 结果 |
+|---|---|
+| 匿名 `curl` 请求验证码 | `401 app-unauthorized` |
+| 匿名读 `config` | `401 app-unauthorized` |
+| 带 App 头 | 正常 |
+
+留空 `REGISTER_APP_TOKEN` 则完全关闭该校验（保持原行为）。
 
 ## 安全设计
 

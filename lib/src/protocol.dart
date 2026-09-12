@@ -72,6 +72,21 @@ Future<String> directoryLogin(
 }
 
 /// Registration state returned by `/directory/register/config`.
+///
+/// Sign-up endpoints are reachable through the public proxy, so they accept
+/// only callers presenting [kRegisterAppToken] — a value that ships inside the
+/// app. It is a gate against drive-by scanning, not a user identity, which is
+/// why it is shared rather than per-account.
+const String kRegisterAppToken = String.fromEnvironment(
+  'DSH_REGISTER_APP_TOKEN',
+  defaultValue: 'dsh-app-register-v1',
+);
+
+/// Headers every registration call carries.
+Map<String, String> get _registerHeaders => {
+  'content-type': 'application/json',
+  'x-dsh-app': kRegisterAppToken,
+};
 class RegistrationConfig {
   RegistrationConfig({
     required this.domains,
@@ -93,8 +108,10 @@ Future<RegistrationConfig> fetchRegistrationConfig(String base) async {
   final client = http.Client();
   try {
     final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
-    final response =
-        await client.get(Uri.parse('$root/directory/register/config'));
+    final response = await client.get(
+      Uri.parse('$root/directory/register/config'),
+      headers: _registerHeaders,
+    );
     if (response.statusCode != 200) {
       throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
     }
@@ -126,7 +143,7 @@ Future<void> requestRegistrationCode(String base, String email) async {
     final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
     final response = await client.post(
       Uri.parse('$root/directory/register/request'),
-      headers: {'content-type': 'application/json'},
+      headers: _registerHeaders,
       body: jsonEncode({'email': email}),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -160,7 +177,7 @@ Future<({String username, bool provisioned, String message})>
     final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
     final response = await client.post(
       Uri.parse('$root/directory/register/verify'),
-      headers: {'content-type': 'application/json'},
+      headers: _registerHeaders,
       body: jsonEncode({
         'email': email,
         'code': code,
