@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'brand_mark.dart';
 import 'connection_guide.dart';
+import 'register_view.dart';
 import 'src/protocol.dart';
 import 'src/l10n.dart';
 import 'src/theme.dart';
@@ -96,6 +97,16 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
           setState(() => _preError = '用户名或密码错误');
           return;
         }
+        if (error.code == 'directory-not-provisioned') {
+          setState(() => _preError =
+              '账号已创建，但还没有为它开通可连接的电脑实例。请联系管理员开通后再登录。');
+          return;
+        }
+        // Any other directory failure must not silently fall through to the
+        // default server: that would attempt to log this account in against
+        // somebody else's instance.
+        setState(() => _preError = '暂时无法确认账号对应的实例，请稍后重试。');
+        return;
       }
     }
     final prefs = await SharedPreferences.getInstance();
@@ -131,6 +142,12 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
 
   String _friendlyConnectionError(String error) {
     final lower = error.toLowerCase();
+    // Credentials were accepted, but no DSH instance answers for this account
+    // yet. Saying "check the computer is online" here would send the user
+    // chasing the wrong problem.
+    if (lower.contains('not-provisioned') || lower.contains('等待管理员开通实例')) {
+      return '账号已创建，但还没有为它开通可连接的电脑实例。请联系管理员开通后再登录。';
+    }
     if (lower.contains('401') || lower.contains('unauthorized')) {
       return '账号或密码没有通过验证，请检查后重试。';
     }
@@ -145,6 +162,26 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
           : '暂时无法连接你的电脑。请确认电脑已开机并保持 DSH 在线。';
     }
     return '暂时无法连接，请检查电脑是否在线或打开配置教程自查。';
+  }
+
+  /// Opens the company-email sign-up, pre-filling whatever was typed as the
+  /// account name. A returned username is dropped into the field so the user
+  /// lands back on a ready-to-submit login form.
+  Future<void> _openRegistration() async {
+    final created = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => RegisterPage(
+          baseUrl: widget.defaultServerUrl,
+          suggestedEmail: _user.text.trim(),
+        ),
+      ),
+    );
+    if (!mounted || created == null || created.isEmpty) return;
+    setState(() {
+      _connectionMode = 'public';
+      _user.text = created;
+      _preError = null;
+    });
   }
 
   void _showConnectionGuide([String? initialMode]) {
@@ -418,6 +455,19 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     ? null
                                     : _connect,
                               ),
+                              // Sign-up issues a company-email account; it does
+                              // not itself provision a DSH instance, so it is
+                              // offered next to the login rather than replacing
+                              // it.
+                              if (_connectionMode != 'lan') ...[
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: widget.state.connecting
+                                      ? null
+                                      : _openRegistration,
+                                  child: const Text('还没有账号？用企业邮箱注册'),
+                                ),
+                              ],
                             ],
                           ),
                         ),

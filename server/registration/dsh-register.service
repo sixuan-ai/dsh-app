@@ -1,0 +1,22 @@
+[Unit]
+Description=DSH account registration (company email verification codes)
+Documentation=file:/home/x/code2/dsh-app/server/registration/README.md
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/dsh-register/dsh-register.py
+EnvironmentFile=/etc/dsh-register/register.env
+Restart=always
+RestartSec=3
+
+# The service only needs its own state dir, the directory table, and outbound
+# SMTP. Keep the rest of the filesystem read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/dsh-register /etc/dsh-directory
+
+[Install]
+WantedBy=multi-user.target

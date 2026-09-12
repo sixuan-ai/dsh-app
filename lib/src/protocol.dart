@@ -54,7 +54,131 @@ Future<String> directoryLogin(
     if (response.statusCode == 401) {
       throw DshError('directory-auth', '用户名或密码错误');
     }
+    // Credentials were correct but the account has no instance yet.
+    if (response.statusCode == 403 && body['error'] == 'not-provisioned') {
+      throw DshError(
+        'directory-not-provisioned',
+        (body['message'] as String?) ?? '账号已创建,等待管理员开通实例',
+      );
+    }
     throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
+  } on DshError {
+    rethrow;
+  } catch (error) {
+    throw DshError('directory-unavailable', '$error');
+  } finally {
+    client.close();
+  }
+}
+
+/// Registration state returned by `/directory/register/config`.
+class RegistrationConfig {
+  RegistrationConfig({
+    required this.domains,
+    required this.minPassword,
+    required this.mailEnabled,
+  });
+
+  /// Company domains accepted at sign-up (without '@'); empty means any.
+  final List<String> domains;
+  final int minPassword;
+
+  /// False while the server runs without SMTP configured: codes are logged
+  /// rather than mailed, which is only useful during setup.
+  final bool mailEnabled;
+}
+
+/// Reads the sign-up policy so the form can show the right hint and rules.
+Future<RegistrationConfig> fetchRegistrationConfig(String base) async {
+  final client = http.Client();
+  try {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final response =
+        await client.get(Uri.parse('$root/directory/register/config'));
+    if (response.statusCode != 200) {
+      throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return RegistrationConfig(
+      domains: ((body['domains'] as List?) ?? const [])
+          .map((d) => '$d')
+          .toList(),
+      minPassword: (body['minPassword'] as num?)?.toInt() ?? 8,
+      mailEnabled: body['mailEnabled'] == true,
+    );
+  } on DshError {
+    rethrow;
+  } catch (error) {
+    throw DshError('directory-unavailable', '$error');
+  } finally {
+    client.close();
+  }
+}
+
+/// Asks the server to mail a verification code to a company address.
+///
+/// Throws [DshError] with the server's own code (`email-not-allowed`,
+/// `too-soon`, `rate-limited`, `mail-failed`) and message, so the form can show
+/// exactly why it was refused.
+Future<void> requestRegistrationCode(String base, String email) async {
+  final client = http.Client();
+  try {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final response = await client.post(
+      Uri.parse('$root/directory/register/request'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && body['ok'] == true) return;
+    throw DshError(
+      (body['error'] as String?) ?? 'request-failed',
+      (body['message'] as String?) ?? '验证码发送失败,请稍后再试',
+    );
+  } on DshError {
+    rethrow;
+  } catch (error) {
+    throw DshError('directory-unavailable', '$error');
+  } finally {
+    client.close();
+  }
+}
+
+/// Verifies the mailed code and creates the account.
+///
+/// Returns the login name to use and whether an instance already answers for
+/// it; an unprovisioned account can sign in but has nowhere to connect yet.
+Future<({String username, bool provisioned, String message})>
+    verifyRegistrationCode(
+  String base, {
+  required String email,
+  required String code,
+  required String password,
+}) async {
+  final client = http.Client();
+  try {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final response = await client.post(
+      Uri.parse('$root/directory/register/verify'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'code': code,
+        'password': password,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && body['ok'] == true) {
+      return (
+        username: (body['username'] as String?) ?? '',
+        provisioned: body['provisioned'] == true,
+        message: (body['message'] as String?) ?? '',
+      );
+    }
+    throw DshError(
+      (body['error'] as String?) ?? 'verify-failed',
+      (body['message'] as String?) ?? '验证失败,请稍后再试',
+    );
   } on DshError {
     rethrow;
   } catch (error) {

@@ -54,3 +54,7 @@ app.*.map.json
 **/.env
 **/.env.*
 /harmonyos/ohos/build-profile.json5
+
+# Python bytecode from the stdlib server scripts
+__pycache__/
+*.pyc
