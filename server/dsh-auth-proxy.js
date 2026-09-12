@@ -13,6 +13,7 @@
 const http = require('http');
 const net = require('net');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const LISTEN_HOST = process.env.LISTEN_HOST || '127.0.0.1';
 const LISTEN_PORT = parseInt(process.env.LISTEN_PORT || '3081', 10);
@@ -85,6 +86,127 @@ function logAuth(req, verdict) {
 
 function grantCookie() {
   return `${COOKIE_NAME}=${cookieToken}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict`;
+}
+
+// --- dsh browser-session brokering ------------------------------------------
+// Besides this proxy's own Basic gate, dsh enforces a second gate of its own:
+// every /api call and WebSocket upgrade must carry a `dsh-auth-<authority>`
+// cookie minted by exchanging the launch token that `dsh web` prints at
+// startup. That token is random per process, so it rotates on every restart and
+// a client cannot usefully pin it.
+//
+// The proxy runs on the same host, so it reads the current token from the dsh
+// web log and keeps a fresh cookie on every authorized client's behalf. Clients
+// keep using plain Basic auth and survive dsh restarts.
+//
+// The cookie's signing secret is persisted by dsh's credential store, so an
+// obtained cookie stays valid across restarts; the periodic refresh only guards
+// against its 30-day expiry and against a rotated credential store.
+//
+// Opt-in: set DSH_TOKEN_FILE to the log `dsh web` writes its startup URL to.
+// Left unset the broker is inert and the proxy behaves exactly as before, which
+// is the right default for deployments whose dsh is satisfied by Basic auth.
+const TOKEN_FILE = process.env.DSH_TOKEN_FILE || '';
+const BROKER_ENABLED = TOKEN_FILE !== '';
+const COOKIE_CACHE = process.env.DSH_COOKIE_CACHE || `${__dirname}/dsh-session-cookie`;
+const COOKIE_REFRESH_MS =
+  parseInt(process.env.DSH_COOKIE_REFRESH_MS || '', 10) || 12 * 60 * 60 * 1000;
+let dshCookie = '';
+let dshCookieRefreshing = null;
+
+/** Latest `token=` printed by `dsh web`, or '' when unavailable. */
+function readLaunchToken() {
+  try {
+    const found = fs.readFileSync(TOKEN_FILE, 'utf8').match(/token=([A-Za-z0-9_-]+)/g);
+    return found && found.length ? found[found.length - 1].slice('token='.length) : '';
+  } catch {
+    return '';
+  }
+}
+
+function loadCachedCookie() {
+  try {
+    const value = fs.readFileSync(COOKIE_CACHE, 'utf8').trim();
+    if (value.startsWith('dsh-auth-')) dshCookie = value;
+  } catch {
+    // No cache yet; the startup exchange below will mint one.
+  }
+}
+
+function saveCachedCookie() {
+  try {
+    fs.writeFileSync(COOKIE_CACHE, dshCookie, { mode: 0o600 });
+  } catch {
+    // Best effort; the in-memory cookie still serves this process.
+  }
+}
+
+/** Exchange the current launch token for a dsh session cookie. */
+function refreshDshCookie(reason) {
+  if (!BROKER_ENABLED) return Promise.resolve(false);
+  if (dshCookieRefreshing) return dshCookieRefreshing;
+  dshCookieRefreshing = new Promise((resolve) => {
+    const token = readLaunchToken();
+    if (!token) {
+      console.warn(`[dsh-cookie] no launch token in ${TOKEN_FILE} (${reason})`);
+      resolve(false);
+      return;
+    }
+    const exchange = http.request(
+      {
+        host: UPSTREAM_HOST,
+        port: UPSTREAM_PORT,
+        method: 'GET',
+        path: `/?token=${encodeURIComponent(token)}`,
+        headers: { host: UPSTREAM_AUTHORITY },
+      },
+      (res) => {
+        const raw = res.headers['set-cookie'] || [];
+        const cookie = raw
+          .map((entry) => entry.split(';')[0])
+          .find((entry) => entry.startsWith('dsh-auth-'));
+        res.resume();
+        if (cookie) {
+          dshCookie = cookie;
+          saveCachedCookie();
+          console.log(`[dsh-cookie] session cookie refreshed (${reason})`);
+          resolve(true);
+        } else {
+          console.warn(
+            `[dsh-cookie] exchange returned no session cookie (${reason}, status ${res.statusCode})`,
+          );
+          resolve(false);
+        }
+      },
+    );
+    exchange.on('error', (err) => {
+      console.warn(`[dsh-cookie] exchange failed (${reason}): ${err.message}`);
+      resolve(false);
+    });
+    exchange.end();
+  }).finally(() => {
+    dshCookieRefreshing = null;
+  });
+  return dshCookieRefreshing;
+}
+
+/**
+ * Merge the brokered cookie into outgoing headers.
+ * A client that already supplied its own dsh session cookie wins.
+ */
+function withDshCookie(headers) {
+  if (!BROKER_ENABLED || !dshCookie) return headers;
+  const name = dshCookie.split('=')[0];
+  const existing = String(headers.cookie || '');
+  if (existing.includes(`${name}=`)) return headers;
+  return { ...headers, cookie: existing ? `${existing}; ${dshCookie}` : dshCookie };
+}
+
+if (BROKER_ENABLED) {
+  loadCachedCookie();
+  refreshDshCookie('startup');
+  setInterval(() => refreshDshCookie('periodic'), COOKIE_REFRESH_MS).unref();
+  console.log(`[dsh-cookie] brokering enabled (token source: ${TOKEN_FILE})`);
 }
 
 // --- login page -------------------------------------------------------------
@@ -233,15 +355,25 @@ const server = http.createServer((req, res) => {
   }
   logAuth(req, 'pass');
   fenceHeaders(req);
+  const sentCookie = withDshCookie(req.headers);
   const upstream = http.request(
     {
       host: UPSTREAM_HOST,
       port: UPSTREAM_PORT,
       method: req.method,
       path: req.url,
-      headers: req.headers,
+      headers: sentCookie,
     },
     (ures) => {
+      // A 401 while we presented a session cookie means the brokered cookie is
+      // no longer accepted (rotated credential store). Drop it and mint a fresh
+      // one so the next request succeeds, instead of failing until the
+      // periodic refresh.
+      if (ures.statusCode === 401 && sentCookie.cookie && sentCookie.cookie.includes('dsh-auth-')) {
+        dshCookie = '';
+        console.warn('[dsh-cookie] upstream rejected the cookie; refreshing');
+        void refreshDshCookie('upstream-401');
+      }
       const headers = { ...ures.headers };
       // Keep refreshing the grant cookie on authorized responses.
       headers['set-cookie'] = headers['set-cookie'] ? [].concat(headers['set-cookie'], grantCookie()) : grantCookie();
@@ -282,9 +414,10 @@ server.on('upgrade', (req, socket, head) => {
   }
   fenceHeaders(req);
   logAuth(req, 'ws-pass');
+  const upgradeHeaders = withDshCookie(req.headers);
   const upstream = net.connect(UPSTREAM_PORT, UPSTREAM_HOST, () => {
     const lines = [`${req.method} ${req.url} HTTP/1.1`];
-    for (const [k, v] of Object.entries(req.headers)) {
+    for (const [k, v] of Object.entries(upgradeHeaders)) {
       if (Array.isArray(v)) v.forEach((vv) => lines.push(`${k}: ${vv}`));
       else lines.push(`${k}: ${v}`);
     }

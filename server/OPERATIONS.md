@@ -41,9 +41,34 @@ dsh 电脑(家里)
 |---|---|---|
 | dsh web (3080) | 当前会话的 GUI,**绝不要重启** | 会话进程 |
 | dsh-auth-proxy (3081) | `/home/x/.local/bin/dsh-auth-proxy.js` | `dsh-web-auth.service`(enabled, Restart=on-failure),env: AUTH_USER/AUTH_PASSWORD/AUTH_COOKIE_SECRET |
+| ↑ dsh 自身会话 cookie 代理 | 同上,opt-in: `DSH_TOKEN_FILE` 指向 dsh web 日志 | 由 `dsh-web-auth.service` 的 env 打开,见 §2.1.1 |
 | frpc → HK | `/etc/frp/frpc-hk-test.toml`(dsh-web 9980 + ssh 7000) | `frpc-hk-test.service`(enabled, Restart=always) |
 | frpc → qxrobot | `/etc/frp/frpc-local.toml`(ssh 9999、gupiao 9990、dsh 9980) | `frpc-local.service`(enabled, Restart=always) |
 | 本地 sshd ×2(22022/22023) | `/etc/ssh/sshd_config_frpc*`,frp ssh 代理的落点 | 裸进程(尚未 systemd 化,见 §7 待办) |
+
+#### 2.1.1 dsh 自身会话 cookie 代理(opt-in)
+
+dsh web 除了本代理的 Basic 门禁之外,还有**自己的一道门**:每个 `/api` 请求和
+WebSocket 升级都必须带 `dsh-auth-<authority>` cookie,该 cookie 由启动时打印的
+`?token=` 换取。
+
+- 这个 token 是**每个进程随机生成**的(源码 `processLaunchToken()`),所以
+  `dsh web` 每次重启都会变,**客户端无法长期保存**——手机里存的 token 会立刻失效。
+- 但 cookie 的**签名密钥是持久化的**(凭据库 `client-connection/browser-session`),
+  所以**已换到的 cookie 能跨重启继续用**(30 天有效)。
+
+因此代理可以直接替客户端完成换取并缓存:
+
+| 环境变量 | 作用 |
+|---|---|
+| `DSH_TOKEN_FILE` | `dsh web` 启动日志路径。**设置即启用**该功能;不设则完全保持原样 |
+| `DSH_COOKIE_CACHE` | cookie 落盘路径(默认 `dsh-session-cookie`,权限 600) |
+| `DSH_COOKIE_REFRESH_MS` | 后台刷新间隔,默认 12 小时 |
+
+启用后客户端**只需 Basic 账号密码**,不再需要 token,也不受 `dsh web` 重启影响。
+上游若返回 401(凭据库被轮换),代理会丢弃旧 cookie 并立即重新换取。
+
+注意:代理会读取 `DSH_TOKEN_FILE` 指向的日志,该文件含 token,权限应保持 600。
 
 ### 2.2 HK 服务器 (47.239.235.154)
 

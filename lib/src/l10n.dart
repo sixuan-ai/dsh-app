@@ -211,6 +211,8 @@ class Strings {
     required this.lanUrlHint,
     required this.username,
     required this.password,
+    required this.launchToken,
+    required this.launchTokenHint,
     required this.showPassword,
     required this.hidePassword,
     required this.updateAvailableTitle,
@@ -371,6 +373,11 @@ class Strings {
   final String lanUrlHint;
   final String username;
   final String password;
+
+  /// Label and hint for the dsh process token (`dsh web` prints it as
+  /// `?token=`), required by hosts that enforce dsh's own browser gate.
+  final String launchToken;
+  final String launchTokenHint;
   final String showPassword;
   final String hidePassword;
   final String updateAvailableTitle;
@@ -532,6 +539,8 @@ class Strings {
     lanUrlHint: '电脑地址，例如 192.168.1.100:3080',
     username: '用户名',
     password: '密码',
+    launchToken: 'DSH 令牌',
+    launchTokenHint: 'token=（选填，服务端要求时填）',
     showPassword: '显示密码',
     hidePassword: '隐藏密码',
     updateAvailableTitle: '发现新版本',
@@ -702,6 +711,8 @@ class Strings {
     lanUrlHint: 'PC address, e.g. 192.168.1.100:3080',
     username: 'Username',
     password: 'Password',
+    launchToken: 'DSH token',
+    launchTokenHint: 'token= (optional; required by some hosts)',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     updateAvailableTitle: 'Update available',

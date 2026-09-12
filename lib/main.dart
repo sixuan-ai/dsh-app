@@ -101,12 +101,21 @@ class _DshAppState extends State<DshApp> {
     final prefs = await SharedPreferences.getInstance();
     final user = prefs.getString('authUser');
     final pass = prefs.getString('authPass');
-    if (user != null && pass != null && user.isNotEmpty) {
+    // Hosts that enforce dsh's own browser gate reject every API call until
+    // the launch token is exchanged, so the saved token must ride along on
+    // boot; it also allows a token-only setup with no Basic credentials.
+    final token = prefs.getString('launchToken');
+    final hasToken = token != null && token.isNotEmpty;
+    final hasBasic = user != null && pass != null && user.isNotEmpty;
+    if (hasBasic || hasToken) {
       _hasCreds = true;
       // Local history is independent of the computer service. Restore it
       // first so a returning user never waits on a transient network outage
       // just to enter the app.
-      await appState.restoreCachedSnapshot(username: user, password: pass);
+      await appState.restoreCachedSnapshot(
+        username: hasBasic ? user : null,
+        password: hasBasic ? pass : null,
+      );
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
       final mode = prefs.getString('connectionMode') ?? 'public';
@@ -116,7 +125,12 @@ class _DshAppState extends State<DshApp> {
                 kDefaultServerUrl)
           : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
       if (mounted) setState(() => _restored = true);
-      unawaited(appState.connect(serverUrl, username: user, password: pass));
+      unawaited(appState.connect(
+        serverUrl,
+        username: hasBasic ? user : null,
+        password: hasBasic ? pass : null,
+        launchToken: hasToken ? token : null,
+      ));
       return;
     }
     if (mounted) setState(() => _restored = true);
@@ -1043,6 +1057,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authUser');
     await prefs.remove('authPass');
+    await prefs.remove('launchToken');
     await prefs.remove('serverUrl');
     state.disconnect();
   }

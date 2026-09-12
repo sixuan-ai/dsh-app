@@ -6,15 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dsh_mobile/src/protocol.dart';
 import 'package:dsh_mobile/state.dart';
 
-/// 真实全栈集成测试: 通过认证代理连 alpha.4 服务器, 用 App 真实协议栈
+/// 真实全栈集成测试: 通过认证代理连服务器, 用 App 真实协议栈
 /// 驱动一次完整对话, 验证新消息能实时折叠出来。
 /// 需要环境变量 DSH_TEST_USER / DSH_TEST_PASS (代理 Basic 凭据)。
+/// 若目标主机同时强制 dsh 自身的浏览器门禁 (Basic 之外还要求会话 cookie),
+/// 另设 DSH_TEST_TOKEN = `dsh web` 启动时打印的 token=。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final user = Platform.environment['DSH_TEST_USER'];
   final pass = Platform.environment['DSH_TEST_PASS'];
-  if (user == null || pass == null) {
-    print('跳过: 未设置 DSH_TEST_USER/DSH_TEST_PASS');
+  final token = Platform.environment['DSH_TEST_TOKEN'];
+  final hasToken = token != null && token.isNotEmpty;
+  if ((user == null || pass == null) && !hasToken) {
+    print('跳过: 未设置 DSH_TEST_USER/DSH_TEST_PASS 或 DSH_TEST_TOKEN');
     return;
   }
 
@@ -22,6 +26,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     HttpOverrides.global = null; // flutter_test 默认拦网络, 恢复真实 HTTP
     final api = DshApi('http://127.0.0.1:3081', username: user, password: pass);
+    if (hasToken) {
+      final exchanged = await api.authenticateWithToken(token);
+      print('令牌换取会话 cookie: $exchanged');
+      expect(exchanged, isTrue, reason: '应能换取 dsh 的会话 cookie');
+    }
     await api.hostReady();
     final app = AppState();
     app.attachApiForTest(api);

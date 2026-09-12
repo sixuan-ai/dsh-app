@@ -82,6 +82,66 @@ class DshApi {
   Map<String, dynamic>? _host;
   String? _clientId;
 
+  /// Session cookies issued by dsh itself, keyed by cookie name.
+  ///
+  /// Basic auth only satisfies the *outer* gateway. Hosts that also enforce
+  /// dsh's own browser gate reject every `/api` call and WebSocket upgrade
+  /// until the request carries the `dsh-auth-<authority>` cookie minted by
+  /// exchanging the launch token (`dsh web` prints it as `?token=`). That
+  /// cookie is bound to the request authority, so it only works over the
+  /// exact host:port this client dials.
+  final Map<String, String> _cookies = {};
+
+  /// Whether a dsh session cookie is currently held.
+  bool get hasSessionCookie =>
+      _cookies.keys.any((name) => name.startsWith('dsh-auth-'));
+
+  String get _cookieHeader =>
+      _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+
+  void _absorbCookies(List<String> setCookieHeaders) {
+    for (final raw in setCookieHeaders) {
+      final pair = raw.split(';').first;
+      final eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      final name = pair.substring(0, eq).trim();
+      final value = pair.substring(eq + 1).trim();
+      if (name.isNotEmpty) _cookies[name] = value;
+    }
+  }
+
+  /// Completes dsh's browser-token exchange so [call] and the streams are
+  /// accepted by hosts that enforce dsh's own auth gate.
+  ///
+  /// Visiting `/?token=<launch token>` mints the `dsh-auth-*` cookie and
+  /// redirects; the 303 is deliberately not followed (Dart's client drops the
+  /// Authorization header across that hop, which the outer gateway would then
+  /// reject). The cookie itself is what we came for.
+  ///
+  /// Returns true when a session cookie was obtained. Hosts satisfied by
+  /// Basic auth alone never issue one, making this a harmless no-op there.
+  Future<bool> authenticateWithToken(String token) async {
+    if (token.isEmpty) return false;
+    final uri = base.replace(path: '/', query: 'token=$token');
+    try {
+      final request =
+          http.Request('GET', uri)..followRedirects = false;
+      final headers = <String, String>{};
+      final auth = _basicAuth;
+      if (auth != null) headers['authorization'] = auth;
+      if (_cookies.isNotEmpty) headers['cookie'] = _cookieHeader;
+      request.headers.addAll(headers);
+      final response = await _http.send(request);
+      final setCookie = response.headers['set-cookie'];
+      if (setCookie != null) _absorbCookies([setCookie]);
+      // Drain the body so the connection can be reused.
+      await response.stream.drain<void>();
+      return hasSessionCookie;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// The gateway issues a per-connection client id in the `$events` ready
   /// frame; answering a waterfall Remote event echoes it back.
   String? get clientId => _clientId;
@@ -90,6 +150,7 @@ class DshApi {
     final headers = <String, String>{'content-type': 'application/json'};
     final auth = _basicAuth;
     if (auth != null) headers['authorization'] = auth;
+    if (_cookies.isNotEmpty) headers['cookie'] = _cookieHeader;
     return headers;
   }
 
@@ -97,6 +158,9 @@ class DshApi {
     final headers = <String, String>{};
     final auth = _basicAuth;
     if (auth != null) headers['authorization'] = auth;
+    // The host's browser gate covers the WebSocket upgrade too; without this
+    // cookie the handshake is refused with HTTP 401.
+    if (_cookies.isNotEmpty) headers['cookie'] = _cookieHeader;
     return headers;
   }
 
@@ -173,6 +237,9 @@ class DshApi {
         },
       }),
     );
+    // Keep any refreshed session cookie the host hands back.
+    final setCookie = response.headers['set-cookie'];
+    if (setCookie != null) _absorbCookies([setCookie]);
     if (response.statusCode != 200) {
       throw DshError(
         'transport',

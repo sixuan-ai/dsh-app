@@ -436,6 +436,11 @@ class AppState extends ChangeNotifier {
   String? authUsername;
   String? authPassword;
 
+  /// dsh process token of the active connection (`dsh web` prints it as
+  /// `?token=`). Needed by hosts that also enforce dsh's own browser gate,
+  /// which Basic auth alone does not satisfy.
+  String? authToken;
+
   /// DSH's default working directory from host.describe. It lets a default
   /// session resolve to a registered workspace instead of becoming an
   /// ungrouped cwd-only session.
@@ -475,11 +480,17 @@ class AppState extends ChangeNotifier {
     String url, {
     String? username,
     String? password,
+    String? launchToken,
     Duration timeout = const Duration(seconds: 3),
   }) async {
     try {
       final api = DshApi(url, username: username, password: password);
       try {
+        // A host enforcing dsh's own gate answers 401 to the probe until the
+        // launch token is exchanged, so do that first when one was supplied.
+        if (launchToken != null && launchToken.isNotEmpty) {
+          await api.authenticateWithToken(launchToken).timeout(timeout);
+        }
         await api.hostReady().timeout(timeout);
         lastProbeError = null;
         return true;
@@ -520,6 +531,7 @@ class AppState extends ChangeNotifier {
   Future<bool> switchConnection(String url) async {
     final username = authUsername;
     final password = authPassword;
+    final token = authToken;
     final previousUrl = serverUrl;
     // Remote probes share the 10s budget of a slow cellular handshake; one
     // immediate retry rides out a single dropped handshake instead of
@@ -529,6 +541,7 @@ class AppState extends ChangeNotifier {
       url,
       username: username,
       password: password,
+      launchToken: token,
       timeout: probeTimeout,
     );
     if (!reachable) {
@@ -536,14 +549,25 @@ class AppState extends ChangeNotifier {
         url,
         username: username,
         password: password,
+        launchToken: token,
         timeout: probeTimeout,
       );
     }
     if (!reachable) return false;
-    await connect(url, username: username, password: password);
+    await connect(
+      url,
+      username: username,
+      password: password,
+      launchToken: token,
+    );
     if (connected) return true;
     if (previousUrl.isNotEmpty && previousUrl != url) {
-      await connect(previousUrl, username: username, password: password);
+      await connect(
+        previousUrl,
+        username: username,
+        password: password,
+        launchToken: token,
+      );
     }
     return false;
   }
@@ -565,7 +589,18 @@ class AppState extends ChangeNotifier {
 
   /// Connects to a server and starts the downlink loops. Optional Basic
   /// credentials are forwarded on every request and the WS handshakes.
-  Future<void> connect(String url, {String? username, String? password}) async {
+  ///
+  /// [launchToken] is dsh's own process token (the `token=` printed by
+  /// `dsh web`). Hosts that enforce dsh's browser gate reject every API call
+  /// and stream until the token is exchanged for a session cookie, so it is
+  /// applied whenever supplied; deployments satisfied by Basic auth alone
+  /// simply never issue the cookie.
+  Future<void> connect(
+    String url, {
+    String? username,
+    String? password,
+    String? launchToken,
+  }) async {
     disconnect(preserveCachedContent: true, keepCredentials: true);
     connecting = true;
     connectionError = null;
@@ -573,10 +608,16 @@ class AppState extends ChangeNotifier {
     serverUrl = url;
     authUsername = username;
     authPassword = password;
+    authToken = launchToken;
     notifyListeners();
     DshApi? api;
     try {
       api = DshApi(url, username: username, password: password);
+      // Exchange the launch token first: the host answers 401 to every API
+      // call and refuses the WS upgrade until its session cookie is present.
+      if (launchToken != null && launchToken.isNotEmpty) {
+        await api.authenticateWithToken(launchToken);
+      }
       final host = await api.hostReady();
       _hostCwd = host['cwd'] as String?;
       _api = api;
@@ -674,6 +715,7 @@ class AppState extends ChangeNotifier {
     if (!keepCredentials) {
       authUsername = null;
       authPassword = null;
+      authToken = null;
     }
     if (!preserveCachedContent) {
       sessions.clear();

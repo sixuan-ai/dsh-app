@@ -33,6 +33,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
   final _lanUrl = TextEditingController();
+  final _token = TextEditingController();
   String _connectionMode = 'public';
   bool _obscurePass = true;
 
@@ -54,6 +55,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
       _connectionMode = storedMode == 'lan' ? 'lan' : 'public';
       _lanUrl.text =
           prefs.getString('lanServerUrl') ?? 'http://192.168.1.100:3080';
+      _token.text = prefs.getString('launchToken') ?? '';
     });
   }
 
@@ -62,6 +64,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     _user.dispose();
     _pass.dispose();
     _lanUrl.dispose();
+    _token.dispose();
     super.dispose();
   }
 
@@ -70,7 +73,12 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
   Future<void> _connect() async {
     final user = _user.text.trim();
     final pass = _pass.text;
-    if (user.isEmpty || pass.isEmpty) return;
+    final token = _token.text.trim();
+    // dsh gates its own API behind a launch-token cookie. Hosts that enforce
+    // that gate need the token even when Basic credentials are also present,
+    // so allow connecting with either pair.
+    final hasBasic = user.isNotEmpty && pass.isNotEmpty;
+    if (!hasBasic && token.isEmpty) return;
     setState(() => _preError = null);
     var serverUrl = widget.defaultServerUrl;
     if (_connectionMode == 'lan') {
@@ -79,7 +87,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
         setState(() => _preError = '请输入电脑的本地网络地址');
         return;
       }
-    } else {
+    } else if (hasBasic) {
       // Public login resolves the account's instance through the central directory.
       try {
         serverUrl = await directoryLogin(widget.defaultServerUrl, user, pass);
@@ -93,6 +101,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('authUser', user);
     await prefs.setString('authPass', pass);
+    await prefs.setString('launchToken', token);
     await prefs.setString('connectionMode', _connectionMode);
     if (_connectionMode == 'lan') {
       await prefs.setString('lanServerUrl', serverUrl);
@@ -100,7 +109,12 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
       await prefs.setString('remoteServerUrl', serverUrl);
     }
     await prefs.setString('serverUrl', serverUrl);
-    await widget.state.connect(serverUrl, username: user, password: pass);
+    await widget.state.connect(
+      serverUrl,
+      username: user.isEmpty ? null : user,
+      password: pass.isEmpty ? null : pass,
+      launchToken: token.isEmpty ? null : token,
+    );
   }
 
   String _normalizeServerUrl(String raw) {
@@ -343,6 +357,22 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                       ),
                                     ),
                               ),
+                              // dsh prints a `?token=` URL at startup; hosts
+                              // that enforce dsh's own browser gate need it to
+                              // mint the API session cookie.
+                              if (_connectionMode == 'lan') ...[
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _token,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  onSubmitted: (_) => _connect(),
+                                  decoration: _loginDecoration(
+                                    S.launchTokenHint,
+                                    Icons.key_outlined,
+                                  ),
+                                ),
+                              ],
                               if (error != null) ...[
                                 const SizedBox(height: 16),
                                 Container(
