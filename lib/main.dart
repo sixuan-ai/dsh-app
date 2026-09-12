@@ -35,8 +35,9 @@ import 'changelog_view.dart';
 import 'new_session_sheet.dart';
 import 'state.dart';
 
-/// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
-const kDefaultServerUrl = 'https://dsh.ainotex.com';
+// The canonical origin lives in protocol.dart; re-export so existing
+// `import 'main.dart' show kDefaultServerUrl` sites keep working.
+export 'src/protocol.dart' show kDefaultServerUrl;
 
 /// Direct Shenzhen relay endpoint (nginx → frps → auth proxy), no Cloudflare.
 const kDirectServerUrl = 'https://dsh.qxrobot.com';
@@ -116,6 +117,9 @@ class _DshAppState extends State<DshApp> {
         username: hasBasic ? user : null,
         password: hasBasic ? pass : null,
       );
+      // Bring back the account's computer list from the last login, so the
+      // connection center can show it before any network call.
+      await appState.loadComputers();
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
       final mode = prefs.getString('connectionMode') ?? 'public';
@@ -408,7 +412,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final pass = state.authPassword;
       if (user != null && pass != null) {
         try {
-          target = await directoryLogin(kDefaultServerUrl, user, pass);
+          final login = await directoryLogin(kDefaultServerUrl, user, pass);
+          target = login.defaultUrl;
           await prefs.setString('remoteServerUrl', target);
         } catch (_) {
           target = null;
@@ -478,6 +483,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Switch to one of the account's computers, with feedback.
+  Future<void> _switchToComputer(AccountComputer computer) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(content: Text('正在切换到 ${computer.name}…')),
+    );
+    final ok = await state.switchToComputer(computer);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? '已切换到 ${computer.name}'
+              : '无法连接 ${computer.name}，请确认它的 DSH 已开机',
+        ),
+      ),
+    );
+  }
+
   void _showConnectionCenter() {
     showModalBottomSheet<void>(
       context: context,
@@ -497,6 +521,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         onRefreshLocal: _checkLocalConnection,
         onSetLocalAddress: _setLocalAddress,
         onAutoSearchLocal: _autoSearchLocal,
+        computers: state.computers,
+        currentComputerId: state.currentComputerId,
+        onSwitchComputer: _switchToComputer,
       ),
     );
   }

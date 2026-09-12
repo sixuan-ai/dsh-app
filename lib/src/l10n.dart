@@ -114,6 +114,8 @@ class Strings {
     required this.szServer,
     required this.localComputer,
     required this.currentlyUsing,
+    required this.myComputers,
+    required this.switchToThis,
     required this.switchBackToHk,
     required this.switchToSz,
     required this.switchToLocal,
@@ -276,6 +278,12 @@ class Strings {
   final String szServer;
   final String localComputer;
   final String currentlyUsing;
+
+  /// Header for the account's computer list in the connection center.
+  final String myComputers;
+
+  /// Action to switch to one listed computer.
+  final String switchToThis;
   final String switchBackToHk;
   final String switchToSz;
   final String switchToLocal;
@@ -441,6 +449,8 @@ class Strings {
     szServer: '深圳服务器',
     localComputer: '本地电脑',
     currentlyUsing: '当前正在使用',
+    myComputers: '我的电脑',
+    switchToThis: '切换',
     switchBackToHk: '切换回香港服务器',
     switchToSz: '切换到深圳服务器',
     switchToLocal: '切换到本地电脑',
@@ -605,6 +615,8 @@ class Strings {
     szServer: 'SZ server',
     localComputer: 'Local PC',
     currentlyUsing: 'In use',
+    myComputers: 'My computers',
+    switchToThis: 'Switch',
     switchBackToHk: 'Switch back to HK server',
     switchToSz: 'Switch to SZ server',
     switchToLocal: 'Switch to local PC',

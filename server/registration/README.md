@@ -136,6 +136,35 @@ x-dsh-app: <REGISTER_APP_TOKEN>
 
 之后该账号登录就会返回实例地址，App 正常连接。
 
+## 一个账号，多台电脑
+
+`dsh-directory.py` 支持一个账号挂多台电脑。把记录改成带 `computers` 数组：
+
+```json
+"x": {
+  "password": "...",
+  "email": "sixuan@ainotex.com",
+  "computers": [
+    { "id": "omen", "name": "OMEN 笔记本", "subdomain": "dsh.ainotex.com",
+      "default": true },
+    { "id": "mac",  "name": "MacBook",     "subdomain": "mac.dsh.ainotex.com" }
+  ]
+}
+```
+
+- `subdomain` 留空的项**不会**出现在列表里（实例未开通，自动省略）。
+- 老格式（顶层 `subdomain`，无 `computers`）等价于只有一台，继续可用，不用改。
+
+**接口**：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/directory/login` | 返回该账号**所有**已开通电脑 + 兼容字段 `server`（= 默认那台） |
+| POST | `/directory/resolve` | 按 `computerId` 返回其中一台的具体实例地址 |
+
+App 登录后会保存电脑列表，在「连接与安全」里显示，随时从一台切到另一台；
+切换后连接的是新电脑的实例，会话列表也随之换成那台的。
+
 ## 已知限制
 
 - 尚无「忘记密码」流程；需管理员在 `users.json` 改密码或让其重新注册

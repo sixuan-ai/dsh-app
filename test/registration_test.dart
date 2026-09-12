@@ -222,8 +222,84 @@ void main() {
         });
     final base = await fake.start();
     try {
-      final url = await directoryLogin(base, 'zhang', 'StrongPass123');
-      expect(url, 'https://zhang.corp.com');
+      final result = await directoryLogin(base, 'zhang', 'StrongPass123');
+      expect(result.defaultUrl, 'https://zhang.corp.com');
+      // A bare `server` response folds into a single machine for compatibility.
+      expect(result.computers, hasLength(1));
+      expect(result.computers.single.subdomain, 'zhang.corp.com');
+    } finally {
+      await fake.stop();
+    }
+  });
+
+  test('a multi-computer login returns every machine and the default', () async {
+    final fake = _FakeDirectory((_, _) => {
+          'status': 200,
+          'body': {
+            'ok': true,
+            'username': 'zhang',
+            'server': 'omen.corp.com',
+            'computers': [
+              {
+                'id': 'omen',
+                'name': 'OMEN',
+                'subdomain': 'omen.corp.com',
+                'default': true,
+              },
+              {
+                'id': 'mac',
+                'name': 'MacBook',
+                'subdomain': 'mac.corp.com',
+                'default': false,
+              },
+            ],
+          },
+        });
+    final base = await fake.start();
+    try {
+      final result = await directoryLogin(base, 'zhang', 'StrongPass123');
+      expect(result.computers, hasLength(2));
+      expect(result.hasMultiple, isTrue);
+      // The default is what legacy clients would connect to.
+      expect(result.defaultUrl, 'https://omen.corp.com');
+      expect(result.computers.first.name, 'OMEN');
+      expect(result.computers.first.isDefault, isTrue);
+      expect(result.computers.last.id, 'mac');
+    } finally {
+      await fake.stop();
+    }
+  });
+
+  test('resolve returns the named computer of this account', () async {
+    final seen = <String, dynamic>{};
+    final fake = _FakeDirectory((path, body) {
+      expect(path, '/directory/resolve');
+      seen.addAll(body);
+      return {
+        'status': 200,
+        'body': {
+          'ok': true,
+          'username': 'zhang',
+          'computer': {
+            'id': 'mac',
+            'name': 'MacBook',
+            'subdomain': 'mac.corp.com',
+            'default': false,
+          },
+        },
+      };
+    });
+    final base = await fake.start();
+    try {
+      final computer = await directoryResolve(
+        base,
+        username: 'zhang',
+        password: 'StrongPass123',
+        computerId: 'mac',
+      );
+      expect(seen['computerId'], 'mac');
+      expect(computer.id, 'mac');
+      expect(computer.url, 'https://mac.corp.com');
     } finally {
       await fake.stop();
     }

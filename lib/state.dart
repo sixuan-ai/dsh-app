@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/conversation.dart';
 import 'src/conversation_fold.dart';
@@ -440,6 +441,72 @@ class AppState extends ChangeNotifier {
   /// `?token=`). Needed by hosts that also enforce dsh's own browser gate,
   /// which Basic auth alone does not satisfy.
   String? authToken;
+
+  /// The account's computers, as last reported by the directory at login.
+  ///
+  /// One account may own several DSH instances (each its own machine and
+  /// tunnel). The connection center shows these and switches between them;
+  /// sessions always belong to the machine the socket currently holds.
+  List<AccountComputer> computers = [];
+
+  /// Id of the computer the socket is currently connected to, or null when the
+  /// connection predates this tracking (single-machine login) or is local.
+  String? currentComputerId;
+
+  /// Replace the known computer list (called once at login).
+  Future<void> setComputers(List<AccountComputer> list) async {
+    computers = List.of(list);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'accountComputers',
+      jsonEncode([for (final c in list) c.toJson()]),
+    );
+    notifyListeners();
+  }
+
+  /// Reload the saved computer list on boot (no network).
+  Future<void> loadComputers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('accountComputers');
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final list = (jsonDecode(raw) as List).whereType<Map>().map((c) {
+        return AccountComputer.fromJson(c.cast<String, dynamic>());
+      }).toList();
+      computers = list;
+      notifyListeners();
+    } catch (_) {
+      // A corrupt cache is safe to ignore; the next login refreshes it.
+    }
+  }
+
+  /// Switch to another of the account's computers.
+  ///
+  /// Resolves it through the directory (credentials guard the mapping), then
+  /// reconnects. Sessions always belong to a machine, so switching replaces the
+  /// visible session list with that machine's.
+  Future<bool> switchToComputer(AccountComputer computer) async {
+    final username = authUsername;
+    final password = authPassword;
+    if (username == null || password == null) return false;
+    try {
+      final resolved = await directoryResolve(
+        kDefaultServerUrl,
+        username: username,
+        password: password,
+        computerId: computer.id,
+      );
+      final ok = await switchConnection(resolved.url);
+      if (ok) {
+        currentComputerId = resolved.id;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('currentComputerId', resolved.id);
+      }
+      return ok;
+    } on DshError {
+      return false;
+    }
+  }
 
   /// DSH's default working directory from host.describe. It lets a default
   /// session resolve to a registered workspace instead of becoming an

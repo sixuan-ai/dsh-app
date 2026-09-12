@@ -91,7 +91,11 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
     } else if (hasBasic) {
       // Public login resolves the account's instance through the central directory.
       try {
-        serverUrl = await directoryLogin(widget.defaultServerUrl, user, pass);
+        final login = await directoryLogin(widget.defaultServerUrl, user, pass);
+        serverUrl = login.defaultUrl;
+        // The account may own several computers; keep them so the connection
+        // center can offer a picker without asking for the password again.
+        await widget.state.setComputers(login.computers);
       } on DshError catch (error) {
         if (error.code == 'directory-auth') {
           setState(() => _preError = '用户名或密码错误');

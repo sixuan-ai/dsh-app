@@ -8,6 +8,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
 
+/// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
+///
+/// Kept here so both the UI (main.dart) and the state layer (state.dart) can
+/// reference the same origin without a circular import.
+const String kDefaultServerUrl = 'https://dsh.ainotex.com';
+
 class DshError implements Exception {
   DshError(this.code, this.message);
   final String code;
@@ -33,7 +39,69 @@ class ServerFrame {
   String get type => payload['type'] as String? ?? '';
 }
 
-Future<String> directoryLogin(
+/// One of an account's computers as reported by the directory.
+class AccountComputer {
+  AccountComputer({
+    required this.id,
+    required this.name,
+    required this.subdomain,
+    required this.isDefault,
+  });
+
+  /// Stable identifier used with `/directory/resolve`.
+  final String id;
+
+  /// Human label shown in the picker (e.g. "OMEN 笔记本").
+  final String name;
+
+  /// The DSH instance this computer answers at.
+  final String subdomain;
+
+  /// The default machine, used when the user does not choose one.
+  final bool isDefault;
+
+  /// The https origin the app connects to.
+  String get url => 'https://$subdomain';
+
+  factory AccountComputer.fromJson(Map<String, dynamic> json) {
+    return AccountComputer(
+      id: (json['id'] as String?) ?? 'default',
+      name: (json['name'] as String?) ?? '',
+      subdomain: (json['subdomain'] as String?) ?? '',
+      isDefault: json['default'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'subdomain': subdomain,
+        'default': isDefault,
+      };
+}
+
+/// Outcome of `/directory/login`: the default machine plus every machine the
+/// account owns, so the app can offer a picker without a second round trip.
+class DirectoryLoginResult {
+  DirectoryLoginResult({
+    required this.username,
+    required this.defaultUrl,
+    required this.computers,
+  });
+
+  final String username;
+
+  /// The URL of the default computer (matches the legacy `server` field).
+  final String defaultUrl;
+
+  /// Every provisioned computer the account has, in the server's order.
+  final List<AccountComputer> computers;
+
+  /// Whether the account has more than one machine to choose from.
+  bool get hasMultiple => computers.length > 1;
+}
+
+Future<DirectoryLoginResult> directoryLogin(
   String base,
   String username,
   String password,
@@ -49,7 +117,27 @@ Future<String> directoryLogin(
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode == 200 && body['ok'] == true) {
       final server = body['server'] as String? ?? '';
-      if (server.isNotEmpty) return 'https://$server';
+      if (server.isNotEmpty) {
+        final computers = ((body['computers'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((c) => AccountComputer.fromJson(c.cast<String, dynamic>()))
+            .where((c) => c.subdomain.isNotEmpty)
+            .toList();
+        // Old servers only send `server`; fold that into a single machine.
+        if (computers.isEmpty) {
+          computers.add(AccountComputer(
+            id: 'default',
+            name: '',
+            subdomain: server,
+            isDefault: true,
+          ));
+        }
+        return DirectoryLoginResult(
+          username: (body['username'] as String?) ?? username,
+          defaultUrl: 'https://$server',
+          computers: computers,
+        );
+      }
     }
     if (response.statusCode == 401) {
       throw DshError('directory-auth', '用户名或密码错误');
@@ -60,6 +148,57 @@ Future<String> directoryLogin(
         'directory-not-provisioned',
         (body['message'] as String?) ?? '账号已创建,等待管理员开通实例',
       );
+    }
+    throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
+  } on DshError {
+    rethrow;
+  } catch (error) {
+    throw DshError('directory-unavailable', '$error');
+  } finally {
+    client.close();
+  }
+}
+
+/// Resolves one of the account's computers to its instance URL.
+///
+/// Used when the user picks a machine after login; the credentials guard the
+/// mapping so the picker cannot be enumerated without them.
+Future<AccountComputer> directoryResolve(
+  String base, {
+  required String username,
+  required String password,
+  String? computerId,
+}) async {
+  final client = http.Client();
+  try {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final response = await client.post(
+      Uri.parse('$root/directory/resolve'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode(<String, dynamic>{
+        'username': username,
+        'password': password,
+        if (computerId != null) 'computerId': computerId,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && body['ok'] == true) {
+      final computer = body['computer'];
+      if (computer is Map) {
+        return AccountComputer.fromJson(computer.cast<String, dynamic>());
+      }
+    }
+    if (response.statusCode == 401) {
+      throw DshError('directory-auth', '用户名或密码错误');
+    }
+    if (response.statusCode == 403 && body['error'] == 'not-provisioned') {
+      throw DshError(
+        'directory-not-provisioned',
+        (body['message'] as String?) ?? '账号已创建,等待管理员开通实例',
+      );
+    }
+    if (response.statusCode == 404 && body['error'] == 'unknown-computer') {
+      throw DshError('directory-unknown-computer', '这台电脑不存在或未开通');
     }
     throw DshError('directory-unavailable', 'HTTP ${response.statusCode}');
   } on DshError {

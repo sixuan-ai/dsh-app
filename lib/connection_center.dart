@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'src/l10n.dart';
+import 'src/protocol.dart';
 import 'src/theme.dart';
 import 'connection_center_banner.dart';
 
@@ -20,6 +21,9 @@ class ConnectionCenterSheet extends StatelessWidget {
     this.localUrl,
     this.onSetLocalAddress,
     this.onAutoSearchLocal,
+    this.computers = const [],
+    this.currentComputerId,
+    this.onSwitchComputer,
   });
 
   final String connectionMode;
@@ -40,6 +44,15 @@ class ConnectionCenterSheet extends StatelessWidget {
 
   /// Runs mDNS discovery for DSH hosts on the LAN.
   final VoidCallback? onAutoSearchLocal;
+
+  /// The account's computers, as last reported by the directory at login.
+  final List<AccountComputer> computers;
+
+  /// Id of the computer the socket is currently connected to.
+  final String? currentComputerId;
+
+  /// Switches to one of the account's computers.
+  final void Function(AccountComputer computer)? onSwitchComputer;
 
   String get _currentLabel => switch (connectionMode) {
     'lan' => S.localComputer,
@@ -67,6 +80,37 @@ class ConnectionCenterSheet extends StatelessWidget {
             const SizedBox(height: 14),
             CurrentConnectionBanner(label: _currentLabel),
             const SizedBox(height: 14),
+            // The account's computers: one entry per provisioned machine, so
+            // the user can jump between their own computers. Each belongs to a
+            // different instance, so switching replaces the visible sessions.
+            if (computers.isNotEmpty) ...[
+              Text(
+                S.myComputers,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: P.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final computer in computers) ...[
+                _ConnectionCard(
+                  icon: Icons.computer_outlined,
+                  title: computer.name.isEmpty ? computer.id : computer.name,
+                  subtitle: computer.id == currentComputerId
+                      ? S.currentlyUsing
+                      : computer.subdomain,
+                  active: computer.id == currentComputerId,
+                  actionLabel: S.switchToThis,
+                  onSwitch: () {
+                    Navigator.pop(context);
+                    onSwitchComputer?.call(computer);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 6),
+            ],
             _ConnectionCard(
               icon: Icons.cloud_outlined,
               title: S.hkServer,
