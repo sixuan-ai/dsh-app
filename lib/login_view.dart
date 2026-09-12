@@ -465,7 +465,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                   onPressed: widget.state.connecting
                                       ? null
                                       : _openRegistration,
-                                  child: const Text('还没有账号？用企业邮箱注册'),
+                                  child: const Text('还没有账号？用邮箱注册'),
                                 ),
                               ],
                             ],

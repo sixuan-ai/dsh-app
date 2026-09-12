@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""DSH 账号注册服务:企业邮箱验证码 → 开通登录账号。
+"""DSH 账号注册服务:邮箱验证码 → 开通登录账号。
+
+用户用**自己的任意邮箱**注册,服务端发验证码证明他确实拥有该邮箱,验证通过
+后创建登录账号。邮箱只用于验证与登录,**不要求是公司域名**。
+
 
 与 dsh-directory.py 配套:本服务负责「注册/验证」,验证通过后把账号写进
 directory 的用户表,登录仍走原有的 `/directory/login`。
@@ -12,13 +16,14 @@ directory 的用户表,登录仍走原有的 `/directory/login`。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/directory/register/request` | 提交企业邮箱,发送验证码 |
+| POST | `/directory/register/request` | 提交邮箱,发送验证码 |
 | POST | `/directory/register/verify`  | 提交邮箱+验证码+密码,创建账号 |
 | GET  | `/directory/register/config`  | 返回允许的邮箱域名(供前端提示) |
 
 ### 安全要点
 
-- 邮箱域名白名单:`ALLOWED_DOMAINS`,不在名单内直接拒绝。
+- 邮箱域名白名单 `ALLOWED_DOMAINS`:**默认留空 = 接受任意邮箱**(用户可用
+  自己的 Gmail/QQ 邮箱注册)。仅当你只想放行某些域名时才需要设置。
 - 验证码:6 位数字,`CODE_TTL` 内有效,最多试 `MAX_ATTEMPTS` 次,用后即废。
 - 发送频率:同一邮箱 `SEND_COOLDOWN` 内只能发一次;同一 IP 每小时上限。
 - 密码用 `hashlib.scrypt` 加盐存储,不落明文。
@@ -287,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
             # Same generic error for malformed and non-company addresses, so the
             # endpoint cannot be used to probe which domains are accepted.
             return self._json(400, {"ok": False, "error": "email-not-allowed",
-                                    "message": "请使用公司企业邮箱"})
+                                    "message": "请输入有效的邮箱地址"})
 
         ip = self._client_ip()
         now = now_s()
@@ -340,7 +345,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if not email_allowed(email):
             return self._json(400, {"ok": False, "error": "email-not-allowed",
-                                    "message": "请使用公司企业邮箱"})
+                                    "message": "请输入有效的邮箱地址"})
         if not re.fullmatch(r"\d{6}", code):
             return self._json(400, {"ok": False, "error": "code-invalid",
                                     "message": "验证码应为 6 位数字"})

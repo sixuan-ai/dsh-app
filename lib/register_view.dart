@@ -1,4 +1,7 @@
-/// 企业邮箱注册页:获取验证码 → 校验 → 创建账号。
+/// 邮箱注册页:获取验证码 → 校验 → 创建账号。
+///
+/// 用**用户自己的任意邮箱**注册(不限于公司域名)——验证码用于证明他确实
+/// 拥有该邮箱。
 ///
 /// 账号本身只是「登录账号」;验证通过不等于已经能在手机上连上 DSH ——
 /// 实例(子域名/证书/隧道)需管理员为该账号开通,页面会明确说明这一点。
@@ -106,7 +109,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String get _domainHint {
     final domains = _config?.domains ?? const <String>[];
-    if (domains.isEmpty) return '请输入企业邮箱';
+    if (domains.isEmpty) return '用你自己的邮箱注册，我们会发验证码确认';
     return '仅限 ${domains.map((d) => '@$d').join(' / ')}';
   }
 
@@ -214,7 +217,7 @@ class _RegisterPageState extends State<RegisterPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '使用企业邮箱注册',
+          '用邮箱注册',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -223,7 +226,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          '注册后即可用它登录。连接到你自己的电脑还需管理员开通实例。',
+          '用你自己的邮箱注册并验证后即可登录。连接到你自己的电脑还需管理员开通实例。',
           style: TextStyle(fontSize: 13, height: 1.5, color: P.textSecondary),
         ),
       ],
@@ -325,7 +328,7 @@ class _RegisterPageState extends State<RegisterPage> {
       children: [
         _field(
           controller: _email,
-          label: '企业邮箱',
+          label: '邮箱',
           hint: 'name@company.com',
           keyboard: TextInputType.emailAddress,
           onSubmitted: (_) => _sendCode(),
