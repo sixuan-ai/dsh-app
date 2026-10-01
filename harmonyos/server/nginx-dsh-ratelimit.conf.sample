@@ -1,0 +1,5 @@
+# Rate-limit zones for dsh.ainotex.com (http context). Applied per-location
+# in dsh-ainotex.conf: dsh_auth guards Basic-auth brute force, dsh_api is a
+# generous ceiling for the proxied GUI/API (well above real interactive use).
+limit_req_zone $binary_remote_addr zone=dsh_auth:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=dsh_api:10m rate=20r/s;

@@ -1,0 +1,34 @@
+# dsh 电脑上的 frpc 配置样例 —— /etc/frp/frpc.toml
+# 把 dsh 电脑上的 auth 代理(127.0.0.1:3081)穿透到公网服务器的 9980 端口。
+
+serverAddr = "你的公网服务器IP"
+serverPort = 8000
+auth.token = "与服务器 frps.toml 一致的 token"
+
+# 断线后持续重试,不退出进程(配合 systemd Restart=always 双保险)
+loginFailExit = false
+
+# QUIC(UDP)比 TCP 更抗丢包;对端 frps 需配 quicBindPort
+transport.protocol = "quic"
+transport.tls.enable = true
+
+# 快速发现死链路并触发重连
+transport.heartbeatInterval = 15
+transport.heartbeatTimeout = 90
+
+[[proxies]]
+name = "dsh-web"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 3081          # dsh-auth-proxy.js 的 LISTEN_PORT
+remotePort = 9980         # 公网服务器 nginx upstream 指向的端口
+# 隧道内是 Basic 凭证明文,加密必须开;JSON/WS 流量压缩省带宽
+transport.useEncryption = true
+transport.useCompression = true
+
+# systemd 托管样例(/etc/systemd/system/frpc.service):
+#   [Service]
+#   ExecStart=/usr/local/bin/frpc -c /etc/frp/frpc.toml
+#   Restart=always
+#   RestartSec=3
+#   LimitNOFILE=1048576

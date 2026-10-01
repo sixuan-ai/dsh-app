@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local credentials and generated artifacts
+**/*.p12
+**/*.p7b
+**/*.jks
+**/*.keystore
+**/key.properties
+**/local.properties
+**/.env
+**/.env.*
+/harmonyos/ohos/build-profile.json5

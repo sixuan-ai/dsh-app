@@ -1,0 +1,121 @@
+# dsh app 公网入口 nginx 样例 —— 放在公网服务器 /etc/nginx/conf.d/dsh.conf
+# 把 dsh.example.com 全部替换成你的域名后,certbot 申请证书即可。
+#
+# 链路: 手机 App → (可选 Cloudflare) → 本机 nginx :443
+#        → frp tcp 隧道 127.0.0.1:9980 → 家里/办公室的 dsh 电脑
+# /api/events.* 下行流需要 WebSocket 升级与长读超时。
+# 配套的限流 zone 定义见 nginx-dsh-ratelimit.conf.sample(http 上下文)。
+upstream dsh_web_backend {
+    server 127.0.0.1:9980; # frpc 隧道在这台服务器上的 remote_port
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name dsh.example.com;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+    }
+
+    client_max_body_size 200m;
+
+    # 其余请求一律跳 HTTPS:Basic 凭证不能走明文。
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl;
+
+    server_name dsh.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/dsh.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/dsh.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:DshSSL:10m;
+
+    # 安全响应头(不带 includeSubDomains:其他子域未全部上 HTTPS)。
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # JSON 过隧道压缩约 5-10 倍;session.history 携带完整工具输出,
+    # gzip 是感知加载速度的最大单项优化。
+    gzip on;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_types application/json application/javascript text/css text/plain image/svg+xml;
+
+    client_max_body_size 200m;
+
+    # 产品官网(公开静态站点)
+    location = /app {
+        return 301 /app/;
+    }
+    location /app/ {
+        alias /var/www/dsh-site/;
+        index index.html;
+    }
+
+    # 官网公开下载(仅 latest APK 与版本信息)
+    location /app/dl/ {
+        alias /var/www/dsh-releases-public/;
+        add_header Cache-Control "no-store";
+        types { }
+        default_type application/vnd.android.package-archive;
+        # APK 是字节稳定的产物,可长缓存;小 JSON 清单保持 no-store。
+        location ~* \.apk$ {
+            types { }
+            default_type application/vnd.android.package-archive;
+            add_header Cache-Control "public, max-age=86400";
+        }
+    }
+
+    # App 社交后端(好友/社区/私信),Basic 认证,限流防爆破。
+    location /social/ {
+        limit_req zone=dsh_auth burst=20 nodelay;
+        proxy_pass http://127.0.0.1:9981;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        auth_basic "dsh social";
+        auth_basic_user_file /etc/nginx/.htpasswd-dsh;
+    }
+
+    # App OTA 更新源(Basic 认证静态目录),APK 长缓存。
+    location /releases/ {
+        limit_req zone=dsh_auth burst=20 nodelay;
+        alias /var/www/dsh-releases/;
+        auth_basic "dsh releases";
+        auth_basic_user_file /etc/nginx/.htpasswd-dsh;
+        autoindex off;
+        add_header Cache-Control "no-store";
+        location ~* \.apk$ {
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+    }
+
+    location / {
+        limit_req zone=dsh_api burst=60 nodelay;
+        proxy_pass http://dsh_web_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        # 下行流是长连接:读超时必须按小时计。
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}

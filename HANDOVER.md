@@ -1,3 +1,5 @@
+> 2026-10-01 路径更新：官网源码集中到 `/home/x/code/sx/websites/company`，原 `server/site` 已移除，不保留软链接。下文部署地址与旧绝对路径是历史记录，当前官网信息见 [公司站说明](../websites/company/README.md)。
+
 # xHarness 项目交接文档
 
 > 写给下一段对话的 agent：先读本文件，再按任务需要读 `server/OPERATIONS.md`。
@@ -29,8 +31,8 @@ Git: 以 main 最新发布提交为准
 | 当前 DSH 配置 | `/home/x/.dsh/settings.yaml` |
 | 运维手册 | `/home/x/code/pd02/dsh_mobile/server/OPERATIONS.md` |
 | 发布脚本 | `/home/x/code/pd02/dsh_mobile/tool/publish.sh` |
-| AI 日报内容 | `/home/x/code/pd02/dsh_mobile/server/site/content/ai/news.json` |
-| Agent 学习内容 | `/home/x/code/pd02/dsh_mobile/server/site/content/ai/agents.json` |
+| AI 日报内容 | `/home/x/code/sx/websites/company/content/ai/news.json` |
+| Agent 学习内容 | `/home/x/code/sx/websites/company/content/ai/agents.json` |
 | 本地图片生成工具 | `/home/x/code/pd01/tools/image-gen/gen-image` |
 
 Flutter SDK：
@@ -311,8 +313,8 @@ git push
 编辑：
 
 ```bash
-server/site/content/ai/news.json
-server/site/content/ai/agents.json
+../websites/company/content/ai/news.json
+../websites/company/content/ai/agents.json
 ```
 
 要求：
@@ -326,15 +328,15 @@ server/site/content/ai/agents.json
 校验：
 
 ```bash
-python3 -m json.tool server/site/content/ai/news.json >/dev/null
-python3 -m json.tool server/site/content/ai/agents.json >/dev/null
+python3 -m json.tool ../websites/company/content/ai/news.json >/dev/null
+python3 -m json.tool ../websites/company/content/ai/agents.json >/dev/null
 flutter test test/ai_content_test.dart
 ```
 
 上传：
 
 ```bash
-scp -r server/site/content/ai root@47.239.235.154:/var/www/dsh-site/content/
+scp -r ../websites/company/content/ai root@47.239.235.154:/var/www/dsh-site/content/
 ssh root@47.239.235.154 'chmod 644 /var/www/dsh-site/content/ai/news.json /var/www/dsh-site/content/ai/agents.json'
 ```
 

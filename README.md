@@ -119,9 +119,9 @@ dart run tool/smoke.dart https://dsh.example.com 用户名 密码
 
 ## 产品官网
 
-`server/site/` 是一个零依赖单页官网,部署在公网服务器 `https://你的域名/app/`(nginx 配置见 sample):品牌介绍、功能矩阵、手机界面示意,以及**公开 APK 下载**。
+官网已统一维护在 [websites/company](../websites/company/README.md)，原 `server/site` 已移除，不保留软链接。当前官网为 `sixuanai.com`，广州目录 `/var/www/ainotex-company`；部署见[网站运维](../docs/operations/websites.md)。
 
-下载链路:`/app/dl/dsh-app-latest.apk` 与 `/app/dl/version.json` 由 `tool/publish.sh` 在每次发版时同步刷新(它们存放在 `/var/www/dsh-releases-public`,与带认证的 OTA 目录分离;公开文件不含任何凭据)。部署:`scp server/site/* 服务器:/var/www/dsh-site/`。
+APK 发布与 App 内容渠道仍按原项目流程维护；目录整理不代表迁移下载服务。
 
 ## 社交服务(好友 / 社区 / 私聊)
 
@@ -242,3 +242,7 @@ test/state_test.dart   事件折叠 / 序列化 / 等级计算单测
 - Basic 认证是公网部署**唯一**的访问控制:密码要够长,泄露后立即更换(AUTH_PASSWORD + 手机登录页)。
 - 凭据明文保存在手机 SharedPreferences 中;不要共享安装包给不信任的人。
 - dsh web 本身等价于远程代码执行,**永远**不要绕过代理直接把它暴露到任何网络。
+
+## 鸿蒙版本
+
+鸿蒙适配副本位于本地 `harmonyos/` 子目录，构建说明见 [harmonyos/HARMONYOS.md](harmonyos/HARMONYOS.md)。该目录是独立代码快照，与主项目不会自动同步；源码随本仓库维护，签名材料、本地配置和构建缓存已排除提交。

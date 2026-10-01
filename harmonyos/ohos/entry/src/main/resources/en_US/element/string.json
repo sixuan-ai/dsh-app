@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Hermes Agent mobile client"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Hermes Agent mobile client"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Hermes Agent"
+    },
+    {
+      "name": "read_media_reason",
+      "value": "Select images to send in a conversation"
+    }
+  ]
+}
