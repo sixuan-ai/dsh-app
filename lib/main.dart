@@ -64,7 +64,7 @@ String connectionModeForUrl(String serverUrl, {String? localUrl}) {
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
 /// download tests; production uses the public domain.
-const kUpdateManifestUrl = 'https://dsh.ainotex.com/releases/latest.json';
+const kUpdateManifestUrl = 'https://dsh.sixuanai.com/releases/latest.json';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -129,12 +129,14 @@ class _DshAppState extends State<DshApp> {
                 kDefaultServerUrl)
           : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
       if (mounted) setState(() => _restored = true);
-      unawaited(appState.connect(
-        serverUrl,
-        username: hasBasic ? user : null,
-        password: hasBasic ? pass : null,
-        launchToken: hasToken ? token : null,
-      ));
+      unawaited(
+        appState.connect(
+          serverUrl,
+          username: hasBasic ? user : null,
+          password: hasBasic ? pass : null,
+          launchToken: hasToken ? token : null,
+        ),
+      );
       return;
     }
     if (mounted) setState(() => _restored = true);
@@ -166,11 +168,17 @@ class _DshAppState extends State<DshApp> {
         animation: appState,
         builder: (context, _) {
           if (!_restored) return const _Splash(label: '正在启动…');
+          if (appState.connected) _hasCreds = true;
+          final hasCredentials =
+              (appState.authUsername?.isNotEmpty ?? false) ||
+              (appState.authToken?.isNotEmpty ?? false);
           if (appState.connected ||
-              (_hasCreds && !appState.requiresAuthentication)) {
+              (_hasCreds &&
+                  hasCredentials &&
+                  !appState.requiresAuthentication)) {
             return HomePage(state: appState, theme: theme, language: language);
           }
-          if (_hasCreds && appState.connecting) {
+          if (_hasCreds && hasCredentials && appState.connecting) {
             return const _Splash(label: '正在连接服务器…');
           }
           return ServerSetupPage(
@@ -486,17 +494,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// Switch to one of the account's computers, with feedback.
   Future<void> _switchToComputer(AccountComputer computer) async {
     final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      SnackBar(content: Text('正在切换到 ${computer.name}…')),
-    );
+    messenger.showSnackBar(SnackBar(content: Text('正在切换到 ${computer.name}…')));
     final ok = await state.switchToComputer(computer);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          ok
-              ? '已切换到 ${computer.name}'
-              : '无法连接 ${computer.name}，请确认它的 DSH 已开机',
+          ok ? '已切换到 ${computer.name}' : '无法连接 ${computer.name}，请确认它的 DSH 已开机',
         ),
       ),
     );
@@ -1086,6 +1090,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await prefs.remove('authPass');
     await prefs.remove('launchToken');
     await prefs.remove('serverUrl');
+    await prefs.remove('accountComputers');
+    await prefs.remove('currentComputerId');
     state.disconnect();
   }
 

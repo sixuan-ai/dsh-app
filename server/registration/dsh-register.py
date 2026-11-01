@@ -102,6 +102,7 @@ DEFAULT_SUBDOMAIN = os.environ.get("REGISTER_DEFAULT_SUBDOMAIN", "")
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 _db_lock = threading.Lock()
+_account_lock = threading.Lock()
 _db = sqlite3.connect(DB_PATH, check_same_thread=False)
 _db.row_factory = sqlite3.Row
 
@@ -186,9 +187,6 @@ def load_users() -> dict:
         with open(USERS_FILE) as handle:
             return json.load(handle)
     except FileNotFoundError:
-        return {}
-    except Exception as exc:  # pragma: no cover - deployment safety
-        print(f"cannot read users file: {exc}", flush=True)
         return {}
 
 
@@ -312,7 +310,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/directory/register/request":
             return self._request_code()
         if path == "/directory/register/verify":
-            return self._verify_code()
+            # Serialize the read/modify/replace of users.json across mailboxes.
+            with _account_lock:
+                return self._verify_code()
         return self._json(404, {"ok": False, "error": "not-found"})
 
     def _request_code(self):
@@ -428,12 +428,13 @@ class Handler(BaseHTTPRequestHandler):
                 username = f"{base}{suffix}"
                 suffix += 1
 
-        record = {
+        record = dict(users.get(username, {}))
+        record.update({
             "password": password,
             "email": email,
-            "createdAt": now,
-        }
-        if DEFAULT_SUBDOMAIN:
+            "createdAt": record.get("createdAt", now),
+        })
+        if DEFAULT_SUBDOMAIN and not record.get("computers") and not record.get("subdomain"):
             record["subdomain"] = DEFAULT_SUBDOMAIN
         # Preserve an admin-provisioned subdomain across re-registration.
         if username in users and users[username].get("subdomain"):
@@ -453,7 +454,10 @@ class Handler(BaseHTTPRequestHandler):
                  now, now, self._client_ip()),
             )
 
-        provisioned = bool(users[username].get("subdomain"))
+        computers = record.get("computers")
+        provisioned = (any(isinstance(c, dict) and bool(c.get("subdomain"))
+                           for c in computers) if isinstance(computers, list)
+                       else bool(record.get("subdomain")))
         return self._json(200, {
             "ok": True,
             "username": username,

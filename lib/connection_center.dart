@@ -54,155 +54,168 @@ class ConnectionCenterSheet extends StatelessWidget {
   /// Switches to one of the account's computers.
   final void Function(AccountComputer computer)? onSwitchComputer;
 
-  String get _currentLabel => switch (connectionMode) {
-    'lan' => S.localComputer,
-    'direct' => S.szServer,
-    _ => S.hkServer,
-  };
+  String get _currentLabel {
+    if (connectionMode == 'public') {
+      for (final computer in computers) {
+        if (computer.id == currentComputerId) return computer.name;
+      }
+    }
+    return switch (connectionMode) {
+      'lan' => S.localComputer,
+      'direct' => S.szServer,
+      _ => S.hkServer,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              S.connectionCenter,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(S.switchTip, style: TextStyle(color: P.textSecondary)),
-            const SizedBox(height: 14),
-            CurrentConnectionBanner(label: _currentLabel),
-            const SizedBox(height: 14),
-            // The account's computers: one entry per provisioned machine, so
-            // the user can jump between their own computers. Each belongs to a
-            // different instance, so switching replaces the visible sessions.
-            if (computers.isNotEmpty) ...[
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                S.myComputers,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: P.textSecondary,
-                ),
+                S.connectionCenter,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              for (final computer in computers) ...[
-                _ConnectionCard(
-                  icon: Icons.computer_outlined,
-                  title: computer.name.isEmpty ? computer.id : computer.name,
-                  subtitle: computer.id == currentComputerId
-                      ? S.currentlyUsing
-                      : computer.subdomain,
-                  active: computer.id == currentComputerId,
-                  actionLabel: S.switchToThis,
-                  onSwitch: () {
-                    Navigator.pop(context);
-                    onSwitchComputer?.call(computer);
-                  },
+              const SizedBox(height: 6),
+              Text(S.switchTip, style: TextStyle(color: P.textSecondary)),
+              const SizedBox(height: 14),
+              CurrentConnectionBanner(label: _currentLabel),
+              const SizedBox(height: 14),
+              // The account's computers: one entry per provisioned machine, so
+              // the user can jump between their own computers. Each belongs to a
+              // different instance, so switching replaces the visible sessions.
+              if (computers.isNotEmpty) ...[
+                Text(
+                  S.myComputers,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: P.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 8),
+                for (final computer in computers) ...[
+                  _ConnectionCard(
+                    icon: Icons.computer_outlined,
+                    title: computer.name.isEmpty ? computer.id : computer.name,
+                    subtitle: computer.id == currentComputerId
+                        ? S.currentlyUsing
+                        : computer.subdomain,
+                    active: computer.id == currentComputerId,
+                    actionLabel: S.switchToThis,
+                    onSwitch: () {
+                      Navigator.pop(context);
+                      onSwitchComputer?.call(computer);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 6),
               ],
-              const SizedBox(height: 6),
-            ],
-            _ConnectionCard(
-              icon: Icons.cloud_outlined,
-              title: S.hkServer,
-              subtitle: connectionMode == 'public'
-                  ? S.currentlyUsing
-                  : S.hkServerDesc,
-              active: connectionMode == 'public',
-              actionLabel: S.switchBackToHk,
-              onSwitch: () {
-                Navigator.pop(context);
-                onSwitchRemote();
-              },
-            ),
-            if (onSwitchDirect != null) ...[
+              if (computers.isEmpty)
+                _ConnectionCard(
+                  icon: Icons.cloud_outlined,
+                  title: S.hkServer,
+                  subtitle: connectionMode == 'public'
+                      ? S.currentlyUsing
+                      : S.hkServerDesc,
+                  active: connectionMode == 'public',
+                  actionLabel: S.switchBackToHk,
+                  onSwitch: () {
+                    Navigator.pop(context);
+                    onSwitchRemote();
+                  },
+                ),
+              if (computers.isEmpty && onSwitchDirect != null) ...[
+                const SizedBox(height: 10),
+                _ConnectionCard(
+                  icon: Icons.bolt_rounded,
+                  title: S.szServer,
+                  subtitle: connectionMode == 'direct'
+                      ? S.currentlyUsing
+                      : S.szServerDesc,
+                  active: connectionMode == 'direct',
+                  actionLabel: S.switchToSz,
+                  onSwitch: () {
+                    Navigator.pop(context);
+                    onSwitchDirect!();
+                  },
+                ),
+              ],
               const SizedBox(height: 10),
               _ConnectionCard(
-                icon: Icons.bolt_rounded,
-                title: S.szServer,
-                subtitle: connectionMode == 'direct'
+                icon: Icons.lan_outlined,
+                title: S.localComputer,
+                subtitle: connectionMode == 'lan'
                     ? S.currentlyUsing
-                    : S.szServerDesc,
-                active: connectionMode == 'direct',
-                actionLabel: S.switchToSz,
+                    : checkingLocal
+                    ? S.checkingLocal
+                    : localAvailable
+                    ? S.localDescAvailable
+                    : (localUrl == null || localUrl!.isEmpty)
+                    ? S.localAddressEmpty
+                    : localUrl!,
+                active: connectionMode == 'lan',
+                available: localAvailable,
+                checking: checkingLocal,
+                actionLabel: S.switchToLocal,
                 onSwitch: () {
                   Navigator.pop(context);
-                  onSwitchDirect!();
+                  onSwitchLocal();
                 },
               ),
-            ],
-            const SizedBox(height: 10),
-            _ConnectionCard(
-              icon: Icons.lan_outlined,
-              title: S.localComputer,
-              subtitle: connectionMode == 'lan'
-                  ? S.currentlyUsing
-                  : checkingLocal
-                  ? S.checkingLocal
-                  : localAvailable
-                  ? S.localDescAvailable
-                  : (localUrl == null || localUrl!.isEmpty)
-                  ? S.localAddressEmpty
-                  : localUrl!,
-              active: connectionMode == 'lan',
-              available: localAvailable,
-              checking: checkingLocal,
-              actionLabel: S.switchToLocal,
-              onSwitch: () {
-                Navigator.pop(context);
-                onSwitchLocal();
-              },
-            ),
-            if (onSetLocalAddress != null) ...[
-              const SizedBox(height: 10),
+              if (onSetLocalAddress != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onSetLocalAddress!();
+                    },
+                    icon: const Icon(
+                      Icons.edit_location_alt_outlined,
+                      size: 18,
+                    ),
+                    label: Text(S.setLocalAddress),
+                  ),
+                ),
+              ],
+              if (onAutoSearchLocal != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onAutoSearchLocal!();
+                    },
+                    icon: const Icon(Icons.wifi_find_outlined, size: 18),
+                    label: Text(S.autoSearchLocal),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    onSetLocalAddress!();
+                    onRefreshLocal();
                   },
-                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-                  label: Text(S.setLocalAddress),
+                  icon: const Icon(Icons.refresh),
+                  label: Text(S.retestLocal),
                 ),
               ),
             ],
-            if (onAutoSearchLocal != null) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    onAutoSearchLocal!();
-                  },
-                  icon: const Icon(Icons.wifi_find_outlined, size: 18),
-                  label: Text(S.autoSearchLocal),
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  onRefreshLocal();
-                },
-                icon: const Icon(Icons.refresh),
-                label: Text(S.retestLocal),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

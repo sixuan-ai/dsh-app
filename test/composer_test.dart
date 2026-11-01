@@ -5,7 +5,6 @@ library;
 import 'dart:convert';
 
 import 'package:dsh_mobile/chat_view.dart';
-import 'package:dsh_mobile/login_view.dart';
 import 'package:dsh_mobile/quick_start.dart';
 import 'package:dsh_mobile/composer.dart';
 import 'package:dsh_mobile/state.dart';
@@ -125,24 +124,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('编辑任务'), findsOneWidget);
     expect(find.text('删除任务'), findsOneWidget);
-  });
-
-  testWidgets('login offers public and LAN connection modes', (tester) async {
-    final app = AppState();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ServerSetupPage(
-          state: app,
-          defaultServerUrl: 'https://example.com',
-        ),
-      ),
-    );
-    expect(find.text('远程连接'), findsOneWidget);
-    expect(find.text('本地连接'), findsOneWidget);
-    await tester.tap(find.text('本地连接'));
-    await tester.pump();
-    expect(find.byIcon(Icons.lan_outlined), findsOneWidget);
-    expect(find.textContaining('电脑地址'), findsOneWidget);
   });
 
   testWidgets('quick start sheet explains core actions', (tester) async {

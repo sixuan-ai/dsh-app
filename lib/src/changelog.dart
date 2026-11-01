@@ -25,10 +25,51 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '1.35.5';
+const kAppVersion = '2.1.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.1.1',
+    date: '2026-11-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '一个账号可绑定多台电脑：登录后自动连默认电脑，也能在「连接中心」里切换',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '默认服务器换到广州节点 dsh.sixuanai.com，连接延迟更低',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '聊天缓存按电脑隔离，换电脑后不会串会话',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '退出登录后立即回到账号登录页，并清除上个账号的电脑列表',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '1.35.7',
+    date: '2026-09-12',
+    changes: [
+      ChangelogChange(ChangelogChangeType.fix, '退出登录后立即回到账号登录页，并清除上个账号的电脑列表'),
+    ],
+  ),
+  ChangelogRelease(
+    version: '1.35.6',
+    date: '2026-09-12',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '登录页简化为账号密码登录，电脑与网络选择统一放在连接设置',
+      ),
+      ChangelogChange(ChangelogChangeType.feature, '同一账号连接多台电脑，在连接与安全中随时切换'),
+      ChangelogChange(ChangelogChangeType.fix, '邮箱登录与电脑认证统一，重新验证邮箱改密码保留电脑绑定'),
+    ],
+  ),
   ChangelogRelease(
     version: '1.35.5',
     date: '2026-09-12',
@@ -41,10 +82,7 @@ const kChangelog = [
         ChangelogChangeType.feature,
         '连接更强健:连接本机 DSH 时不再需要手动填 dsh 令牌,代理会自动完成换取,重启 DSH 也不用改手机',
       ),
-      ChangelogChange(
-        ChangelogChangeType.fix,
-        '注册接口加 App 凭据头,防止公网扫描滥用验证码发信',
-      ),
+      ChangelogChange(ChangelogChangeType.fix, '注册接口加 App 凭据头,防止公网扫描滥用验证码发信'),
     ],
   ),
   ChangelogRelease(

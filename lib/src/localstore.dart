@@ -9,6 +9,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' show join;
 import 'package:sqflite/sqflite.dart';
@@ -42,6 +43,14 @@ class CachedChatItems {
 class LocalStore {
   /// [dbFileName] exists so tests can isolate databases from each other.
   LocalStore({this.dbFileName = 'dsh_mobile.db'});
+
+  /// Keep another computer/account's offline sessions out of this connection.
+  factory LocalStore.forServer(String url, String? username) {
+    final scope = sha256.convert(
+      utf8.encode('${Uri.parse(url).origin}\n${username ?? ''}'),
+    );
+    return LocalStore(dbFileName: 'dsh_$scope.db');
+  }
 
   final String dbFileName;
 
@@ -146,29 +155,22 @@ class LocalStore {
         continue; // Corrupt rows are dropped; the cache is best-effort.
       }
       for (var i = 0; i < items.length; i += kChatChunkSize) {
-        final end =
-            i + kChatChunkSize > items.length ? items.length : i + kChatChunkSize;
-        batch.insert(
-          'chat_chunks',
-          {
-            'session_id': sessionId,
-            'idx': i ~/ kChatChunkSize,
-            'json': jsonEncode(items.sublist(i, end)),
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-      }
-      batch.insert(
-        'chat_meta',
-        {
+        final end = i + kChatChunkSize > items.length
+            ? items.length
+            : i + kChatChunkSize;
+        batch.insert('chat_chunks', {
           'session_id': sessionId,
-          'oldest_seq': oldestSeq,
-          'latest_seq': latestSeq,
-          'has_more': hasMore ? 1 : 0,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+          'idx': i ~/ kChatChunkSize,
+          'json': jsonEncode(items.sublist(i, end)),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      batch.insert('chat_meta', {
+        'session_id': sessionId,
+        'oldest_seq': oldestSeq,
+        'latest_seq': latestSeq,
+        'has_more': hasMore ? 1 : 0,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
     await db.execute('DROP TABLE chat_items');
@@ -200,9 +202,9 @@ class LocalStore {
       try {
         final decoded = jsonDecode(raw);
         if (decoded is List) {
-          itemJsons.addAll(
-            [for (final entry in decoded) (entry as Map).cast<String, dynamic>()],
-          );
+          itemJsons.addAll([
+            for (final entry in decoded) (entry as Map).cast<String, dynamic>(),
+          ]);
         }
       } catch (_) {
         // Skip corrupt chunks; the following save rewrites them.
@@ -238,11 +240,11 @@ class LocalStore {
       final unchanged =
           previous != null && i < previous.length && previous[i] == hashes[i];
       if (unchanged) continue;
-      batch.insert(
-        'chat_chunks',
-        {'session_id': sessionId, 'idx': i, 'json': chunkJsons[i]},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('chat_chunks', {
+        'session_id': sessionId,
+        'idx': i,
+        'json': chunkJsons[i],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
       writes++;
     }
     final previousCount = previous?.length ?? 0;
@@ -253,17 +255,13 @@ class LocalStore {
         whereArgs: [sessionId, i],
       );
     }
-    batch.insert(
-      'chat_meta',
-      {
-        'session_id': sessionId,
-        'oldest_seq': oldestSeq,
-        'latest_seq': latestSeq,
-        'has_more': hasMore ? 1 : 0,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    batch.insert('chat_meta', {
+      'session_id': sessionId,
+      'oldest_seq': oldestSeq,
+      'latest_seq': latestSeq,
+      'has_more': hasMore ? 1 : 0,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     await batch.commit(noResult: true);
     lastChunkWrites = writes;
     _savedChunkHashes[sessionId] = hashes;

@@ -1,3 +1,6 @@
+// Live protocol probes: these run against a real server and print progress.
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'dart:io';
 

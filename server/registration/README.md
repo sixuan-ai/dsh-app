@@ -172,3 +172,61 @@ App 登录后会保存电脑列表，在「连接与安全」里显示，随时�
 - 未做邮箱格式的 MX 校验，只做正则 + 域名白名单。
 - 注册接口不要求 Basic 认证（新用户没有凭据），因此**限流是主要防线**；
   若要更强防护，可在 nginx 上加 CAPTCHA 或 IP 白名单。
+
+## 双电脑账号接入（2026-09-12）
+
+注册账号 `2051044997` 已绑定两台电脑：
+
+| 电脑 ID | 名称 | App 访问入口 | 网关上游 |
+|---|---|---|---|
+| `omen`（默认） | 本机 · OMEN | `https://omen.ainotex.com` | HK `127.0.0.1:9982` → SSH 加密隧道 → 本机 `127.0.0.1:3081` |
+| `x26` | 远程电脑 · x-26 | `https://x26.ainotex.com` | HK `127.0.0.1:9980` → 现有 frp 加密隧道 → x-26 `127.0.0.1:3081` |
+
+`x-26` 是 SSH `47.239.235.154:7000` 背后的电脑，**不是**直接 SSH 到
+`47.239.235.154:22` 的 HK 网关。旧 `dsh.ainotex.com` 仍保留原入口。
+
+### 统一账号认证
+
+- 新电脑域名的 nginx 用内部 `auth_request` 调用目录服务 `GET /internal/auth`。
+- 邮箱/用户名、密码均从 `users.json` 实时核验，并检查目标域名属于该账号的
+  `computers`。其他账号不能因为知道域名而访问电脑。
+- `/etc/dsh-directory/backends.json`（600）保存两个电脑端代理的内部凭据，
+  格式为 `{ "电脑域名": { "username": "…", "password": "…" } }`。
+  目录服务将其交给 nginx 转发；**不返回给 App，也不提交到仓库**。
+- `X-DSH-Target` 必须由 nginx 固定设置；`/_dsh_auth` 必须为 `internal`，
+  `/internal/auth` 不得另行暴露公网。目录服务保持监听回环地址。
+- 新网关不接收客户端 cookie 作为账号认证，也不向客户端发送内部代理 cookie。
+  HTTP 和 WebSocket 握手都必须校验账号。
+- 主域 `/social/` 和 `/releases/` 同样使用账号认证（`@shared` 范围），
+  已开通账号可以访问；旧 directory 账号继续可用。
+- 重新验证邮箱改密码会保留 `computers`、`subdomain` 和原始创建时间；
+  新密码立即用于后续 HTTP 请求及 WebSocket 握手。已建立的 WebSocket 不主动断开。
+
+### 常驻与运维
+
+- 本机用户服务：`~/.config/systemd/user/dsh-omen-tunnel.service`，已 enable，
+  用户 lingering 已开启。SSH 反向端口只绑定 HK 回环地址，断线自动重连。
+- HK 新 nginx 配置：`/etc/nginx/conf.d/dsh-computers.conf`。
+- 两域证书：`/etc/letsencrypt/live/dsh-computers/`，certbot 自动续期。
+- 本次原始文件备份：HK `/root/dsh-connect-backup-20260912/`（含敏感账号表，勿分发）。
+- 未重启两台电脑的 DSH 进程；只重启了 HK 注册/目录服务并 reload nginx。
+
+### App v1.35.7
+
+登录页只保留邮箱/用户名、密码和注册入口，登录后自动连接默认电脑。
+在“连接与安全”中选择电脑；切换结果保存到本机，重开 App 恢复上次电脑。
+聊天缓存按账号和服务器分别存储，旧通用缓存文件保留，但不混入新电脑记录。
+
+### 验证
+
+```bash
+python3 -m unittest discover -s server/registration -p 'test_*.py' -v
+```
+
+`tool/check_account.dart` 通过 stdin 接收 `{ "username": "…", "password": "…" }`，
+只读验证目录登录、两台电脑 resolve、实时 WebSocket ready 和 HTTP 会话列表。
+勿把密码放到命令参数、命令历史或日志中。
+
+本次协议验收：两台电脑均通过 WebSocket ready 和 HTTP 会话列表读取；源站匿名/错密码返回 401，未绑定账号返回 403，内部鉴权路径公网返回 404。App 测试 213 项、服务端回归测试 3 项通过。
+
+手机已安装 v1.35.7（versionCode 2128），实测 OMEN → x-26 切换成功；App 过滤子代理后，x-26 列表显示 94 个会话（协议原始列表 153 个）。公开 APK 下载 SHA-256 与发布清单一致；Cloudflare 的 latest APK/清单缓存已刷新。

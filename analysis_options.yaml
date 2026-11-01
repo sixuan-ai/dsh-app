@@ -16,6 +16,9 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # HarmonyOS snapshot: builds against the OHOS Flutter fork (it needs
+    # TargetPlatform.ohos), so stock Flutter cannot analyze it.
+    - harmonyos/**
 include: package:flutter_lints/flutter.yaml
 
 linter:

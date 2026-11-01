@@ -83,7 +83,18 @@ APK_NAME="dsh-app-${VERSION}.apk"
 
 # split-per-abi 会给 versionCode 加架构偏移,清单必须发布 APK 里的真实
 # versionCode,否则手机端比较永远失真。
-AAPT=$(ls "${ANDROID_HOME:-/home/x/Android/Sdk}"/build-tools/*/aapt 2>/dev/null | tail -1)
+# SDK 位置因机器而异(本机是 apt 装的 /usr/lib/android-sdk),依次探测;
+# 探测不到时下面会因 set -e 直接失败,而不是悄悄写出错误的清单。
+SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+for candidate in "$SDK_ROOT" /home/x/Android/Sdk /usr/lib/android-sdk "$HOME/Android/Sdk"; do
+  [ -n "$candidate" ] || continue
+  found=$(ls "$candidate"/build-tools/*/aapt 2>/dev/null | tail -1 || true)
+  if [ -n "$found" ]; then AAPT="$found"; SDK_ROOT="$candidate"; break; fi
+done
+if [ -z "${AAPT:-}" ]; then
+  echo "错误: 找不到 aapt,请设置 ANDROID_HOME" >&2
+  exit 3
+fi
 apk_real_code() {
   if [ -n "$AAPT" ] && [ -f "$1" ]; then
     "$AAPT" dump badging "$1" 2>/dev/null | sed -n "s/^package:.*versionCode='\([0-9]*\)'.*/\1/p"
@@ -198,6 +209,9 @@ fi
 # 公开副本在服务器端同盘复制,避免再传一次 24MB。
 "${SSHRUN[@]}" ssh $SSH_OPTS "$SERVER" "cp -f $REMOTE_DIR/$APK_NAME $PUBLIC_DIR/dsh-app-latest.apk"
 "${SSHRUN[@]}" scp $SSH_OPTS "$TMP/version.json" "$SERVER:$PUBLIC_DIR/"
+# OpenSSH >=9 scp 走 SFTP 会保留源文件权限,临时文件是 600,nginx(www-data)
+# 读不到会 403;显式放开读权限。非 root 的发布账号只对自有文件生效。
+"${SSHRUN[@]}" ssh $SSH_OPTS "$SERVER" "chmod -R a+rX $REMOTE_DIR $PUBLIC_DIR" || true
 "${SSHRUN[@]}" ssh $SSH_OPTS -O exit "$SERVER" 2>/dev/null || true
 
 echo "==> 完成: ${BASE_URL}/latest.json"

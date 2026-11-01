@@ -8,11 +8,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
 
-/// Built-in server endpoint (frp tunnel → auth proxy → dsh web).
+/// Built-in server endpoint (Guangzhou gateway → Tailscale → auth proxy → dsh web).
 ///
 /// Kept here so both the UI (main.dart) and the state layer (state.dart) can
 /// reference the same origin without a circular import.
-const String kDefaultServerUrl = 'https://dsh.ainotex.com';
+const String kDefaultServerUrl = 'https://dsh.sixuanai.com';
 
 class DshError implements Exception {
   DshError(this.code, this.message);
@@ -178,7 +178,7 @@ Future<AccountComputer> directoryResolve(
       body: jsonEncode(<String, dynamic>{
         'username': username,
         'password': password,
-        if (computerId != null) 'computerId': computerId,
+        'computerId': ?computerId,
       }),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;

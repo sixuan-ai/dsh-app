@@ -31,10 +31,18 @@ import json
 import hmac
 import os
 import re
+import base64
+import binascii
 
 LISTEN_HOST = os.environ.get("DIRECTORY_LISTEN_HOST", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("DIRECTORY_LISTEN_PORT", "3085"))
 USERS_FILE = os.environ.get("DIRECTORY_USERS_FILE", "/etc/dsh-directory/users.json")
+BACKENDS_FILE = os.environ.get("DIRECTORY_BACKENDS_FILE", "/etc/dsh-directory/backends.json")
+
+
+def password_matches(password, record):
+    return isinstance(record, dict) and hmac.compare_digest(
+        password.encode('utf-8'), str(record.get('password', '')).encode('utf-8'))
 
 
 def load_users():
@@ -101,6 +109,46 @@ def account_computers(record):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Only called by nginx's internal auth_request location. This path is
+        # deliberately outside /directory/, which is exposed publicly.
+        if self.path != '/internal/auth':
+            return self._json(404, {'ok': False, 'error': 'not-found'})
+        try:
+            scheme, encoded = self.headers.get('Authorization', '').split(' ', 1)
+            if scheme.lower() != 'basic':
+                raise ValueError('basic required')
+            identifier, password = base64.b64decode(encoded, validate=True).decode('utf-8').split(':', 1)
+        except (ValueError, UnicodeError, binascii.Error):
+            return self._auth_result(401)
+        _, record = find_user(load_users(), identifier)
+        if not password_matches(password, record):
+            return self._auth_result(401)
+        computers = account_computers(record)
+        target = self.headers.get('X-DSH-Target', '')
+        if target == '@shared':
+            return self._auth_result(204 if computers else 403)
+        if not any(c['subdomain'] == target for c in computers):
+            return self._auth_result(403)
+        try:
+            with open(BACKENDS_FILE) as handle:
+                backend = json.load(handle)[target]
+            credential = base64.b64encode(
+                (backend['username'] + ':' + backend['password']).encode('utf-8')).decode('ascii')
+        except (OSError, ValueError, KeyError, TypeError):
+            return self._auth_result(503)
+        return self._auth_result(204, 'Basic ' + credential)
+
+    def _auth_result(self, status, backend_auth=None):
+        self.send_response(status)
+        if status == 401:
+            self.send_header('WWW-Authenticate', 'Basic realm="DSH account", charset="UTF-8"')
+        if backend_auth:
+            self.send_header('X-DSH-Backend-Authorization', backend_auth)
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def do_POST(self):
         path = self.path.split('?')[0]
         length = int(self.headers.get('Content-Length', 0))
@@ -125,7 +173,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         users = load_users()
         key, record = find_user(users, identifier)
 
-        if record is None or not hmac.compare_digest(password, record.get('password', '')):
+        if not password_matches(password, record):
             self._json(401, {'ok': False, 'error': 'invalid-credentials'})
             return
 
@@ -159,7 +207,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         users = load_users()
         key, record = find_user(users, identifier)
 
-        if record is None or not hmac.compare_digest(password, record.get('password', '')):
+        if not password_matches(password, record):
             self._json(401, {'ok': False, 'error': 'invalid-credentials'})
             return
 

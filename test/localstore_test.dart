@@ -15,16 +15,17 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 List<String> encodeChunks(List<Map<String, dynamic>> items) {
   final chunks = <String>[];
   for (var i = 0; i < items.length; i += kChatChunkSize) {
-    final end =
-        i + kChatChunkSize > items.length ? items.length : i + kChatChunkSize;
+    final end = i + kChatChunkSize > items.length
+        ? items.length
+        : i + kChatChunkSize;
     chunks.add(jsonEncode(items.sublist(i, end)));
   }
   return chunks;
 }
 
 List<Map<String, dynamic>> items(int count, {String prefix = 'i'}) => [
-      for (var i = 0; i < count; i++) {'id': '$prefix$i', 'text': 'message $i'},
-    ];
+  for (var i = 0; i < count; i++) {'id': '$prefix$i', 'text': 'message $i'},
+];
 
 void main() {
   setUpAll(() {
@@ -46,6 +47,25 @@ void main() {
 
   tearDown(() async {
     await store.close();
+  });
+
+  test('offline sessions are isolated by computer and account', () async {
+    final a = LocalStore.forServer('https://omen.example.com', 'owner');
+    final b = LocalStore.forServer('https://x26.example.com', 'owner');
+    final other = LocalStore.forServer('https://omen.example.com', 'other');
+    final reopened = LocalStore.forServer('https://omen.example.com/', 'owner');
+    try {
+      await a.kvWrite('sessionList', 'only-omen');
+      await b.kvWrite('sessionList', 'only-x26');
+      expect(await other.kvRead('sessionList'), isNull);
+      expect(await b.kvRead('sessionList'), 'only-x26');
+      expect(await reopened.kvRead('sessionList'), 'only-omen');
+    } finally {
+      await reopened.close();
+      await a.close();
+      await b.close();
+      await other.close();
+    }
   });
 
   group('save/load round trip', () {
@@ -117,7 +137,10 @@ void main() {
       final all = items(100); // exactly 2 full chunks
       await store.saveChatItems('s', encodeChunks(all));
 
-      final edited = [...items(99), {...all.last, 'text': 'edited'}];
+      final edited = [
+        ...items(99),
+        {...all.last, 'text': 'edited'},
+      ];
       await store.saveChatItems('s', encodeChunks(edited));
       expect(store.lastChunkWrites, 1);
       final cached = await store.loadChatItems('s');
@@ -125,8 +148,7 @@ void main() {
       expect(cached.itemJsons[49]['text'], 'message 49'); // prefix intact
     });
 
-    test('reopen (fresh app run) then identical save writes nothing',
-        () async {
+    test('reopen (fresh app run) then identical save writes nothing', () async {
       final name = 'localstore_reopen_test.db';
       final first = LocalStore(dbFileName: name);
       await first.saveChatItems(
@@ -149,8 +171,11 @@ void main() {
         latestSeq: 10,
         hasMore: true,
       );
-      expect(second.lastChunkWrites, 0,
-          reason: 'load-seeded hashes should match a re-encode');
+      expect(
+        second.lastChunkWrites,
+        0,
+        reason: 'load-seeded hashes should match a re-encode',
+      );
       await second.close();
     });
 
@@ -206,11 +231,7 @@ void main() {
             'hasMore': true,
           }),
         },
-        {
-          'session_id': 'bare',
-          'updated_at': 2,
-          'json': jsonEncode(items(7)),
-        },
+        {'session_id': 'bare', 'updated_at': 2, 'json': jsonEncode(items(7))},
         {'session_id': 'corrupt', 'updated_at': 3, 'json': 'not json {'},
       ]);
       final store = LocalStore(dbFileName: name);
@@ -272,19 +293,21 @@ void main() {
       expect(await store.kvRead('a'), '2');
     });
 
-    test('opens with WAL journal mode (Android rejects execute pragmas)',
-        () async {
-      // The Android bridge throws on value-returning statements passed to
-      // execute(), so the pragmas must go through rawQuery; WAL must still
-      // end up enabled in the database file itself.
-      await store.kvWrite('probe', 'ok');
-      final db = await openDatabase(
-        p.join(await getDatabasesPath(), store.dbFileName),
-      );
-      final mode = await db.rawQuery('PRAGMA journal_mode');
-      await db.close();
-      expect(mode.first['journal_mode'].toString().toLowerCase(), 'wal');
-    });
+    test(
+      'opens with WAL journal mode (Android rejects execute pragmas)',
+      () async {
+        // The Android bridge throws on value-returning statements passed to
+        // execute(), so the pragmas must go through rawQuery; WAL must still
+        // end up enabled in the database file itself.
+        await store.kvWrite('probe', 'ok');
+        final db = await openDatabase(
+          p.join(await getDatabasesPath(), store.dbFileName),
+        );
+        final mode = await db.rawQuery('PRAGMA journal_mode');
+        await db.close();
+        expect(mode.first['journal_mode'].toString().toLowerCase(), 'wal');
+      },
+    );
   });
 
   test('fnv1a64 is stable and discriminates content', () {
@@ -292,9 +315,6 @@ void main() {
     expect(LocalStore.fnv1a64('abc'), LocalStore.fnv1a64('abc'));
     expect(LocalStore.fnv1a64('abc'), isNot(LocalStore.fnv1a64('abd')));
     expect(LocalStore.fnv1a64('a'), isNot(LocalStore.fnv1a64('aa')));
-    expect(
-      LocalStore.fnv1a64('长会话缓存分块'),
-      LocalStore.fnv1a64('长会话缓存分块'),
-    );
+    expect(LocalStore.fnv1a64('长会话缓存分块'), LocalStore.fnv1a64('长会话缓存分块'));
   });
 }

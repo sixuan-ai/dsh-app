@@ -246,3 +246,15 @@ test/state_test.dart   事件折叠 / 序列化 / 等级计算单测
 ## 鸿蒙版本
 
 鸿蒙适配副本位于本地 `harmonyos/` 子目录，构建说明见 [harmonyos/HARMONYOS.md](harmonyos/HARMONYOS.md)。该目录是独立代码快照，与主项目不会自动同步；源码随本仓库维护，签名材料、本地配置和构建缓存已排除提交。
+
+## 开源许可
+
+本项目以 [MIT License](LICENSE) 开源。你可以自由使用、修改、商用和再分发，只需保留版权声明。
+
+需要说明的边界：许可证只覆盖**代码**，不包含作者自用的托管实例、域名和部署环境——
+README 与代码里出现的 `dsh.ainotex.com`、`dsh.sixuanai.com` 等地址只是作者自己的部署，
+随时可能变化或下线；自建请参考 `server/` 下的样例（`dsh-auth-proxy.js`、`frpc-dsh.toml.sample`、
+`nginx-dsh.conf.sample`、`server/registration/`）自己搭一套。
+
+欢迎提 issue / PR。改动协议层时请先跑 `tool/smoke.dart` 和 `flutter test`。
+

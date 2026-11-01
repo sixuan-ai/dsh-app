@@ -474,6 +474,7 @@ class AppState extends ChangeNotifier {
         return AccountComputer.fromJson(c.cast<String, dynamic>());
       }).toList();
       computers = list;
+      currentComputerId = prefs.getString('currentComputerId');
       notifyListeners();
     } catch (_) {
       // A corrupt cache is safe to ignore; the next login refreshes it.
@@ -501,6 +502,10 @@ class AppState extends ChangeNotifier {
         currentComputerId = resolved.id;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('currentComputerId', resolved.id);
+        await prefs.setString('serverUrl', resolved.url);
+        await prefs.setString('remoteServerUrl', resolved.url);
+        await prefs.setString('connectionMode', 'public');
+        notifyListeners();
       }
       return ok;
     } on DshError {
@@ -532,7 +537,9 @@ class AppState extends ChangeNotifier {
   }) async {
     authUsername = username;
     authPassword = password;
-    _store ??= LocalStore();
+    final prefs = await SharedPreferences.getInstance();
+    serverUrl = prefs.getString('serverUrl') ?? kDefaultServerUrl;
+    _store ??= LocalStore.forServer(serverUrl, username);
     await _restoreLocalSnapshot();
   }
 
@@ -668,7 +675,8 @@ class AppState extends ChangeNotifier {
     String? password,
     String? launchToken,
   }) async {
-    disconnect(preserveCachedContent: true, keepCredentials: true);
+    final sameComputer = serverUrl == url && authUsername == username;
+    disconnect(preserveCachedContent: sameComputer, keepCredentials: true);
     connecting = true;
     connectionError = null;
     connectionStatus = ServerConnectionStatus.connecting;
@@ -676,6 +684,10 @@ class AppState extends ChangeNotifier {
     authUsername = username;
     authPassword = password;
     authToken = launchToken;
+    currentComputerId = null;
+    for (final computer in computers) {
+      if (computer.url == url) currentComputerId = computer.id;
+    }
     notifyListeners();
     DshApi? api;
     try {
@@ -688,7 +700,7 @@ class AppState extends ChangeNotifier {
       final host = await api.hostReady();
       _hostCwd = host['cwd'] as String?;
       _api = api;
-      _store ??= LocalStore();
+      _store ??= LocalStore.forServer(url, username);
       // Paint the cached session list and prompt counter before the network
       // refresh so cold starts render instantly.
       await _restoreLocalSnapshot();
@@ -783,9 +795,12 @@ class AppState extends ChangeNotifier {
       authUsername = null;
       authPassword = null;
       authToken = null;
+      computers = [];
+      currentComputerId = null;
     }
     if (!preserveCachedContent) {
       sessions.clear();
+      projections.clear();
       items.clear();
       queuedTasks.clear();
       _itemCache.clear();
@@ -796,6 +811,9 @@ class AppState extends ChangeNotifier {
       approvals.clear();
       questions.clear();
       selectedSessionId = null;
+      pinnedSessionIds.clear();
+      archivedSessionIds.clear();
+      subagents = const [];
       _lastLiveSeq = -1;
       _oldestSeq = 0;
       _historyGapBeforeSeq = null;
@@ -902,6 +920,7 @@ class AppState extends ChangeNotifier {
     final api = _api;
     if (api == null) return;
     final value = await api.call('session.list', {}) as Map<String, dynamic>;
+    if (!identical(api, _api)) return;
     final list = (value['items'] as List).cast<Map<String, dynamic>>();
     final seen = <String>{};
     for (final raw in list) {
