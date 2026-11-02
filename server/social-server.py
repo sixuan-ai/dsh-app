@@ -19,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 9981
 DB_PATH = "/opt/dsh-social/social.db"
+FEEDBACK_LOG = "/opt/dsh-social/feedback.log"
 
 MAX_NICKNAME = 24
 MAX_TEXT = 2000
@@ -235,6 +236,9 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         if body is None:
             return self._error(400, "请求体不是合法 JSON")
+        if route == "/social/feedback":
+            # 反馈不需要社交身份;外层 nginx 的 Basic 认证已挡住匿名提交。
+            return self._feedback(body)
         if route == "/social/register":
             return self._register(body)
         user = self._auth()
@@ -268,6 +272,23 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/social/posts/delete":
             return self._post_delete(user, body)
         self._error(404, "未知路径")
+
+    # ---- feedback ---------------------------------------------------------
+
+    def _feedback(self, body):
+        content = str(body.get("content") or "").strip()
+        if not content:
+            return self._error(400, "反馈内容不能为空")
+        entry = {
+            "ts": int(time.time()),
+            "type": str(body.get("type") or "other").strip()[:32],
+            "content": content[:MAX_TEXT],
+            "contact": str(body.get("contact") or "").strip()[:128],
+        }
+        with _db_lock:
+            with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        return self._send(200, {"ok": True})
 
     # ---- identity ---------------------------------------------------------
 
