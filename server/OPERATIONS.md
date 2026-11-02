@@ -247,9 +247,17 @@ App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从
 `dsh-omen-tunnel.service` 也已停用移除（备份在
 `~/.config/systemd/user/backup-20261102/`），HK 的 9982 端口随之消失。
 
-仍留在香港、但目前没有 DSH 流量的：`omen.`/`x26.` vhost（`dsh-computers.conf`）、
-`mac.dsh.ainotex.com`、directory(3085)。社交数据从 2026-11-02 起以广州
-`/opt/dsh-social/social.db` 为准，HK 那份只存在于上面的归档包里。
+同日继续清理：`dsh-computers.conf`（`omen.`/`x26.`）、`dsh-mac.conf`、
+`dsh-ratelimit.conf`（zone 已无使用者）、directory(3085) 及其单元与
+`/etc/dsh-directory` 全部移除；`conf.d` 里 8 个 `.bak-*` 与 2 个
+`.before-mars-*` 历史备份也一并挪走。10 个 vhost 备份与
+`dsh-directory-etc.tgz`（含 users.json，600）都在
+`/root/backup-20261102/`。香港现在只剩 nginx + frps（供 linkr 等非 DSH
+项目）与各公司站 vhost；社交数据以广州 `/opt/dsh-social/social.db` 为准。
+
+已知但未处理：`ainotex.com` / `www.ainotex.com` 的 vhost 仍把上游指向
+`10.100.100.2:80`（已不可达），HTTPS 握手成功但不返回响应；与本次清理无关，
+要恢复得把上游改成广州地址，或直接做 301 到 sixuanai.com。
 
 恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
 `/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。
