@@ -255,9 +255,12 @@ App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从
 `/root/backup-20261102/`。香港现在只剩 nginx + frps（供 linkr 等非 DSH
 项目）与各公司站 vhost；社交数据以广州 `/opt/dsh-social/social.db` 为准。
 
-已知但未处理：`ainotex.com` / `www.ainotex.com` 的 vhost 仍把上游指向
-`10.100.100.2:80`（已不可达），HTTPS 握手成功但不返回响应；与本次清理无关，
-要恢复得把上游改成广州地址，或直接做 301 到 sixuanai.com。
+`ainotex.com` 旧品牌域名同日退役：主域、`www`、`me`、`study`、`git` 的 vhost
+（上游 `10.100.100.2:80` 早已不可达）全部换成 `dsh-ainotex-tombstone.conf`
+之外的 `ainotex-tombstone.conf` 墓碑，统一 404；`dsh.ainotex.com` 仍由独立墓碑
+处理。**该域名下只保留两个仍在用的服务**：`ota.ainotex.com`（硬件 BOX / Mars
+OTA，`ota-ainotex.conf`）与 `linkr.ainotex.com`（中继，`00-linkr.ainotex.conf`）。
+已退役的 5 个 vhost 备份在 `/root/backup-20261102/nginx/`。
 
 恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
 `/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。
