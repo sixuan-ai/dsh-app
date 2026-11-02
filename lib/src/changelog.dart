@@ -25,10 +25,30 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.1.1';
+const kAppVersion = '2.1.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.1.3',
+    date: '2026-11-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '网络恢复后自动重连会卡在“正在恢复”：现在 15 秒内自愈，不再需要手动点重试或重启',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.1.2',
+    date: '2026-11-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '在网页或另一台设备上答完审批/提问后，手机端的弹窗会自动关闭，不再卡到必须重启',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.1.1',
     date: '2026-11-02',

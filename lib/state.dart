@@ -309,6 +309,19 @@ class AppState extends ChangeNotifier {
   final List<PendingApproval> approvals = [];
   final List<PendingQuestion> questions = [];
 
+  /// When each pending interaction was last (re)delivered by the gateway.
+  ///
+  /// A `$events` registration re-delivers every still-pending waterfall event
+  /// right after `host/ready`; anything whose entry predates that instant was
+  /// therefore resolved while the socket was down (answering from the web GUI,
+  /// for example) and its `cancel` frame was lost.
+  final Map<String, DateTime> _interactionDeliveredAt = {};
+  Timer? _interactionReconcileTimer;
+
+  /// Periodic nudge that re-arms the stream subscriptions when the backoff
+  /// loop stalls after a radio drop (see [_checkStreamLiveness]).
+  Timer? _connectionWatchdog;
+
   /// Live projection values per session (title, sessionStats, tokenUsage,
   /// contextPressure, …), kept under the higher-seq-wins rule.
   final Map<String, Map<String, ProjectionCell>> projections = {};
@@ -776,6 +789,10 @@ class AppState extends ChangeNotifier {
     _streamsActive = false;
     _saveTimer?.cancel();
     _saveTimer = null;
+    _connectionWatchdog?.cancel();
+    _connectionWatchdog = null;
+    _interactionReconcileTimer?.cancel();
+    _interactionReconcileTimer = null;
     _sessionFollowGeneration++;
     _sessionFollowRetryTimer?.cancel();
     _sessionFollowRetryTimer = null;
@@ -810,6 +827,9 @@ class AppState extends ChangeNotifier {
       _turnErrorNotices.clear();
       approvals.clear();
       questions.clear();
+      _interactionDeliveredAt.clear();
+      _interactionReconcileTimer?.cancel();
+      _interactionReconcileTimer = null;
       selectedSessionId = null;
       pinnedSessionIds.clear();
       archivedSessionIds.clear();
@@ -848,6 +868,25 @@ class AppState extends ChangeNotifier {
       onStreamClosed: _markStreamInterrupted,
       onReconnect: _recoverAfterStreamReconnect,
     )..start();
+    _connectionWatchdog ??= Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _checkStreamLiveness(),
+    );
+  }
+
+  /// Re-arms the streams when they are down but the backoff loop is not
+  /// making progress.
+  ///
+  /// Mobile radios come back after Doze/airplane switches in a state the retry
+  /// timer never climbs out of: the socket is gone, the status stays
+  /// "reconnecting" and no handshake is attempted any more, so the app only
+  /// recovers after a manual retry or a relaunch. Replacing the streams here
+  /// costs nothing when the connection is healthy and bounds recovery to one
+  /// watchdog tick.
+  void _checkStreamLiveness() {
+    if (!_streamsActive || _api == null) return;
+    if (connectionStatus == ServerConnectionStatus.online) return;
+    _connectionController?.resume();
   }
 
   void _markStreamOnline() {
@@ -2295,6 +2334,7 @@ class AppState extends ChangeNotifier {
             reason: reason,
           ),
         );
+        _interactionDeliveredAt[approvalId] = DateTime.now();
       case HostQuestionRequested(
         :final sessionId,
         :final rpcId,
@@ -2311,14 +2351,62 @@ class AppState extends ChangeNotifier {
             questions: questions,
           ),
         );
+        _interactionDeliveredAt[frame.rpcId] = DateTime.now();
+      case HostStreamReady():
+        _scheduleInteractionReconcile();
       case HostInteractionCancelled(:final eventId):
         approvals.removeWhere(
           (approval) =>
               approval.rpcId == eventId || approval.approvalId == eventId,
         );
         questions.removeWhere((question) => question.rpcId == eventId);
+        _interactionDeliveredAt.remove(eventId);
       case null:
         return;
+    }
+    notifyListeners();
+  }
+
+  /// Drops interactions the gateway did not re-deliver after a fresh
+  /// `$events` registration.
+  ///
+  /// The grace window covers frames that are still in flight: the gateway
+  /// re-delivers pending waterfall events immediately after `host/ready`, but
+  /// they arrive as separate frames.
+  void _scheduleInteractionReconcile() {
+    final readyAt = DateTime.now();
+    _interactionReconcileTimer?.cancel();
+    _interactionReconcileTimer = Timer(const Duration(seconds: 3), () {
+      _interactionReconcileTimer = null;
+      reconcileInteractionsAfter(readyAt);
+    });
+  }
+
+  /// Prunes pending interactions last delivered before [readyAt].
+  ///
+  /// Exposed for tests: they advance the clock by choosing [readyAt] instead of
+  /// waiting for the grace timer.
+  @visibleForTesting
+  void reconcileInteractionsAfter(DateTime readyAt) {
+    bool stale(String id) {
+      final seen = _interactionDeliveredAt[id];
+      return seen == null || seen.isBefore(readyAt);
+    }
+
+    final droppedApprovals = approvals
+        .where((approval) => stale(approval.approvalId))
+        .toList();
+    final droppedQuestions = questions
+        .where((question) => stale(question.rpcId))
+        .toList();
+    if (droppedApprovals.isEmpty && droppedQuestions.isEmpty) return;
+    for (final approval in droppedApprovals) {
+      approvals.remove(approval);
+      _interactionDeliveredAt.remove(approval.approvalId);
+    }
+    for (final question in droppedQuestions) {
+      questions.remove(question);
+      _interactionDeliveredAt.remove(question.rpcId);
     }
     notifyListeners();
   }

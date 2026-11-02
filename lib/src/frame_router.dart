@@ -36,6 +36,17 @@ class HostAgentError extends HostFrameAction {
   final String message;
 }
 
+/// The `$events` stream (re)registered a client id.
+///
+/// The gateway re-delivers every still-pending waterfall event immediately
+/// after this frame, so it is the only reliable point to prune interactions we
+/// never hear about again: a resolution that happened while the socket was
+/// down is never replayed.
+class HostStreamReady extends HostFrameAction {
+  const HostStreamReady(this.clientId);
+  final String clientId;
+}
+
 /// A pending approval delivered as a waterfall Remote event ($events).
 class HostApprovalRequested extends HostFrameAction {
   const HostApprovalRequested({
@@ -109,6 +120,8 @@ HostFrameAction? routeHostFrame(Map<String, dynamic> payload) {
       );
     case 'interaction/cancelled':
       return HostInteractionCancelled(payload['eventId'] as String);
+    case 'host/ready':
+      return HostStreamReady(payload['clientId'] as String? ?? '');
     default:
       return null;
   }

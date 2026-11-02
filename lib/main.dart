@@ -866,6 +866,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _maybeShowInteractions() {
+    // Forget ids that are no longer pending so a re-delivered interaction
+    // (reconnect while it is still waiting) can raise its dialog again; the
+    // state reconcile drops the ones answered from another client.
+    final liveApprovals = {for (final a in state.approvals) a.approvalId};
+    final liveQuestions = {for (final q in state.questions) q.rpcId};
+    _shownApprovals.removeWhere((id) => !liveApprovals.contains(id));
+    _shownQuestions.removeWhere((id) => !liveQuestions.contains(id));
     for (final approval in state.approvals) {
       if (_shownApprovals.add(approval.approvalId)) {
         unawaited(NotificationService.instance.showApproval(approval.toolName));
@@ -899,6 +906,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required bool Function() gone,
     required Widget Function(BuildContext context, VoidCallback close) builder,
   }) async {
+    // The interaction may already be resolved between the frame that queued
+    // this dialog and the post-frame callback that opens it (answered from
+    // another client in the same tick). Opening it would leave a modal nobody
+    // can dismiss.
+    if (gone()) return;
     BuildContext? dialogContext;
     var closed = false;
     void close() {
@@ -923,6 +935,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         // never be answered again.
         builder: (ctx) {
           dialogContext = ctx;
+          // A close() that landed before this builder ran could not pop yet;
+          // re-check once the route is on screen instead of trusting the latch.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!ctx.mounted || !gone()) return;
+            final navigator = Navigator.of(ctx);
+            if (navigator.canPop()) navigator.pop();
+          });
           return PopScope(canPop: false, child: builder(ctx, close));
         },
       );

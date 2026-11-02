@@ -651,6 +651,15 @@ class DshApi {
       if (type == 'ready') {
         final id = value['clientId'] as String?;
         if (id != null) _clientId = id;
+        // A fresh registration re-delivers every still-pending waterfall event
+        // right after this frame, so downstream can drop stale interactions
+        // that never come back (answered from another client while we were
+        // disconnected).
+        yield ServerFrame(
+          rpcId: '',
+          method: 'host/ready',
+          payload: {'type': 'host/ready', 'clientId': id ?? ''},
+        );
         continue;
       }
       if (type == 'emit') {
