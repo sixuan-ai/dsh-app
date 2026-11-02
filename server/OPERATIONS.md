@@ -239,9 +239,17 @@ App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从
 
 **香港现状**：`dsh.ainotex.com` 的 vhost 已移出 `conf.d`，原文件备份在
 `/root/nginx-backup-20261102/dsh-ainotex.conf.removed`；同目录新增
-`dsh-ainotex-tombstone.conf` 统一返回 404。`omen.`/`x26.`/`mac.dsh.` 子域、
-directory(3085)、social(9981) 仍保留在香港，但**不再有新写入流量**——
-社交库从 2026-11-02 起与广州分叉，恢复旧入口前不要再往 HK 写数据。
+`dsh-ainotex-tombstone.conf` 统一返回 404。
+
+2026-11-02 同步清理：`dsh-register.service`（3086）与 `dsh-social.service`（9981）
+在旧入口下线后已无消费者，已停用并删除单元与目录，归档在
+`/root/backup-20261102/dsh-register-social.tgz`；本机侧专门为 HK 服务的
+`dsh-omen-tunnel.service` 也已停用移除（备份在
+`~/.config/systemd/user/backup-20261102/`），HK 的 9982 端口随之消失。
+
+仍留在香港、但目前没有 DSH 流量的：`omen.`/`x26.` vhost（`dsh-computers.conf`）、
+`mac.dsh.ainotex.com`、directory(3085)。社交数据从 2026-11-02 起以广州
+`/opt/dsh-social/social.db` 为准，HK 那份只存在于上面的归档包里。
 
 恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
 `/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。
