@@ -258,9 +258,18 @@ App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从
 `ainotex.com` 旧品牌域名同日退役：主域、`www`、`me`、`study`、`git` 的 vhost
 （上游 `10.100.100.2:80` 早已不可达）全部换成 `dsh-ainotex-tombstone.conf`
 之外的 `ainotex-tombstone.conf` 墓碑，统一 404；`dsh.ainotex.com` 仍由独立墓碑
-处理。**该域名下只保留两个仍在用的服务**：`ota.ainotex.com`（硬件 BOX / Mars
-OTA，`ota-ainotex.conf`）与 `linkr.ainotex.com`（中继，`00-linkr.ainotex.conf`）。
-已退役的 5 个 vhost 备份在 `/root/backup-20261102/nginx/`。
+处理。**该域名下只剩 `ota.ainotex.com`**（硬件 BOX / Mars OTA，`ota-ainotex.conf`）。
+`linkr.ainotex.com` 中继随后确认不再需要，vhost 已删除，其证书一并删除。
+
+两个墓碑改为 `return 404`（80）+ `ssl_reject_handshake on`（443），不再引用任何
+证书，因此 certbot 只为 `ota.ainotex.com` 与 `qxrobot.com`（DNS-01）两个有效证书
+续期；退役域名的 10 份证书/续期配置已用 `certbot delete` 清除。已退役的 vhost
+与证书备份痕迹都在 `/root/backup-20261102/`。
+
+**香港 DNS**：2026-11-02 发现其 VPC DNS（`100.100.2.136/138`）不再应答，导致
+所有按名出站（certbot 续期、访问 GitHub / dsh.sixuanai.com）超时。已新增
+`/etc/systemd/resolved.conf.d/99-public-dns.conf`，改用 `223.5.5.5`/`119.29.29.29`
+优先、VPC DNS 兜底。香港无 IPv6 出口（ACME 走 IPv4 正常）。
 
 恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
 `/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。
