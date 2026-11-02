@@ -151,4 +151,47 @@ void main() {
     );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('edit tool shows the changed lines, not the raw arguments', (
+    tester,
+  ) async {
+    final state = AppState();
+    final item = ChatItem.tool(
+      id: 't-edit',
+      callId: 'c-edit',
+      name: 'edit',
+      arguments:
+          '{"file_path":"/repo/lib/main.dart",'
+          '"old_string":"final a = 1;\\nfinal b = 2;",'
+          '"new_string":"final a = 1;\\nfinal b = 3;"}',
+    )..completed = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(children: [ChatItemView(state: state, item: item)]),
+        ),
+      ),
+    );
+
+    // Collapsed: the file path identifies the edit without expanding.
+    expect(find.text('edit'), findsOneWidget);
+    expect(find.text('/repo/lib/main.dart'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    // Expanded: the diff card replaces the raw argument section.
+    expect(find.text('变更'), findsOneWidget);
+
+    // Only the changed lines are rendered, with diff markers.
+    expect(find.text('− final b = 2;'), findsOneWidget);
+    expect(find.text('+ final b = 3;'), findsOneWidget);
+    // The whole-file lines shared by both sides show up as remove+add.
+    expect(find.text('− final a = 1;'), findsOneWidget);
+    expect(find.text('+ final a = 1;'), findsOneWidget);
+    // The raw argument JSON must not leak into the card.
+    expect(find.textContaining('old_string'), findsNothing);
+    expect(find.text('参数'), findsNothing);
+  });
 }

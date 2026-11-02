@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.1.4';
+const kAppVersion = '2.1.5';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.1.5',
+    date: '2026-11-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '工具卡片里的 edit / write 现在只显示改动的行（和网页一致），不再是一整段参数',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.1.4',
     date: '2026-11-02',

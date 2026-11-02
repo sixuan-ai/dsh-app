@@ -11,6 +11,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:gal/gal.dart';
 
 import 'src/theme.dart';
+import 'src/tool_diff.dart';
 import 'state.dart';
 
 class ChatItemView extends StatelessWidget {
@@ -641,6 +642,7 @@ class _ToolCardState extends State<ToolCard> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    final diff = parseToolDiff(item.name, item.arguments);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -671,14 +673,30 @@ class _ToolCardState extends State<ToolCard> {
                             Icon(_icon, size: 16, color: P.textSecondary),
                             const SizedBox(width: 8),
                             Flexible(
-                              child: Text(
-                                item.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (diff != null)
+                                    Text(
+                                      diff.path,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 11,
+                                        color: P.textTertiary,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -708,7 +726,9 @@ class _ToolCardState extends State<ToolCard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (item.arguments.isNotEmpty)
+                            if (diff != null)
+                              _diffSection(diff)
+                            else if (item.arguments.isNotEmpty)
                               _codeSection(
                                 '参数',
                                 _truncate(summarizeArguments(item.arguments)),
@@ -788,6 +808,88 @@ class _ToolCardState extends State<ToolCard> {
                   ? P.danger.withValues(alpha: 0.9)
                   : P.textSecondary,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact diff for `edit` / `write`: only the changed lines, like the web
+  /// client (see `src/tool_diff.dart`). The raw argument JSON — which repeats
+  /// the whole replaced block — is never the primary view for these tools.
+  Widget _diffSection(ToolDiff diff) {
+    const maxLines = 160;
+    final lines = diff.lines;
+    final shown = lines.length > maxLines
+        ? lines.sublist(0, maxLines)
+        : lines;
+    bool isRemoved(ToolDiffLine line) => line.kind == ToolDiffKind.removed;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              diff.isCreate ? '新建文件' : '变更',
+              style: TextStyle(
+                fontSize: 10.5,
+                letterSpacing: 1,
+                color: P.textTertiary,
+              ),
+            ),
+            const Spacer(),
+            if (!diff.isCreate)
+              Text(
+                '+${diff.addedLines.length}  −${diff.removedLines.length}',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: P.textTertiary,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: P.code,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: P.fillLight),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final line in shown)
+                Container(
+                  color: isRemoved(line)
+                      ? P.danger.withValues(alpha: 0.10)
+                      : P.success.withValues(alpha: 0.10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 1,
+                  ),
+                  child: SelectableText(
+                    '${isRemoved(line) ? '−' : '+'} ${line.text}',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: isRemoved(line)
+                          ? P.danger.withValues(alpha: 0.95)
+                          : P.success,
+                    ),
+                  ),
+                ),
+              if (lines.length > maxLines)
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '… 还有 ${lines.length - maxLines} 行（已截断）',
+                    style: TextStyle(fontSize: 11, color: P.textTertiary),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
