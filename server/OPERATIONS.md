@@ -212,3 +212,36 @@ ssh root@47.239.235.154 'sqlite3 /opt/dsh-social/social.db ".tables"'
 - App 已接 directory 登录(v1.9.0):登录页用户名 → `/directory/login` 路由到对应实例,实例 URL 存 `serverUrl` 偏好,启动直连;`/social/`、OTA 清单、头像固定主域。**注意**:mac 用户在 `/social/` 会 401(htpasswd 只有 x),社交多用户化未做
 - 新增实例 = users.json 加用户 + 新 vhost + 证书 + frp 隧道;Mac 侧 dsh web 未运行时其 auth 代理会回 "upstream error"(正常,唤醒 Mac 即可)
 - iOS 端:MacBook Air 可构建,TestFlight 先行;OTA 代码路径已按平台门控到 Android
+
+## 8. 2026-11-02 迁往广州节点（当前默认入口）
+
+App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从香港迁到广州，
+`dsh.ainotex.com` 旧入口下线。
+
+```
+手机 App
+  │ HTTPS
+  ▼
+广州腾讯云 nginx (123.207.241.42, dsh.sixuanai.com)
+  ├── /directory/        → 127.0.0.1:3085  账号目录（users.json + backends.json）
+  ├── /_dsh_auth         → 目录内部校验，返回该设备的内部凭据
+  ├── /                 → Tailscale → x-OMEN 100.89.0.1:3081 认证代理 → dsh web 18395
+  ├── /social/          → 127.0.0.1:9981   社区/好友/私聊（数据自 HK 迁入）
+  ├── /releases/        → /var/www/dsh-releases        账号校验的 OTA 通道
+  ├── /releases-public/ → /var/www/dsh-releases-public 免认证下载副本（官网用）
+  └── /app/content/     → /var/www/dsh-content         AI 日报/知识学习 JSON（公开）
+```
+
+组件位置（广州）：`dsh-directory.service`（`/opt/dsh-directory`）、
+`dsh-social.service`（`/opt/dsh-social`，库文件 `social.db` 由 HK
+`sqlite3.backup()` 在线热备迁来，社交 token 原样保留）、nginx 站点文件
+`/etc/nginx/sites-available/dsh-sixuanai`、证书 `dsh.sixuanai.com`。
+
+**香港现状**：`dsh.ainotex.com` 的 vhost 已移出 `conf.d`，原文件备份在
+`/root/nginx-backup-20261102/dsh-ainotex.conf.removed`；同目录新增
+`dsh-ainotex-tombstone.conf` 统一返回 404。`omen.`/`x26.`/`mac.dsh.` 子域、
+directory(3085)、social(9981) 仍保留在香港，但**不再有新写入流量**——
+社交库从 2026-11-02 起与广州分叉，恢复旧入口前不要再往 HK 写数据。
+
+恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
+`/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。

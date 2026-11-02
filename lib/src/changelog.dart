@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.1.3';
+const kAppVersion = '2.1.4';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.1.4',
+    date: '2026-11-02',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        'AI 日报与 AI 知识学习的内容源随服务迁移到广州节点，旧域名下线后仍能正常加载',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.1.3',
     date: '2026-11-02',

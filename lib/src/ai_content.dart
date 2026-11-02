@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const kAiNewsUrl = 'https://dsh.ainotex.com/app/content/ai/news.json';
-const kAiAgentsUrl = 'https://dsh.ainotex.com/app/content/ai/agents.json';
+// Served by the Guangzhou gateway from /var/www/dsh-content (public, no auth);
+// mirrors the paths the retired dsh.ainotex.com used to host.
+const kAiNewsUrl = 'https://dsh.sixuanai.com/app/content/ai/news.json';
+const kAiAgentsUrl = 'https://dsh.sixuanai.com/app/content/ai/agents.json';
 
 class AiNewsItem {
   const AiNewsItem({
