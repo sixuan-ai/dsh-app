@@ -4,6 +4,9 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:http/io_client.dart';
+import 'connector_transport.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
@@ -73,11 +76,11 @@ class AccountComputer {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'subdomain': subdomain,
-        'default': isDefault,
-      };
+    'id': id,
+    'name': name,
+    'subdomain': subdomain,
+    'default': isDefault,
+  };
 }
 
 /// Outcome of `/directory/login`: the default machine plus every machine the
@@ -125,12 +128,14 @@ Future<DirectoryLoginResult> directoryLogin(
             .toList();
         // Old servers only send `server`; fold that into a single machine.
         if (computers.isEmpty) {
-          computers.add(AccountComputer(
-            id: 'default',
-            name: '',
-            subdomain: server,
-            isDefault: true,
-          ));
+          computers.add(
+            AccountComputer(
+              id: 'default',
+              name: '',
+              subdomain: server,
+              isDefault: true,
+            ),
+          );
         }
         return DirectoryLoginResult(
           username: (body['username'] as String?) ?? username,
@@ -226,6 +231,7 @@ Map<String, String> get _registerHeaders => {
   'content-type': 'application/json',
   'x-dsh-app': kRegisterAppToken,
 };
+
 class RegistrationConfig {
   RegistrationConfig({
     required this.domains,
@@ -305,7 +311,7 @@ Future<void> requestRegistrationCode(String base, String email) async {
 /// Returns the login name to use and whether an instance already answers for
 /// it; an unprovisioned account can sign in but has nowhere to connect yet.
 Future<({String username, bool provisioned, String message})>
-    verifyRegistrationCode(
+verifyRegistrationCode(
   String base, {
   required String email,
   required String code,
@@ -317,11 +323,7 @@ Future<({String username, bool provisioned, String message})>
     final response = await client.post(
       Uri.parse('$root/directory/register/verify'),
       headers: _registerHeaders,
-      body: jsonEncode({
-        'email': email,
-        'code': code,
-        'password': password,
-      }),
+      body: jsonEncode({'email': email, 'code': code, 'password': password}),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode == 200 && body['ok'] == true) {
@@ -345,19 +347,34 @@ Future<({String username, bool provisioned, String message})>
 }
 
 class DshApi {
-  DshApi(String baseUrl, {String? username, String? password})
-    : base = Uri.parse(
-        baseUrl.endsWith('/')
-            ? baseUrl.substring(0, baseUrl.length - 1)
-            : baseUrl,
-      ),
-      _basicAuth = (username != null && username.isNotEmpty)
-          ? 'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}'
-          : null;
+  DshApi(
+    String baseUrl, {
+    String? username,
+    String? password,
+    String? certificateFingerprint,
+  }) : base = Uri.parse(
+         baseUrl.endsWith('/')
+             ? baseUrl.substring(0, baseUrl.length - 1)
+             : baseUrl,
+       ),
+       _basicAuth = (username != null && username.isNotEmpty)
+           ? 'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}'
+           : null {
+    _io = connectorHttpClient(base, certificateFingerprint);
+    _http = IOClient(_io);
+  }
 
   final Uri base;
   final String? _basicAuth;
-  final http.Client _http = http.Client();
+  late final HttpClient _io;
+  late final http.Client _http;
+
+  Uri endpoint(String path, {bool websocket = false}) {
+    final root = websocket ? _wsBase : base;
+    final prefix = root.path.replaceFirst(RegExp(r'/+$'), '');
+    return root.replace(path: '$prefix$path', query: null, fragment: null);
+  }
+
   final Map<String, int> _followCursors = {};
   Map<String, dynamic>? _host;
   String? _clientId;
@@ -404,8 +421,7 @@ class DshApi {
     if (token.isEmpty) return false;
     final uri = base.replace(path: '/', query: 'token=$token');
     try {
-      final request =
-          http.Request('GET', uri)..followRedirects = false;
+      final request = http.Request('GET', uri)..followRedirects = false;
       final headers = <String, String>{};
       final auth = _basicAuth;
       if (auth != null) headers['authorization'] = auth;
@@ -490,7 +506,9 @@ class DshApi {
           await call('session/modelCatalog', {}, rpcId: rpcId)
               as Map<String, dynamic>;
       return {
-        'current': <String, dynamic>{},
+        'current': catalog['default'] ?? <String, dynamic>{},
+        'default': catalog['default'],
+        'routableProviders': catalog['routableProviders'] ?? const [],
         'routable':
             catalog['routableProviders'] is List &&
             (catalog['routableProviders'] as List).isNotEmpty,
@@ -506,14 +524,19 @@ class DshApi {
         : <String, dynamic>{'request': args};
     final id = rpcId ?? mintRpcId();
     final response = await _http.post(
-      base.resolve('/api/$endpoint'),
+      this.endpoint('/api/$endpoint'),
       headers: _jsonHeaders,
       body: jsonEncode({
         'type': 'client-request',
         'rpcId': id,
         'method': endpoint,
         'payload': {
-          'args': endpoint == 'session/modelCatalog' ? args : wireArgs,
+          'args':
+              endpoint == 'session/modelCatalog' ||
+                  endpoint == 'commands/list' ||
+                  endpoint == 'commands/execute'
+              ? args
+              : wireArgs,
         },
       }),
     );
@@ -538,7 +561,7 @@ class DshApi {
 
   Future<bool> respond(String rpcId, dynamic value) async {
     final response = await _http.post(
-      base.resolve('/api/respond'),
+      endpoint('/api/respond'),
       headers: _jsonHeaders,
       body: jsonEncode({
         'type': 'client-response',
@@ -557,9 +580,10 @@ class DshApi {
     Map<String, dynamic> payload,
   ) async* {
     final channel = IOWebSocketChannel.connect(
-      _wsBase.resolve('/api/remote.mux'),
+      this.endpoint('/api/remote.mux', websocket: true),
       pingInterval: const Duration(seconds: 20),
       headers: _wsHeaders,
+      customClient: _io,
     );
     try {
       // `connect()` starts asynchronously.  Awaiting `ready` moves a failed
@@ -726,7 +750,7 @@ class DshApi {
   }) async {
     if (eventId.isEmpty) return false;
     final response = await _http.post(
-      base.resolve('/api/\$events/result'),
+      endpoint('/api/\$events/result'),
       headers: _jsonHeaders,
       body: jsonEncode({
         'type': 'client-request',

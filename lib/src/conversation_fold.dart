@@ -133,7 +133,16 @@ ConversationFoldResult foldCoreConversationEvent({
       if (content.isEmpty) return ConversationFoldResult.handled;
       final block = (content.first as Map).cast<String, dynamic>();
       final callId = block['toolCallId'] as String? ?? '';
-      final item = toolItems[callId];
+      // Each history page is folded independently. A result without its call
+      // must survive as a settled row so it can reconcile with another page.
+      ChatItem? item;
+      for (final candidate in target) {
+        if (candidate.kind == ChatItemKind.tool && candidate.callId == callId) {
+          item = candidate;
+          break;
+        }
+      }
+      item ??= live ? toolItems[callId] : null;
       final parsed = parseToolResult(
         block['content'],
         eventError: block['isError'] == true || data['error'] != null,
@@ -145,7 +154,7 @@ ConversationFoldResult foldCoreConversationEvent({
           ..images = images
           ..resultIsError = parsed.isError
           ..completed = true;
-      } else if (live) {
+      } else {
         target.add(
           ChatItem.tool(
               id: 'tr-$seq',

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'src/theme.dart';
+import 'access_policy.dart';
 
 class ConnectionGuideSheet extends StatefulWidget {
   const ConnectionGuideSheet({super.key, this.initialMode = 'public'});
@@ -44,6 +45,11 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                 style: TextStyle(color: P.textSecondary),
               ),
               const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () => showAccessPolicy(context),
+                icon: const Icon(Icons.info_outline_rounded, size: 17),
+                label: const Text('功能与权限'),
+              ),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(
@@ -62,54 +68,40 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                     setState(() => _mode = value.first),
               ),
               const SizedBox(height: 18),
+              const _GuideStep(
+                number: 1,
+                title: '安装电脑连接器（Linux）',
+                detail:
+                    '先安装并启动 DSH，在开源仓库目录运行安装脚本。完成后从电脑应用菜单打开「xHarness 电脑连接器」。已有 DSH 可直接接入。',
+                code: 'bash server/connector/install.sh',
+              ),
+              const _GuideStep(
+                number: 2,
+                title: '配对我的电脑',
+                detail:
+                    '手机与电脑连接同一网络，在电脑生成二维码，手机点「连接我的电脑」拍摄或导入二维码，核对名称后确认。二维码 2 分钟内有效，仅能使用一次。',
+              ),
               if (_mode == 'public') ...[
                 const _GuideStep(
-                  number: 1,
-                  title: '准备一台保持在线的电脑',
-                  detail: '这台电脑就是你的 AI 工作电脑，需要安装并运行 DSH。',
-                  code: 'dsh web --no-open',
-                ),
-                const _GuideStep(
-                  number: 2,
-                  title: '申请远程连接服务',
-                  detail:
-                      '目前需要管理员为你的电脑配置安全域名、HTTPS、登录保护和网络隧道。普通用户不需要自己开放路由器端口。',
-                ),
-                const _GuideStep(
                   number: 3,
-                  title: '使用官网账号登录',
-                  detail: '管理员绑定完成后，你只需要输入账号和密码，App 会自动找到你的电脑。',
-                ),
-                const _GuideTip(
-                  text: '安全说明：远程连接必须使用 HTTPS 和身份认证。配对码与设备密钥方案仍在规划中，当前不会声称已经支持。',
-                ),
-              ] else ...[
-                const _GuideStep(
-                  number: 1,
-                  title: '让手机和电脑连接同一可信网络',
-                  detail: '访客网络或开启 AP 隔离的 Wi-Fi 可能无法互相访问。',
-                ),
-                const _GuideStep(
-                  number: 2,
-                  title: '让电脑只在家里可见',
-                  detail: '在可信家庭网络中启动局域网服务，并保持窗口开启。不要把这个端口转发到公网。',
-                  code: 'dsh web --host 0.0.0.0 --port 3080 --no-open',
-                ),
-                const _GuideStep(
-                  number: 3,
-                  title: '查找电脑局域网 IP',
+                  title: '启用公网入口',
                   detail:
-                      'Linux/macOS 可运行 hostname -I 或在网络设置查看，例如 192.168.1.100。',
-                  code: 'hostname -I',
-                ),
-                const _GuideStep(
-                  number: 4,
-                  title: '在 App 填写电脑地址',
-                  detail: '填写 http://电脑IP:3080。当前直连模式的账号保护取决于电脑前是否配置认证代理。',
+                      '在 App 登录账号。电脑端完成 Tailscale 登录，请网关管理员授权访问连接器。在连接器的公网表单填写网关地址和账号，注册后重新配对手机。离开家后可使用该电脑的公网入口。',
                 ),
                 const _GuideTip(
                   text:
-                      '安全说明：只在可信家庭网络使用。离开 Wi-Fi 后不可用；不要在公共网络使用，也不要把 3080 端口开放到互联网。',
+                      '公网网关仍需管理员首次部署与授权；手机不需要安装 Tailscale。当前安装器仅验证 Linux，Windows/macOS 尚未提供安装包。',
+                ),
+              ] else ...[
+                const _GuideStep(
+                  number: 3,
+                  title: '连接后查看同步工作区',
+                  detail:
+                      '电脑保持开机，App 直接访问同一台 DSH 的工作区、任务和对话。访客网络或 AP 隔离可能阻止局域网互访。电脑 IP 改变后请重新配对。',
+                ),
+                const _GuideTip(
+                  text:
+                      '$kLocalAccessLimits 局域网连接使用 HTTPS 和二维码证书校验。丢失手机时，在电脑连接器中撤销该设备。',
                 ),
               ],
               const SizedBox(height: 8),

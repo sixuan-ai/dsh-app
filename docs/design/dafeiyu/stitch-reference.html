@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>xHarness - 大肥鱼的陪伴空间</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-error": "#690005",
+            "on-surface-variant": "#c3c9b1",
+            "error-container": "#93000a",
+            "primary-fixed-dim": "#a4d73e",
+            "outline-variant": "#434937",
+            "on-tertiary-fixed-variant": "#394b3d",
+            "on-primary-container": "#4e6e00",
+            "error": "#ffb4ab",
+            "surface-tint": "#a4d73e",
+            "secondary-fixed": "#cfee8b",
+            "surface-container-low": "#171d19",
+            "on-background": "#dee4dd",
+            "surface-container-lowest": "#0a100c",
+            "tertiary-container": "#d3e8d5",
+            "primary-fixed": "#bff458",
+            "on-primary": "#243600",
+            "surface-variant": "#303632",
+            "surface-bright": "#343b36",
+            "on-surface": "#dee4dd",
+            "inverse-on-surface": "#2c322d",
+            "surface-container": "#1b211d",
+            "background": "#0f1511",
+            "on-tertiary-fixed": "#0f1f13",
+            "secondary": "#b3d272",
+            "on-secondary-fixed": "#141f00",
+            "secondary-fixed-dim": "#b3d272",
+            "primary-container": "#bff458",
+            "inverse-primary": "#496800",
+            "tertiary-fixed": "#d3e8d5",
+            "on-primary-fixed": "#141f00",
+            "outline": "#8d937d",
+            "tertiary": "#ffffff",
+            "secondary-container": "#405801",
+            "on-tertiary-container": "#57695a",
+            "tertiary-fixed-dim": "#b8ccb9",
+            "on-tertiary": "#233427",
+            "on-secondary-fixed-variant": "#384e00",
+            "on-primary-fixed-variant": "#364e00",
+            "on-error-container": "#ffdad6",
+            "surface-container-highest": "#303632",
+            "primary": "#ffffff",
+            "on-secondary-container": "#afce6f",
+            "on-secondary": "#253500",
+            "surface-dim": "#0f1511",
+            "surface-container-high": "#252b27",
+            "surface": "#0f1511",
+            "inverse-surface": "#dee4dd"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter": "1rem",
+            "space-lg": "1.25rem",
+            "space-xl": "1.75rem",
+            "space-sm": "0.5rem",
+            "space-md": "0.75rem",
+            "space-xs": "0.25rem",
+            "margin": "1rem"
+          },
+          "fontFamily": {
+            "headline-sm": ["Inter"],
+            "label-lg": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "title-lg": ["Inter"],
+            "body-lg": ["Inter"],
+            "label-md": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "label-sm": ["JetBrains Mono"],
+            "headline-md": ["Inter"],
+            "body-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-lg": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-sm": ["11px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "title-lg": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "label-md": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "500" }],
+            "headline-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "label-sm": ["9px", { "lineHeight": "12px", "letterSpacing": "0.06em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+
+    /* Tactile Liquid Glass styling */
+    .glass-chassis {
+      background: linear-gradient(145deg, rgba(27, 33, 29, 0.88), rgba(21, 28, 23, 0.94));
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 24px -4px rgba(6, 9, 7, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .tactile-recessed {
+      background: #121914;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8), inset 0 -1px 1px rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(67, 73, 55, 0.3);
+    }
+
+    .btn-hero-tactile {
+      background: #bff458;
+      box-shadow: 0 6px 20px rgba(191, 244, 88, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .btn-hero-tactile:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 8px rgba(191, 244, 88, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Ambient float keyframes */
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+    .animate-gentle-float {
+      animation: gentleFloat 4.2s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.35; transform: scale(1); }
+      50% { opacity: 0.65; transform: scale(1.04); }
+    }
+    .animate-glow-ring {
+      animation: pulseGlow 6s ease-in-out infinite;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased font-body-md min-h-screen flex justify-center selection:bg-primary-container selection:text-on-primary-container">
+<!-- Mobile Viewport Shell (390px x 844px targeted wrapper) -->
+<main class="w-full max-w-[412px] min-h-screen bg-background relative flex flex-col pb-10 shadow-2xl overflow-x-hidden">
+<!-- TOP APP BAR (Shared Components JSON Anchor with Task-Focused Back affordance) -->
+<header class="sticky top-0 left-0 w-full z-50 flex items-center justify-between px-margin h-14 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex items-center gap-space-sm">
+<button class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-95 transition-transform duration-100 ease-out">
+<span class="material-symbols-outlined text-title-lg" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center gap-1.5">
+<span class="text-title-lg font-title-lg tracking-tight font-bold text-on-surface">大肥鱼</span>
+<button aria-label="编辑昵称" class="p-1 text-on-surface-variant hover:text-primary-fixed active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit_note">edit_note</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<span class="px-2 py-0.5 rounded-full text-label-sm font-label-sm bg-surface-container-high text-primary-fixed border border-outline-variant/40">
+          xHarness
+        </span>
+<button aria-label="帮助" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-95 transition-transform duration-100 ease-out">
+<span class="material-symbols-outlined text-title-lg" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- CONTENT CANVAS -->
+<div class="px-margin pt-space-sm flex flex-col gap-space-md">
+<!-- Eyebrow & Companion Growth Metadata Header -->
+<section class="flex items-end justify-between px-1">
+<div>
+<span class="text-label-md font-label-md text-primary-fixed tracking-wider uppercase block">我的陪伴搭子</span>
+<h1 class="text-headline-md font-headline-md tracking-tight text-on-surface mt-0.5">今天也要好好吃饭</h1>
+</div>
+<div class="flex items-center gap-1.5 pb-1">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container border border-outline-variant/30 text-label-sm font-label-sm text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></span>
+            相伴 42 天
+          </span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high border border-primary-fixed/20 text-label-sm font-label-sm text-primary-fixed font-semibold">
+            Lv.9
+          </span>
+</div>
+</section>
+<!-- HABITAT & CHARACTER STAGE -->
+<section class="relative w-full h-[248px] rounded-3xl overflow-hidden glass-chassis flex flex-col items-center justify-between p-3.5"><div class="absolute inset-0 bg-radial from-[#1e2e21]/40 via-[#131d16]/30 to-[#0f1511] pointer-events-none"></div><div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full bg-primary-fixed/10 blur-3xl animate-glow-ring pointer-events-none"></div><div class="absolute bottom-3 w-44 h-10 rounded-[100%] border border-primary-fixed/20 bg-gradient-to-b from-primary-fixed/5 to-transparent shadow-[0_0_24px_rgba(191,244,88,0.12)] pointer-events-none"></div><div class="w-full flex items-start justify-between z-10"><div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#121914]/90 backdrop-blur-md border border-outline-variant/50 shadow-sm"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-fixed opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary-fixed"></span></span><span class="text-label-sm font-label-sm text-on-surface-variant">正在思考</span></div><div class="relative bg-surface-container-high/90 backdrop-blur-md border border-primary-fixed/30 rounded-2xl px-3 py-1 shadow-md"><p class="text-body-sm font-body-sm text-on-surface font-medium flex items-center gap-1"><span>最喜欢白米饭啦！</span><span class="text-label-md">🍚</span></p><div class="absolute -bottom-1.5 right-4 w-2.5 h-2.5 bg-surface-container-high/90 border-r border-b border-primary-fixed/30 rotate-45"></div></div></div><div class="relative z-10 flex-1 w-full flex items-center justify-center animate-gentle-float"><div class="relative w-36 h-36 flex items-center justify-center"><div class="absolute top-0 right-5 w-6 h-6 rounded-full bg-primary-fixed/20 blur-sm"></div><div class="w-32 h-36 relative flex flex-col items-center justify-center"><div class="absolute top-1.5 right-3.5 z-20 flex items-center justify-center"><svg class="w-5 h-5 text-primary-fixed drop-shadow-[0_0_8px_rgba(191,244,88,0.6)]" fill="currentColor" viewbox="0 0 24 24"><path d="M12 4C9 4 5 7 5 11c0 3 2.5 5.5 5.5 6.5L9 20h6l-1.5-2.5C16.5 16.5 19 14 19 11c0-4-4-7-7-7zm-4.5 9c-.8 0-1.5-.7-1.5-1.5S6.7 10 7.5 10s1.5.7 1.5 1.5S8.3 13 7.5 13zm9 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z"></path></svg></div><div class="w-28 h-32 rounded-full bg-gradient-to-b from-[#213527]/70 via-[#18261d]/80 to-[#121914]/90 border border-primary-fixed/25 p-2 flex flex-col items-center justify-center shadow-inner relative overflow-hidden backdrop-blur-sm"><div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"></div><svg class="w-20 h-20 text-on-surface-variant/80 drop-shadow-md" fill="currentColor" viewbox="0 0 80 80"><path d="M40 10C24 10 18 24 18 36c0 14 6 24 10 28 3-5 5-9 6-12 2 1 4 1 6 1s4 0 6-1c1 3 3 7 6 12 4-4 10-14 10-28 0-12-6-26-22-26z" opacity="0.9"></path><path d="M26 20c4-4 24-4 28 0 2 2-2 3-5 2-8-2-10-2-18 0-3 1-7 0-5-2z" fill="#bff458" opacity="0.85"></path><path d="M30 32c0 8 4 13 10 13s10-5 10-13c0-3-4-5-10-5s-10 2-10 5z" fill="#dee4dd" opacity="0.95"></path><circle cx="33" cy="38" fill="#bff458" opacity="0.5" r="2.5"></circle><circle cx="47" cy="38" fill="#bff458" opacity="0.5" r="2.5"></circle><ellipse cx="34" cy="34" fill="#141f00" rx="1.8" ry="2.8"></ellipse><ellipse cx="46" cy="34" fill="#141f00" rx="1.8" ry="2.8"></ellipse></svg><span class="text-label-sm font-label-sm text-primary-fixed tracking-wide opacity-90">大肥鱼 · 伴侣态</span></div></div></div></div><div class="z-10 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/5"><span class="material-symbols-outlined text-[13px] text-primary-fixed" data-icon="touch_app">touch_app</span><span class="text-label-sm font-label-sm text-on-surface-variant">轻点摸头 · 长按提起</span></div></section>
+<!-- HIGH PRIORITY RICE METRIC CARD ('大肥鱼的饭碗') -->
+<section class="glass-chassis rounded-3xl p-4 flex flex-col gap-2.5 relative overflow-hidden"><div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-2xl p-1 bg-surface-container rounded-xl border border-outline-variant/30 flex items-center justify-center shadow-inner">🍚</span><div><h2 class="text-title-lg font-title-lg text-on-surface font-semibold">大肥鱼的饭碗</h2><span class="text-body-sm font-body-sm text-on-surface-variant">工作流上下文转换进度</span></div></div><div class="px-2.5 py-1 rounded-xl bg-surface-container-high border border-primary-fixed/20 flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-primary-fixed" data-icon="terminal">terminal</span><span class="text-label-sm font-label-sm text-primary-fixed">1M 上下文 = 1碗白米饭</span></div></div><div class="tactile-recessed rounded-2xl p-3 flex flex-col gap-2"><div class="flex items-baseline justify-between"><div class="flex items-baseline gap-2"><span class="text-headline-sm font-headline-sm font-bold text-on-surface">已吃过 8 碗</span><span class="text-label-sm font-label-sm text-primary-fixed/90 bg-primary-fixed/10 px-2 py-0.5 rounded-full border border-primary-fixed/20">自动吃饭，慢慢长大</span></div><div class="flex items-baseline gap-1 text-label-md font-label-md"><span class="text-primary-fixed font-bold">36%</span><span class="text-on-surface-variant text-label-sm">NEXT</span></div></div><div class="space-y-1"><div class="w-full h-2 rounded-full bg-surface-container-lowest overflow-hidden border border-white/5 relative"><div class="h-full rounded-full bg-gradient-to-r from-[#94c935] to-[#bff458] shadow-[0_0_8px_rgba(191,244,88,0.5)] transition-all duration-300" style="width: 36%;"></div></div><div class="flex justify-between items-center text-label-sm font-label-sm text-on-surface-variant pt-0.5"><span>已消化 0.36M Token</span><span class="text-outline">目标 1.00M Token</span></div></div></div><div class="flex items-center gap-2 pt-0.5"><button class="btn-hero-tactile flex-1 py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-on-primary-fixed font-bold text-title-lg transition-transform duration-150 active:scale-95"><span class="text-lg">🍚</span><span>喂白米饭</span></button><button class="h-11 px-3.5 rounded-2xl bg-surface-container border border-outline-variant/30 hover:border-primary-fixed/40 active:scale-95 transition-all flex items-center gap-1.5 text-on-surface"><span class="material-symbols-outlined text-[18px] text-primary-fixed" data-icon="sports_esports">sports_esports</span><span class="text-body-md font-body-md font-medium">玩耍</span></button><button class="h-11 px-3.5 rounded-2xl bg-surface-container border border-outline-variant/30 hover:border-primary-fixed/40 active:scale-95 transition-all flex items-center gap-1.5 text-on-surface"><span class="material-symbols-outlined text-[18px] text-secondary-fixed" data-icon="shower">shower</span><span class="text-body-md font-body-md font-medium">洗澡</span></button></div><div class="text-center"><span class="text-label-sm font-label-sm text-outline">手动喂饭是关怀互动，不扣除上下文</span></div></section>
+<!-- COMPACT TRIPLE STATUS METERS (Integrated strip) -->
+<section class="tactile-recessed rounded-2xl p-3 flex items-center justify-between divide-x divide-outline-variant/30">
+<!-- Metric 1: 饱腹 (85%) -->
+<div class="flex-1 px-2 first:pl-0 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary-fixed" data-icon="restaurant">restaurant</span>
+<span class="text-label-md font-label-md text-on-surface">饱腹</span>
+</div>
+<span class="text-label-md font-label-md font-semibold text-primary-fixed">85%</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-primary-fixed rounded-full" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Metric 2: 心情 (92%) -->
+<div class="flex-1 px-2.5 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary-fixed" data-icon="mood">mood</span>
+<span class="text-label-md font-label-md text-on-surface">心情</span>
+</div>
+<span class="text-label-md font-label-md font-semibold text-secondary-fixed">92%</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-secondary-fixed rounded-full" style="width: 92%;"></div>
+</div>
+</div>
+<!-- Metric 3: 清洁 (78%) -->
+<div class="flex-1 px-2 last:pr-0 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-[#7ee787]" data-icon="clean_hands">clean_hands</span>
+<span class="text-label-md font-label-md text-on-surface">清洁</span>
+</div>
+<span class="text-label-md font-label-md font-semibold text-[#7ee787]">78%</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-[#7ee787] rounded-full" style="width: 78%;"></div>
+</div>
+</div>
+</section>
+<!-- LOW-EMPHASIS LOWER SECTION (Discreet Tiles & Navigation Affordances) -->
+<section class="flex flex-col gap-2 pt-1"><button class="w-full p-3 rounded-2xl bg-surface-container/70 border border-outline-variant/20 hover:border-outline-variant/50 active:scale-[0.99] transition-all flex items-center justify-between text-left"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-fixed"><span class="material-symbols-outlined text-title-lg" data-icon="swords">swords</span></div><div><span class="text-body-md font-body-md text-on-surface font-medium block">训练与互动体验</span><span class="text-label-sm font-label-sm text-outline">模型拟合度记录 · 习惯培养</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-title-lg" data-icon="chevron_right">chevron_right</span></button><button class="w-full p-3 rounded-2xl bg-surface-container/70 border border-outline-variant/20 hover:border-outline-variant/50 active:scale-[0.99] transition-all flex items-center justify-between text-left"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-title-lg" data-icon="favorite">favorite</span></div><div><span class="text-body-md font-body-md text-on-surface font-medium block">关于大肥鱼</span><span class="text-label-sm font-label-sm text-outline">开源形象与动画 致谢</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-title-lg" data-icon="chevron_right">chevron_right</span></button></section>
+</div>
+</main>
+<!-- Interactive Tactile Feedback microscript -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Tactile button click feedback
+      const feedBtn = document.querySelector('.btn-hero-tactile');
+      if (feedBtn) {
+        feedBtn.addEventListener('click', () => {
+          // Micro interaction toggle
+          const speech = document.querySelector('header');
+          feedBtn.classList.add('scale-95');
+          setTimeout(() => {
+            feedBtn.classList.remove('scale-95');
+          }, 150);
+        });
+      }
+    });
+  </script>
+</body></html>

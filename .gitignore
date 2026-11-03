@@ -63,3 +63,9 @@ __pycache__/
 android/key.properties
 android/app/*.jks
 android/app/*.keystore
+
+# Local Stitch MCP responses and request metadata
+.stitch/
+
+# Machine-specific release account and CDN settings
+server/release-cdn.json

@@ -25,10 +25,222 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.1.5';
+const kAppVersion = '2.6.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.6.2',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '明确未登录可完整使用局域网、多电脑、任务与模型选择，App 不按登录状态限制使用次数或电脑数量',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '新增“功能与权限”说明，登录后增加公网连接，操作权限继续由电脑端授权',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '未登录切换旧账号公网电脑时先引导登录，避免提前访问公网目录；取消过期账号选择响应',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.6.1',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        'App 登录改为邮箱和密码直接登录，不再重复发送验证码，避免注册后立即登录触发发信冷却',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '注册与找回密码保留邮箱验证码；密码登录支持错误重试与保持登录',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '旧 DSH 账号退出时也保留电脑和配对记录，统一返回局域网模式',
+      ),
+      ChangelogChange(ChangelogChangeType.fix, '调整邮箱输入框的微信输入法兼容，避免只显示候选条而无法输入'),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.6.0',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增可跳过登录的欢迎页，不登录即可进入应用，通过局域网配对并控制电脑',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '复用思玄邮箱认证，支持 App 内注册、密码与邮件验证码登录、找回密码',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '登录后可切换局域网与已配置的公网入口；退出账号保留电脑配对，并回到局域网模式',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '更新荧光绿与玻璃质感账号界面，适配明暗主题、小屏和大字体',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.5.3',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '权限快捷入口直接打开权限选择面板，不再只填入 /permission 指令',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复新版 DSH 命令接口参数不兼容导致完全访问切换失败，同时恢复服务器快捷命令目录加载',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '底部与侧边栏共用权限选择流程，标记当前权限，并避免确认期间切换会话后误改其他会话',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.5.2',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '修复脚本完成后工具卡片仍显示运行中：保留跨页完成结果，并补齐订阅建立期间遗漏的进度',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '恢复当前模型与推理强度显示，实时同步电脑端选择，避免切换会话或电脑后旧请求覆盖新模型',
+      ),
+      ChangelogChange(ChangelogChangeType.fix, '修复子代理状态弹窗与顶部状态未随任务完成及时刷新'),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.5.1',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '大肥鱼动画资源减小约8.5MB：共享重复动作，采用逐帧画质验证后的高质量压缩',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '保留16个动作、原分辨率与完整播放时长，动画继续随包提供，离线可用',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.5.0',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        'Stitch 设计的大肥鱼饭堂：青柠玻璃、新拟态层次，适配深浅主题与大字体',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '1M 上下文是一碗白米饭：累计自动吃饭、成长，展示下一碗进度；手动喂饭作为陪伴互动',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '饭碗仅统计已记录上下文，训练奖励保留原有等级；旧养成、昵称和动画继续保留',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '自动吃饭保存去重进度，修复多会话并发统计丢失及减少动态效果时互动状态不结束的问题',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.4.0',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '宠物统一为大肥鱼：接入开源仓库默认鲸尾女仆形象与全部 16 段原始动画',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '支持摸头、挥手、长按提起、吃 Token 和吐泡泡，任务状态联动思考、工作与等待',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '旧宠物自动迁移并保留昵称、养成和 Token 历史；成长改为默契称号，始终使用同一形象',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '动画按需解码、后台暂停，兼容减少动态效果设置',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.3.0',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '全新连接中心：液态玻璃与新拟态层次，荧光绿重点色，适配深浅主题',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '当前电脑单独展示，其他电脑集中切换，添加入口常驻底部',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '连接状态与离线状态明确区分，未配置公网时禁用对应入口，保留地址与发现功能',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.2.2',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '多电脑快速切换或退出时，取消尚未完成的旧选择，防止迟到响应恢复旧电脑',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '保留 2.2.1 的多电脑列表与旧版 x-26 配对迁移，原 OMEN 账号入口继续可用',
+      ),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.2.1',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '支持保存多台配对电脑，在连接中心切换各自的工作区与会话',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.fix,
+        '配对新电脑后继续显示原账号电脑，升级保留现有 x-26 配对',
+      ),
+      ChangelogChange(ChangelogChangeType.fix, '切换电脑分别使用对应凭据，忘记一台电脑不会移除其他电脑'),
+    ],
+  ),
+  ChangelogRelease(
+    version: '2.2.0',
+    date: '2026-11-03',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新增电脑配对：导入一次性二维码，使用独立设备凭据连接自己的 DSH',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '已配对电脑局域网优先，支持已注册公网入口回退，保留同一任务视图',
+      ),
+      ChangelogChange(ChangelogChangeType.fix, '配对密钥存入系统安全存储，设备凭据不用于官网账号服务'),
+    ],
+  ),
   ChangelogRelease(
     version: '2.1.5',
     date: '2026-11-02',
@@ -81,14 +293,8 @@ const kChangelog = [
         ChangelogChangeType.improvement,
         '默认服务器换到广州节点 dsh.sixuanai.com，连接延迟更低',
       ),
-      ChangelogChange(
-        ChangelogChangeType.improvement,
-        '聊天缓存按电脑隔离，换电脑后不会串会话',
-      ),
-      ChangelogChange(
-        ChangelogChangeType.fix,
-        '退出登录后立即回到账号登录页，并清除上个账号的电脑列表',
-      ),
+      ChangelogChange(ChangelogChangeType.improvement, '聊天缓存按电脑隔离，换电脑后不会串会话'),
+      ChangelogChange(ChangelogChangeType.fix, '退出登录后立即回到账号登录页，并清除上个账号的电脑列表'),
     ],
   ),
   ChangelogRelease(

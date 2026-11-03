@@ -19,6 +19,9 @@ import 'src/frame_router.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
 import 'src/protocol.dart';
+import 'src/connector_pairing.dart';
+import 'src/sixuan_account.dart';
+import 'src/connection_access.dart';
 import 'src/queue.dart';
 import 'src/session_connection_controller.dart';
 import 'src/session_event_parser.dart';
@@ -203,25 +206,323 @@ enum ServerConnectionStatus {
 typedef QueueMutationCall =
     Future<dynamic> Function(String method, Map<String, dynamic> payload);
 
+typedef DirectoryComputerResolver =
+    Future<AccountComputer> Function(
+      String base, {
+      required String username,
+      required String password,
+      String? computerId,
+    });
+
 class AppState extends ChangeNotifier {
-  AppState({@visibleForTesting this._queueMutationCall});
+  AppState({
+    @visibleForTesting this._queueMutationCall,
+    @visibleForTesting DirectoryComputerResolver? directoryResolver,
+    SixuanAccountApi? identityApi,
+    SixuanAccountStore? identityStore,
+  }) : _directoryResolver = directoryResolver ?? directoryResolve,
+       identityApi = identityApi ?? SixuanAccountApi(),
+       identityStore = identityStore ?? SixuanAccountStore();
+  final DirectoryComputerResolver _directoryResolver;
+
+  final SixuanAccountApi identityApi;
+  final SixuanAccountStore identityStore;
+  SixuanSession? signedInAccount;
+  bool guestAccess = false;
+  bool verifyingAccount = false;
+  bool _identityVerified = false;
+  int _identityGeneration = 0;
+  String? identityNotice;
+  bool get hasEntryAccess => guestAccess || signedInAccount != null;
+  // Existing device/DSH credentials retain their old routes unless the user
+  // explicitly chooses local-only entry. New account sessions are verified.
+  bool get canUsePublicConnection =>
+      !guestAccess && (signedInAccount == null || _identityVerified);
+
+  Future<void> restoreAppEntry() async {
+    final prefs = await SharedPreferences.getInstance();
+    guestAccess = prefs.getString('appEntryMode') == 'guest';
+    signedInAccount = await identityStore.load();
+    if (signedInAccount != null) {
+      guestAccess = false;
+    } else if (prefs.getString('appEntryMode') == 'account') {
+      guestAccess = true;
+    }
+    notifyListeners();
+  }
+
+  Future<void> acceptAccountSession(SixuanSession session) async {
+    final generation = ++_identityGeneration;
+    verifyingAccount = false;
+    await identityStore.save(session);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appEntryMode', 'account');
+    if (generation != _identityGeneration) return;
+    signedInAccount = session;
+    guestAccess = false;
+    _identityVerified = true;
+    identityNotice = null;
+    notifyListeners();
+  }
+
+  Future<void> enterGuestMode() async {
+    final generation = ++_identityGeneration;
+    verifyingAccount = false;
+    await identityStore.clear();
+    if (generation != _identityGeneration) return;
+    signedInAccount = null;
+    _identityVerified = false;
+    guestAccess = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appEntryMode', 'guest');
+    if (generation != _identityGeneration) return;
+    _pairedRouteGeneration++;
+    _pairedRouteRecovery = false;
+    _pairedRouteComputer = null;
+    if (serverUrl.isNotEmpty && !isLanConnectionUrl(serverUrl)) {
+      disconnect(preserveCachedContent: true, keepCredentials: true);
+    }
+    notifyListeners();
+    if (pairedComputer != null && !connected) {
+      unawaited(reconnectPairedComputer());
+    }
+  }
+
+  Future<void> acceptLegacyEntry() async {
+    ++_identityGeneration;
+    await identityStore.clear();
+    signedInAccount = null;
+    guestAccess = false;
+    verifyingAccount = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appEntryMode', 'legacy');
+    notifyListeners();
+  }
+
+  Future<bool> verifyAppAccount() async {
+    final session = signedInAccount;
+    if (session == null || verifyingAccount) return _identityVerified;
+    final generation = _identityGeneration;
+    verifyingAccount = true;
+    notifyListeners();
+    try {
+      await identityApi.validate(session).timeout(const Duration(seconds: 10));
+      if (generation != _identityGeneration ||
+          !identical(session, signedInAccount)) {
+        return false;
+      }
+      _identityVerified = true;
+      identityNotice = null;
+      return true;
+    } on SixuanAccountError catch (error) {
+      if (generation != _identityGeneration) return false;
+      _identityVerified = false;
+      if (error.status == 401) {
+        identityNotice = '账号登录已过期，仍可使用局域网连接';
+        await enterGuestMode();
+      } else {
+        identityNotice = '暂时无法验证账号，仍可使用局域网连接';
+      }
+      return false;
+    } catch (_) {
+      if (generation == _identityGeneration) {
+        _identityVerified = false;
+        identityNotice = '暂时无法验证账号，仍可使用局域网连接';
+      }
+      return false;
+    } finally {
+      if (generation == _identityGeneration) {
+        verifyingAccount = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> signOutAppAccount() async {
+    final previous = signedInAccount;
+    await enterGuestMode();
+    final generation = _identityGeneration;
+    if (previous != null) {
+      try {
+        await identityApi.logout(previous);
+      } catch (_) {
+        if (generation == _identityGeneration) {
+          identityNotice = '已退出当前手机，账号服务暂时不可达';
+          notifyListeners();
+        }
+      }
+    }
+  }
 
   /// Test-only wiring: attach a live API and start the downlink loops without
   /// touching the local store (same effect as [connect] minus persistence).
   @visibleForTesting
-  void attachApiForTest(DshApi api) {
+  void attachApiForTest(DshApi api, {bool startStreams = true}) {
     disconnect();
     _hostCwd = '/home/x';
     _api = api;
     connectionStatus = ServerConnectionStatus.online;
-    _streamsActive = true;
-    _startStreams();
+    _streamsActive = startStreams;
+    if (startStreams) _startStreams();
     notifyListeners();
   }
 
   DshApi? _api;
   final QueueMutationCall? _queueMutationCall;
   String serverUrl = '';
+  void notifyConnectionSettingsChanged() => notifyListeners();
+  PairedComputer? pairedComputer;
+  List<PairedComputer> savedPairedComputers = [];
+  PairedComputer? _pairedRouteComputer;
+  int _pairedRouteGeneration = 0;
+  bool _pairedRouteRecovery = false;
+  int _connectionGeneration = 0;
+  int _computerSelectionEpoch = 0;
+  bool _clearingPairedComputers = false;
+
+  Future<void> activatePairedComputer(PairedComputer computer) async {
+    if (_clearingPairedComputers) return;
+    final selection = ++_computerSelectionEpoch;
+    final prefs = await SharedPreferences.getInstance();
+    if (selection != _computerSelectionEpoch) return;
+    if (pairedComputer == null && !prefs.containsKey('pairedRoutesBackup')) {
+      await prefs.setString(
+        'pairedRoutesBackup',
+        jsonEncode({
+          for (final key in [
+            'serverUrl',
+            'lanServerUrl',
+            'remoteServerUrl',
+            'connectionMode',
+          ])
+            key: prefs.getString(key),
+        }),
+      );
+    }
+    if (selection != _computerSelectionEpoch) return;
+    await ConnectorStore().save(computer);
+    if (selection != _computerSelectionEpoch) return;
+    savedPairedComputers = (await ConnectorStore().loadRegistry()).computers;
+    if (selection != _computerSelectionEpoch) return;
+    pairedComputer = computer;
+    await loadComputers();
+    if (selection != _computerSelectionEpoch) return;
+    await prefs.setString('lanServerUrl', computer.localUrl);
+    if (computer.remoteUrl != null) {
+      await prefs.setString('remoteServerUrl', computer.remoteUrl!);
+    } else {
+      await prefs.remove('remoteServerUrl');
+    }
+    if (selection != _computerSelectionEpoch) return;
+    await reconnectPairedComputer();
+  }
+
+  Future<void> restorePairedComputers() async {
+    final registry = await ConnectorStore().loadRegistry();
+    savedPairedComputers = registry.computers;
+    pairedComputer = registry.active;
+    await loadComputers();
+  }
+
+  Future<void> useAccountConnection() async {
+    ++_computerSelectionEpoch;
+    await ConnectorStore().select(null);
+    pairedComputer = null;
+    _pairedRouteGeneration++;
+    _pairedRouteRecovery = false;
+    _pairedRouteComputer = null;
+    disconnect();
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('pairedRoutesBackup');
+    if (raw != null) {
+      final backup = jsonDecode(raw) as Map<String, dynamic>;
+      for (final entry in backup.entries) {
+        if (entry.value is String) {
+          await prefs.setString(entry.key, entry.value as String);
+        } else {
+          await prefs.remove(entry.key);
+        }
+      }
+      await prefs.remove('pairedRoutesBackup');
+    }
+    await loadComputers();
+    notifyListeners();
+  }
+
+  Future<void> forgetPairedComputer({String? nodeId}) async {
+    final id = nodeId ?? pairedComputer?.nodeId;
+    final active = id == pairedComputer?.nodeId;
+    await ConnectorStore().forget(nodeId: id);
+    savedPairedComputers = (await ConnectorStore().loadRegistry()).computers;
+    if (active) await useAccountConnection();
+    notifyListeners();
+  }
+
+  Future<void> clearPairedComputers() async {
+    _clearingPairedComputers = true;
+    ++_computerSelectionEpoch;
+    try {
+      if (pairedComputer != null) await useAccountConnection();
+      await ConnectorStore().clear();
+      pairedComputer = null;
+      savedPairedComputers = [];
+      _pairedRouteGeneration++;
+      _pairedRouteRecovery = false;
+      _pairedRouteComputer = null;
+      disconnect();
+    } finally {
+      ++_computerSelectionEpoch;
+      _clearingPairedComputers = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> reconnectPairedComputer() async {
+    final p = pairedComputer;
+    if (p == null ||
+        (_pairedRouteRecovery && identical(_pairedRouteComputer, p))) {
+      return;
+    }
+    _pairedRouteRecovery = true;
+    _pairedRouteComputer = p;
+    final attempt = ++_pairedRouteGeneration;
+    try {
+      var target = p.localUrl;
+      final local = await probeServer(
+        p.localUrl,
+        username: p.username,
+        password: p.password,
+        certificateFingerprint: p.fingerprint,
+        timeout: const Duration(seconds: 2),
+      );
+      if (!identical(p, pairedComputer) || attempt != _pairedRouteGeneration) {
+        return;
+      }
+      if (!local && p.remoteUrl != null && canUsePublicConnection) {
+        target = p.remoteUrl!;
+      }
+      final selected = selectedSessionId;
+      await connect(target, username: p.username, password: p.password);
+      if (!identical(p, pairedComputer)) return;
+      if (connected) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('serverUrl', target);
+        await prefs.setString(
+          'connectionMode',
+          target == p.localUrl ? 'lan' : 'public',
+        );
+        if (selected != null && selectedSessionId == selected) {
+          _recoverSelectedSessionFollow();
+        }
+      }
+    } finally {
+      if (attempt == _pairedRouteGeneration) {
+        _pairedRouteRecovery = false;
+        _pairedRouteComputer = null;
+      }
+    }
+  }
+
   bool connecting = false;
   String? connectionError;
   ServerConnectionStatus connectionStatus = ServerConnectionStatus.idle;
@@ -329,6 +630,7 @@ class AppState extends ChangeNotifier {
   /// Global cumulative cache-hit input tokens across sessions; feeds the
   /// pet's growth level (1 M tokens per level).
   int petTokensTotal = 0;
+  int petContextTokensTotal = 0;
   final PetTokenStore _petTokens = PetTokenStore();
 
   /// Folds one tokenUsage projection into the pet-growth total (per-session
@@ -338,35 +640,23 @@ class AppState extends ChangeNotifier {
     final hit = (value['cacheReadTokens'] as num?)?.toInt();
     if (hit == null) return;
     unawaited(
-      _petTokens.record(sessionId, hit).then((total) {
-        if (total != petTokensTotal) {
-          petTokensTotal = total;
-          notifyListeners();
-        }
-      }),
+      _petTokens.record(sessionId, hit).then((_) => refreshPetTokens()),
     );
   }
 
-  /// Seeds [petTokensTotal] from the persisted per-session maxima; the pet
-  /// page calls this on open (idempotent, and test-safe — plain unit tests
-  /// without a binding never construct the read).
-  void ensurePetTokensLoaded() {
-    unawaited(
-      _petTokens.total().then((total) {
-        if (total != petTokensTotal) {
-          petTokensTotal = total;
-          notifyListeners();
-        }
-      }),
-    );
-  }
+  /// Seeds growth and context independently, preserving old bonus levels.
+  void ensurePetTokensLoaded() => unawaited(refreshPetTokens());
 
   /// Re-reads the pet token total after an out-of-band change (pet battle
   /// settlement) so every listener sees the new level immediately.
   Future<void> refreshPetTokens() async {
-    final total = await _petTokens.total();
-    if (total != petTokensTotal) {
-      petTokensTotal = total;
+    final values = await Future.wait([
+      _petTokens.total(),
+      _petTokens.contextTotal(),
+    ]);
+    if (values[0] != petTokensTotal || values[1] != petContextTokensTotal) {
+      petTokensTotal = values[0];
+      petContextTokensTotal = values[1];
       notifyListeners();
     }
   }
@@ -378,6 +668,9 @@ class AppState extends ChangeNotifier {
   /// Model catalog of the selected session, loaded on demand.
   SessionModelsData? models;
   bool loadingModels = false;
+  int _modelsGeneration = 0;
+  int _subagentsGeneration = 0;
+  Map<String, dynamic>? _modelCatalog;
 
   /// Reads one projection value for a session.
   Map<String, dynamic>? projectionOf(String? sessionId, String key) {
@@ -414,6 +707,7 @@ class AppState extends ChangeNotifier {
     final title = values['title'] as String?;
     if (title != null) _rowOf(sessionId)?.title = title;
     _trackPetTokens(sessionId, values['tokenUsage']);
+    if (sessionId == selectedSessionId) _applyModelSelection();
   }
 
   /// In-flight assistant streams keyed by 'turn:step'.
@@ -447,6 +741,8 @@ class AppState extends ChangeNotifier {
   }
 
   /// Credentials of the active connection, reused for update downloads.
+  String? get accountUsername => pairedComputer == null ? authUsername : null;
+  String? get accountPassword => pairedComputer == null ? authPassword : null;
   String? authUsername;
   String? authPassword;
 
@@ -487,7 +783,9 @@ class AppState extends ChangeNotifier {
         return AccountComputer.fromJson(c.cast<String, dynamic>());
       }).toList();
       computers = list;
-      currentComputerId = prefs.getString('currentComputerId');
+      currentComputerId = pairedComputer == null
+          ? prefs.getString('currentComputerId')
+          : null;
       notifyListeners();
     } catch (_) {
       // A corrupt cache is safe to ignore; the next login refreshes it.
@@ -500,28 +798,70 @@ class AppState extends ChangeNotifier {
   /// reconnects. Sessions always belong to a machine, so switching replaces the
   /// visible session list with that machine's.
   Future<bool> switchToComputer(AccountComputer computer) async {
-    final username = authUsername;
-    final password = authPassword;
+    if (!canUsePublicConnection && !isLanConnectionUrl(computer.url)) {
+      return false;
+    }
+    final identityGeneration = _identityGeneration;
+    final prefs = await SharedPreferences.getInstance();
+    final previousPaired = pairedComputer;
+    final username = previousPaired != null
+        ? prefs.getString('authUser')
+        : authUsername;
+    final password = previousPaired != null
+        ? prefs.getString('authPass')
+        : authPassword;
     if (username == null || password == null) return false;
     try {
-      final resolved = await directoryResolve(
-        kDefaultServerUrl,
-        username: username,
-        password: password,
-        computerId: computer.id,
-      );
-      final ok = await switchConnection(resolved.url);
+      final resolved = canUsePublicConnection
+          ? await _directoryResolver(
+              kDefaultServerUrl,
+              username: username,
+              password: password,
+              computerId: computer.id,
+            )
+          : computer;
+      if (identityGeneration != _identityGeneration ||
+          (!canUsePublicConnection && !isLanConnectionUrl(resolved.url))) {
+        return false;
+      }
+      bool ok;
+      if (previousPaired != null) {
+        final probe = DshApi(
+          resolved.url,
+          username: username,
+          password: password,
+        );
+        try {
+          await probe.hostReady().timeout(const Duration(seconds: 10));
+        } finally {
+          probe.close();
+        }
+        if (identityGeneration != _identityGeneration ||
+            (!canUsePublicConnection && !isLanConnectionUrl(resolved.url))) {
+          return false;
+        }
+        await useAccountConnection();
+        await connect(resolved.url, username: username, password: password);
+        ok = connected;
+        if (!ok) await activatePairedComputer(previousPaired);
+      } else {
+        ok = await switchConnection(resolved.url);
+      }
       if (ok) {
         currentComputerId = resolved.id;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('currentComputerId', resolved.id);
         await prefs.setString('serverUrl', resolved.url);
-        await prefs.setString('remoteServerUrl', resolved.url);
-        await prefs.setString('connectionMode', 'public');
+        final local = isLanConnectionUrl(resolved.url);
+        await prefs.setString(
+          local ? 'lanServerUrl' : 'remoteServerUrl',
+          resolved.url,
+        );
+        await prefs.setString('connectionMode', local ? 'lan' : 'public');
         notifyListeners();
       }
       return ok;
-    } on DshError {
+    } catch (_) {
       return false;
     }
   }
@@ -552,7 +892,10 @@ class AppState extends ChangeNotifier {
     authPassword = password;
     final prefs = await SharedPreferences.getInstance();
     serverUrl = prefs.getString('serverUrl') ?? kDefaultServerUrl;
-    _store ??= LocalStore.forServer(serverUrl, username);
+    _store ??= LocalStore.forServer(
+      pairedComputer?.cacheScope ?? serverUrl,
+      pairedComputer?.nodeId ?? username,
+    );
     await _restoreLocalSnapshot();
   }
 
@@ -568,10 +911,24 @@ class AppState extends ChangeNotifier {
     String? username,
     String? password,
     String? launchToken,
+    String? certificateFingerprint,
     Duration timeout = const Duration(seconds: 3),
   }) async {
+    if (!canUsePublicConnection && !isLanConnectionUrl(url)) {
+      lastProbeError = '请先登录账号，再使用公网连接';
+      return false;
+    }
+    if (pairedComputer != null && !pairedComputer!.containsUrl(url)) {
+      return false;
+    }
     try {
-      final api = DshApi(url, username: username, password: password);
+      final api = DshApi(
+        url,
+        username: username,
+        password: password,
+        certificateFingerprint:
+            certificateFingerprint ?? pairedComputer?.pinFor(url),
+      );
       try {
         // A host enforcing dsh's own gate answers 401 to the probe until the
         // launch token is exchanged, so do that first when one was supplied.
@@ -688,8 +1045,19 @@ class AppState extends ChangeNotifier {
     String? password,
     String? launchToken,
   }) async {
-    final sameComputer = serverUrl == url && authUsername == username;
+    if (!canUsePublicConnection && !isLanConnectionUrl(url)) {
+      throw const FormatException('请先登录并验证账号后使用公网连接');
+    }
+    if (pairedComputer != null && !pairedComputer!.containsUrl(url)) {
+      throw const FormatException('请通过配对管理更换电脑地址');
+    }
+    final sameComputer =
+        authUsername == username &&
+        (serverUrl == url ||
+            (pairedComputer?.containsUrl(serverUrl) == true &&
+                pairedComputer?.containsUrl(url) == true));
     disconnect(preserveCachedContent: sameComputer, keepCredentials: true);
+    final generation = _connectionGeneration;
     connecting = true;
     connectionError = null;
     connectionStatus = ServerConnectionStatus.connecting;
@@ -704,19 +1072,35 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     DshApi? api;
     try {
-      api = DshApi(url, username: username, password: password);
+      api = DshApi(
+        url,
+        username: username,
+        password: password,
+        certificateFingerprint: pairedComputer?.pinFor(url),
+      );
       // Exchange the launch token first: the host answers 401 to every API
       // call and refuses the WS upgrade until its session cookie is present.
       if (launchToken != null && launchToken.isNotEmpty) {
         await api.authenticateWithToken(launchToken);
       }
       final host = await api.hostReady();
+      if (generation != _connectionGeneration) {
+        api.close();
+        return;
+      }
       _hostCwd = host['cwd'] as String?;
       _api = api;
-      _store ??= LocalStore.forServer(url, username);
+      _store ??= LocalStore.forServer(
+        pairedComputer?.cacheScope ?? url,
+        pairedComputer?.nodeId ?? username,
+      );
       // Paint the cached session list and prompt counter before the network
       // refresh so cold starts render instantly.
       await _restoreLocalSnapshot();
+      if (generation != _connectionGeneration) {
+        api.close();
+        return;
+      }
       _streamsActive = true;
       _startStreams();
       // Enter the cached home immediately; the sidebar refresh and workspace
@@ -724,6 +1108,7 @@ class AppState extends ChangeNotifier {
       unawaited(_refreshSessionsBestEffort());
     } catch (error) {
       api?.close();
+      if (generation != _connectionGeneration) return;
       connectionError = error.toString();
       _api = null;
       connectionStatus = _isAuthenticationError(error)
@@ -733,13 +1118,15 @@ class AppState extends ChangeNotifier {
         _scheduleStartupReconnect();
       }
     } finally {
-      connecting = false;
-      if (_api != null) {
-        connectionStatus = ServerConnectionStatus.online;
-        connectionError = null;
-        _startupReconnectAttempts = 0;
+      if (generation == _connectionGeneration) {
+        connecting = false;
+        if (_api != null) {
+          connectionStatus = ServerConnectionStatus.online;
+          connectionError = null;
+          _startupReconnectAttempts = 0;
+        }
+        notifyListeners();
       }
-      notifyListeners();
     }
   }
 
@@ -766,11 +1153,16 @@ class AppState extends ChangeNotifier {
     _startupReconnectTimer = Timer(delay, () {
       _startupReconnectTimer = null;
       if (_api != null || serverUrl != url || requiresAuthentication) return;
-      unawaited(connect(url, username: username, password: password));
+      if (pairedComputer != null) {
+        unawaited(reconnectPairedComputer());
+      } else {
+        unawaited(connect(url, username: username, password: password));
+      }
     });
   }
 
   Future<void> retryConnection() async {
+    if (pairedComputer != null) return reconnectPairedComputer();
     final url = serverUrl;
     if (url.isEmpty || requiresAuthentication) return;
     _startupReconnectTimer?.cancel();
@@ -783,6 +1175,14 @@ class AppState extends ChangeNotifier {
     bool preserveCachedContent = false,
     bool keepCredentials = false,
   }) {
+    _connectionGeneration++;
+    _modelsGeneration++;
+    _subagentsGeneration++;
+    loadingModels = false;
+    loadingSubagents = false;
+    models = null;
+    _modelCatalog = null;
+    connecting = false;
     _startupReconnectTimer?.cancel();
     _startupReconnectTimer = null;
     _startupReconnectAttempts = 0;
@@ -910,6 +1310,11 @@ class AppState extends ChangeNotifier {
   /// follow stream.  The latter is intentionally separate from mux/host, so a
   /// dropped phone socket must re-open it explicitly.
   void _recoverAfterStreamReconnect() {
+    if (pairedComputer != null &&
+        connectionStatus != ServerConnectionStatus.online) {
+      unawaited(reconnectPairedComputer());
+      return;
+    }
     if (_api != null) {
       connectionStatus = ServerConnectionStatus.connecting;
       notifyListeners();
@@ -925,6 +1330,8 @@ class AppState extends ChangeNotifier {
     _sessionFollowRetryTimer = null;
     _sessionFollowRetryAttempts = 0;
     _startSessionFollow(sessionId);
+    unawaited(loadModels());
+    unawaited(refreshSubagents());
     unawaited(syncTail(sessionId));
   }
 
@@ -1025,14 +1432,19 @@ class AppState extends ChangeNotifier {
   Future<void> refreshSubagents() async {
     final api = _api;
     final parentSessionId = selectedSessionId;
-    if (api == null || parentSessionId == null || loadingSubagents) return;
+    if (api == null || parentSessionId == null) return;
+    final generation = ++_subagentsGeneration;
     loadingSubagents = true;
     notifyListeners();
     try {
       final value =
           await api.call('subagent.list', {'parentSessionId': parentSessionId})
               as Map<String, dynamic>;
-      if (selectedSessionId != parentSessionId) return;
+      if (!identical(api, _api) ||
+          selectedSessionId != parentSessionId ||
+          generation != _subagentsGeneration) {
+        return;
+      }
       subagents = [
         for (final raw
             in (value['entries'] as List? ?? const []).whereType<Map>().map(
@@ -1048,10 +1460,12 @@ class AppState extends ChangeNotifier {
             ),
       ];
     } catch (_) {
-      if (selectedSessionId == parentSessionId) subagents = const [];
+      // Keep the last authoritative catalog on a transient transport failure.
     } finally {
-      loadingSubagents = false;
-      notifyListeners();
+      if (generation == _subagentsGeneration) {
+        loadingSubagents = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -1136,6 +1550,13 @@ class AppState extends ChangeNotifier {
       _sessionTailSeqs[previous] = _lastLiveSeq;
     }
     selectedSessionId = sessionId;
+    _modelsGeneration++;
+    _subagentsGeneration++;
+    loadingModels = false;
+    loadingSubagents = false;
+    models = null;
+    _applyModelSelection();
+    unawaited(loadModels());
     subagents = const [];
     queuedTasks.clear();
     items.clear();
@@ -1276,12 +1697,19 @@ class AppState extends ChangeNotifier {
             final frame = value.cast<String, dynamic>();
             if (frame['type'] == 'snapshot') {
               final cursor = (frame['cursor'] as num?)?.toInt();
-              if (cursor != null) _subscribedLastSeqs[sessionId] = cursor;
+              if (cursor != null) {
+                _subscribedLastSeqs[sessionId] = cursor;
+                // A script may finish between the history read and follow
+                // registration. Repair that window instead of discarding
+                // the newer snapshot and leaving its card running forever.
+                if (cursor > _lastLiveSeq) unawaited(syncTail(sessionId));
+              }
               _sessionFollowRetryAttempts = 0;
               _seedProjections(
                 sessionId,
                 (frame['projections'] as Map?)?.cast<String, dynamic>(),
               );
+              notifyListeners();
               return;
             }
             if (frame['type'] == 'event' && frame['event'] is Map) {
@@ -1538,7 +1966,19 @@ class AppState extends ChangeNotifier {
         }
       }
       if (existingIndex >= 0) {
-        _preserveLoadedImages(items[existingIndex], entry.item);
+        final existing = items[existingIndex];
+        _preserveLoadedImages(existing, entry.item);
+        if (existing.kind == ChatItemKind.tool &&
+            existing.completed &&
+            !entry.item.completed &&
+            existing.callId == entry.item.callId) {
+          // An older gap page can repeat the call without its later result.
+          entry.item
+            ..completed = true
+            ..resultText = existing.resultText
+            ..resultIsError = existing.resultIsError
+            ..images = existing.images;
+        }
         items[existingIndex] = entry.item;
         continue;
       }
@@ -1599,6 +2039,7 @@ class AppState extends ChangeNotifier {
       if (older) {
         items.insertAll(0, folded);
         _settleOrphanedCommands();
+        _rebuildToolIndex();
       } else {
         items
           ..clear()
@@ -1666,9 +2107,31 @@ class AppState extends ChangeNotifier {
 
   void _rebuildToolIndex() {
     _toolItems.clear();
+    final duplicates = <ChatItem>[];
     for (final item in items) {
-      if (item.kind == ChatItemKind.tool) _toolItems[item.callId] = item;
+      if (item.kind != ChatItemKind.tool) continue;
+      final existing = _toolItems[item.callId];
+      if (existing == null) {
+        _toolItems[item.callId] = item;
+        continue;
+      }
+      // History pages may split a call and its result. Keep the call's
+      // arguments and the completed result regardless of page arrival order.
+      if (item.completed) {
+        existing
+          ..completed = true
+          ..resultText = item.resultText
+          ..resultIsError = item.resultIsError
+          ..images = item.images;
+      }
+      if (existing.name == 'tool' && item.name != 'tool') {
+        existing
+          ..name = item.name
+          ..arguments = item.arguments;
+      }
+      duplicates.add(item);
     }
+    items.removeWhere(duplicates.contains);
   }
 
   /// Sends a user prompt to the selected session.
@@ -1838,10 +2301,7 @@ class AppState extends ChangeNotifier {
     final sessionId = selectedSessionId;
     if (api == null || sessionId == null) return const [];
     final value =
-        await api.call('commands/list', {
-              'args': {'agentId': sessionId},
-            })
-            as List;
+        await api.call('commands/list', {'agentId': sessionId}) as List;
     return value.map((c) => (c as Map).cast<String, dynamic>()).toList();
   }
 
@@ -1907,11 +2367,9 @@ class AppState extends ChangeNotifier {
     try {
       final value =
           await api.call('commands/execute', {
-                'args': {
-                  'agentId': sessionId,
-                  'line': trimmed,
-                  'images': <String>[],
-                },
+                'agentId': sessionId,
+                'line': trimmed,
+                'submittedAttachments': <Map<String, dynamic>>[],
               })
               as Map<String, dynamic>?;
       if (_localCommandLines.remove(trimmed) == null) {
@@ -2135,31 +2593,51 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Loads the model catalog of the selected session.
+  // The catalog is Host-scoped; the effective selection is Session-scoped.
+  void _applyModelSelection() {
+    final sessionId = selectedSessionId;
+    final catalog = _modelCatalog;
+    if (sessionId == null) return;
+    final projected = projectionOf(sessionId, 'modelSelection');
+    final current = projected?['next'] ?? catalog?['default'];
+    if (current is! Map) return;
+    final selection = Map<String, dynamic>.from(current);
+    models = SessionModelsData(
+      current: selection,
+      routable: (catalog?['routableProviders'] as List? ?? const []).contains(
+        selection['provider'],
+      ),
+      groups: (catalog?['groups'] as List? ?? const [])
+          .whereType<Map>()
+          .map((g) => Map<String, dynamic>.from(g))
+          .toList(),
+    );
+  }
+
+  /// Loads the Host catalog without letting a previous session overwrite it.
   Future<void> loadModels() async {
     final api = _api;
     final sessionId = selectedSessionId;
-    if (api == null || sessionId == null || loadingModels) return;
+    if (api == null || sessionId == null) return;
+    final generation = ++_modelsGeneration;
     loadingModels = true;
     notifyListeners();
     try {
-      final value =
-          await api.call('session.models', {'sessionId': sessionId})
-              as Map<String, dynamic>;
-      models = SessionModelsData(
-        current: Map<String, dynamic>.from(
-          (value['current'] as Map?) ?? const {},
-        ),
-        routable: value['routable'] == true,
-        groups: ((value['groups'] as List?) ?? const [])
-            .map((g) => (g as Map).cast<String, dynamic>())
-            .toList(),
-      );
+      final value = await api.call('session.modelCatalog', {}) as Map;
+      if (!identical(api, _api) ||
+          selectedSessionId != sessionId ||
+          generation != _modelsGeneration) {
+        return;
+      }
+      _modelCatalog = Map<String, dynamic>.from(value);
+      _applyModelSelection();
     } catch (_) {
-      models = null;
+      // A failed catalog refresh must not erase the selected model.
     } finally {
-      loadingModels = false;
-      notifyListeners();
+      if (generation == _modelsGeneration) {
+        loadingModels = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -2182,7 +2660,13 @@ class AppState extends ChangeNotifier {
             as Map<String, dynamic>;
     final selected = ((value['selected'] as Map?) ?? const {})
         .cast<String, dynamic>();
-    models?.current.addAll(selected);
+    if (!identical(api, _api) || selectedSessionId != sessionId) return;
+    final current = models?.current;
+    if (selected.isNotEmpty && current != null) {
+      current
+        ..clear()
+        ..addAll(selected);
+    }
     notifyListeners();
   }
 
@@ -2287,6 +2771,19 @@ class AppState extends ChangeNotifier {
       case HostSessionStatus(:final sessionId, :final running):
         final row = _rowOf(sessionId);
         if (subagents.any((entry) => entry.id == sessionId)) {
+          subagents = [
+            for (final entry in subagents)
+              if (entry.id != sessionId)
+                entry
+              else
+                SubagentRow(
+                  id: entry.id,
+                  mode: entry.mode,
+                  activity: running ? 'running' : 'inactive',
+                  hasChildren: entry.hasChildren,
+                  label: entry.label,
+                ),
+          ];
           unawaited(refreshSubagents());
         }
         if (row != null) {
@@ -2446,8 +2943,13 @@ class AppState extends ChangeNotifier {
           if (cell == null || seq >= cell.seq) {
             table[key] = ProjectionCell(value, seq);
           }
-          if (key == 'title') _rowOf(sessionId)?.title = value as String?;
-          if (key == 'tokenUsage') _trackPetTokens(sessionId, value);
+          if (cell == null || seq >= cell.seq) {
+            if (key == 'title') _rowOf(sessionId)?.title = value as String?;
+            if (key == 'tokenUsage') _trackPetTokens(sessionId, value);
+            if (key == 'modelSelection' && sessionId == selectedSessionId) {
+              _applyModelSelection();
+            }
+          }
         }
       case MuxApprovalRequested(
         :final sessionId,
@@ -2506,7 +3008,8 @@ class AppState extends ChangeNotifier {
 
   /// Test-only entry into the live-event fold.
   @visibleForTesting
-  void foldForTest(Map<String, dynamic> event) => _foldEvent(event);
+  void foldForTest(Map<String, dynamic> event, {List<ChatItem>? into}) =>
+      _foldEvent(event, into: into);
 
   /// Folds one raw session event into chat items. When [into] is given the
   /// produced items collect there (history paging); otherwise they append to
@@ -2623,6 +3126,8 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    ++_identityGeneration;
+    identityApi.close();
     disconnect();
     super.dispose();
   }

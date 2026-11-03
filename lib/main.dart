@@ -15,7 +15,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/changelog.dart';
 import 'src/l10n.dart';
 import 'src/lan_discovery.dart';
-import 'login_view.dart';
+import 'src/connector_pairing.dart';
+import 'connector_pairing_page.dart';
+import 'app_account_page.dart';
+import 'connection_entry_view.dart';
+import 'src/connection_access.dart';
 import 'connection_guide.dart';
 import 'connection_center.dart';
 import 'brand_mark.dart';
@@ -64,7 +68,8 @@ String connectionModeForUrl(String serverUrl, {String? localUrl}) {
 /// Release manifest polled by the in-app updater. During development this can
 /// point at a LAN server (e.g. http://192.168.1.5:8000/latest.json) for fast
 /// download tests; production uses the public domain.
-const kUpdateManifestUrl = 'https://dsh.sixuanai.com/releases/latest.json';
+const kUpdateManifestUrl =
+    'https://dsh.sixuanai.com/releases-public/latest.json';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,6 +90,7 @@ class _DshAppState extends State<DshApp> {
   final LanguageController language = LanguageController();
   bool _restored = false;
   bool _hasCreds = false;
+  String? _restoreError;
 
   @override
   void initState() {
@@ -99,6 +105,41 @@ class _DshAppState extends State<DshApp> {
   void _onAppearanceChanged() => setState(() {});
 
   Future<void> _restore() async {
+    try {
+      await appState.restoreAppEntry();
+      if (appState.signedInAccount != null) {
+        unawaited(
+          appState.verifyAppAccount().then((valid) {
+            if (valid &&
+                appState.pairedComputer != null &&
+                !appState.connected) {
+              unawaited(appState.reconnectPairedComputer());
+            }
+          }),
+        );
+      }
+      await appState.restorePairedComputers();
+      final paired = appState.pairedComputer;
+      if (paired != null) {
+        _hasCreds = true;
+        appState.pairedComputer = paired;
+        await appState.restoreCachedSnapshot(
+          username: paired.username,
+          password: paired.password,
+        );
+        if (mounted) setState(() => _restored = true);
+        unawaited(appState.reconnectPairedComputer());
+        return;
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _restoreError = '无法读取设备密钥，请解锁手机或重新配对';
+          _restored = true;
+        });
+      }
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final user = prefs.getString('authUser');
     final pass = prefs.getString('authPass');
@@ -123,11 +164,19 @@ class _DshAppState extends State<DshApp> {
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
       final mode = prefs.getString('connectionMode') ?? 'public';
-      final serverUrl = mode == 'lan'
+      var serverUrl = mode == 'lan'
           ? (prefs.getString('lanServerUrl') ??
                 prefs.getString('serverUrl') ??
                 kDefaultServerUrl)
           : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
+      if (!appState.canUsePublicConnection && !isLanConnectionUrl(serverUrl)) {
+        final local = prefs.getString('lanServerUrl');
+        if (local == null || !isLanConnectionUrl(local)) {
+          if (mounted) setState(() => _restored = true);
+          return;
+        }
+        serverUrl = local;
+      }
       if (mounted) setState(() => _restored = true);
       unawaited(
         appState.connect(
@@ -168,7 +217,12 @@ class _DshAppState extends State<DshApp> {
         animation: appState,
         builder: (context, _) {
           if (!_restored) return const _Splash(label: '正在启动…');
-          if (appState.connected) _hasCreds = true;
+          if (appState.hasEntryAccess) {
+            return HomePage(state: appState, theme: theme, language: language);
+          }
+          if (appState.connected || appState.pairedComputer != null) {
+            _hasCreds = true;
+          }
           final hasCredentials =
               (appState.authUsername?.isNotEmpty ?? false) ||
               (appState.authToken?.isNotEmpty ?? false);
@@ -181,10 +235,7 @@ class _DshAppState extends State<DshApp> {
           if (_hasCreds && hasCredentials && appState.connecting) {
             return const _Splash(label: '正在连接服务器…');
           }
-          return ServerSetupPage(
-            state: appState,
-            defaultServerUrl: kDefaultServerUrl,
-          );
+          return AppAccountPage(state: appState, initialError: _restoreError);
         },
       ),
     );
@@ -244,7 +295,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final Set<String> _shownApprovals = {};
   final Set<String> _shownQuestions = {};
-  String? _modelsLoadedFor;
   bool _levelUpScheduled = false;
 
   /// Newer release known to the server; drives the green dot on the
@@ -277,8 +327,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// connection center can never disagree with the socket the app holds.
   /// A separately persisted flag can go stale (a switch tears HomePage down
   /// and rebuilds it mid-reconnect), so the URL is the source of truth.
-  String get _connectionMode =>
-      connectionModeForUrl(state.serverUrl, localUrl: _localUrl);
+  String get _connectionMode => connectionModeForUrl(
+    state.serverUrl,
+    localUrl: state.pairedComputer?.localUrl ?? _localUrl,
+  );
 
   AppState get state => widget.state;
 
@@ -319,11 +371,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _onStateChanged() {
     _maybeShowInteractions();
-    final sessionId = state.selectedSessionId;
-    if (sessionId != null && sessionId != _modelsLoadedFor) {
-      _modelsLoadedFor = sessionId;
-      unawaited(state.loadModels());
-    }
     if (state.lastLevelUp != null && !_levelUpScheduled) {
       _levelUpScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -358,7 +405,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _checkLocalConnection() async {
     if (_checkingLocal || !mounted) return;
     final prefs = await SharedPreferences.getInstance();
-    final localUrl = prefs.getString('lanServerUrl');
+    final localUrl =
+        state.pairedComputer?.localUrl ?? prefs.getString('lanServerUrl');
     final remoteUrl = prefs.getString('remoteServerUrl');
     setState(() {
       _localUrl = localUrl;
@@ -371,6 +419,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     setState(() {
       _checkingLocal = true;
     });
+    state.notifyConnectionSettingsChanged();
     final available = await state.probeServer(
       localUrl,
       username: state.authUsername,
@@ -381,6 +430,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _checkingLocal = false;
       _localAvailable = available;
     });
+    state.notifyConnectionSettingsChanged();
   }
 
   Future<Map<String, dynamic>?> _nativeProbe(String url) async {
@@ -408,14 +458,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _switchConnection(String mode) async {
+    if (mode != 'lan' && !state.canUsePublicConnection) {
+      await _showAppAccount();
+      if (!state.canUsePublicConnection) return;
+    }
     final prefs = await SharedPreferences.getInstance();
-    var target = switch (mode) {
-      'lan' => _localUrl,
-      // Direct Shenzhen relay: same account and credentials, no Cloudflare.
-      'direct' => kDirectServerUrl,
-      _ => _remoteUrl,
-    };
-    if (mode == 'public' && (target == null || target.isEmpty)) {
+    final paired = state.pairedComputer;
+    var target = paired != null
+        ? (mode == 'lan'
+              ? paired.localUrl
+              : mode == 'public'
+              ? paired.remoteUrl
+              : null)
+        : switch (mode) {
+            'lan' => _localUrl,
+            // Direct Shenzhen relay: same account and credentials, no Cloudflare.
+            'direct' => kDirectServerUrl,
+            _ => _remoteUrl,
+          };
+    if (paired == null &&
+        mode == 'public' &&
+        (target == null || target.isEmpty)) {
       final user = state.authUsername;
       final pass = state.authPassword;
       if (user != null && pass != null) {
@@ -493,9 +556,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   /// Switch to one of the account's computers, with feedback.
   Future<void> _switchToComputer(AccountComputer computer) async {
+    if (!state.canUsePublicConnection && !isLanConnectionUrl(computer.url)) {
+      await _showAppAccount();
+      if (!mounted || !state.canUsePublicConnection) return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(SnackBar(content: Text('正在切换到 ${computer.name}…')));
     final ok = await state.switchToComputer(computer);
+    await _restoreConnectionState();
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
@@ -506,28 +574,112 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  void _showConnectionCenter() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: P.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  Future<void> _switchToPairedComputer(PairedComputer computer) async {
+    try {
+      await state.activatePairedComputer(computer);
+      await _restoreConnectionState();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            state.connected
+                ? '已切换到 ${computer.name}'
+                : '${computer.name} 暂时离线，可稍后重试',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('切换失败，已保存的电脑密钥会继续保留')));
+      }
+    }
+  }
+
+  bool get _currentComputerMatchesTransport {
+    final paired = state.pairedComputer;
+    return paired == null ||
+        (paired.containsUrl(state.serverUrl) &&
+            state.authUsername == paired.username);
+  }
+
+  Future<void> _showAppAccount() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (accountContext) => AppAccountPage(
+          state: state,
+          allowGuest: false,
+          initialMode: AppAccountMode.login,
+          onCompleted: () {
+            if (accountContext.mounted) Navigator.of(accountContext).pop();
+          },
+        ),
       ),
-      builder: (_) => ConnectionCenterSheet(
-        connectionMode: _connectionMode,
-        checkingLocal: _checkingLocal,
-        localAvailable: _localAvailable,
-        localUrl: _localUrl,
-        onSwitchRemote: () => _switchConnection('public'),
-        onSwitchLocal: () => _switchConnection('lan'),
-        onSwitchDirect: () => _switchConnection('direct'),
-        onRefreshLocal: _checkLocalConnection,
-        onSetLocalAddress: _setLocalAddress,
-        onAutoSearchLocal: _autoSearchLocal,
-        computers: state.computers,
-        currentComputerId: state.currentComputerId,
-        onSwitchComputer: _switchToComputer,
+    );
+  }
+
+  void _pairComputer() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ConnectorPairingPage(state: state),
+      ),
+    );
+  }
+
+  void _showConnectionCenter() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AnimatedBuilder(
+          animation: state,
+          builder: (_, _) => ConnectionCenterSheet(
+            connectionMode: _currentComputerMatchesTransport
+                ? _connectionMode
+                : 'pending',
+            connected: state.connected && _currentComputerMatchesTransport,
+            reconnecting:
+                state.connecting ||
+                !_currentComputerMatchesTransport ||
+                state.connectionStatus == ServerConnectionStatus.reconnecting,
+            checkingLocal: _checkingLocal,
+            localAvailable: _localAvailable,
+            localUrl: state.pairedComputer?.localUrl ?? _localUrl,
+            onSwitchRemote: () => _switchConnection('public'),
+            onSwitchLocal: () => _switchConnection('lan'),
+            onSwitchDirect: state.pairedComputer == null
+                ? () => _switchConnection('direct')
+                : null,
+            onRefreshLocal: _checkLocalConnection,
+            onSetLocalAddress: state.pairedComputer == null
+                ? _setLocalAddress
+                : null,
+            onAutoSearchLocal: state.pairedComputer == null
+                ? _autoSearchLocal
+                : null,
+            computers: state.computers,
+            currentComputerId: state.currentComputerId,
+            pairedComputers: state.savedPairedComputers,
+            activePairedNodeId: state.pairedComputer?.nodeId,
+            onSwitchPairedComputer: _switchToPairedComputer,
+            pairedName: state.pairedComputer?.name,
+            publicAccessAllowed: state.canUsePublicConnection,
+            accountLabel: state.signedInAccount?.email,
+            onAccount: () {
+              Navigator.of(context).pop();
+              _showAppAccount();
+            },
+            pairedRemoteUrl: state.pairedComputer?.remoteUrl,
+            onPairComputer: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ConnectorPairingPage(state: state),
+                ),
+              );
+            },
+            onSwitchComputer: _switchToComputer,
+          ),
+        ),
       ),
     );
   }
@@ -601,8 +753,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       // which dsh instance the login resolved to.
       final api = SocialApi(
         baseUrl: '$kDefaultServerUrl/social',
-        basicUser: state.authUsername,
-        basicPass: state.authPassword,
+        basicUser: state.accountUsername,
+        basicPass: state.accountPassword,
         token: token,
       );
       final conversations = await api.conversations();
@@ -663,6 +815,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
       state.resyncAfterResume();
+      if (state.signedInAccount != null) unawaited(state.verifyAppAccount());
       unawaited(_checkLocalConnection());
       final pending = _pendingUpdate;
       if (pending != null) {
@@ -779,8 +932,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _performUpdateCheck({bool manual = false}) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     final checker = UpdateChecker(
-      username: state.authUsername,
-      password: state.authPassword,
+      username: state.accountUsername,
+      password: state.accountPassword,
     );
     final result = await checker.check(kUpdateManifestUrl);
     if (!mounted) return;
@@ -836,8 +989,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// Shows the release notes once per app version after an update.
   Future<void> _maybeShowWhatsNew() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString('lastSeenVersion') == kAppVersion) return;
+    final previousVersion = prefs.getString('lastSeenVersion');
+    if (previousVersion == kAppVersion) return;
     await prefs.setString('lastSeenVersion', kAppVersion);
+    if (previousVersion == null) return;
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -846,6 +1001,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _maybeShowQuickStart() async {
+    if (!state.serverAvailable && state.pairedComputer == null) return;
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('quickStartShown') == true || !mounted) return;
     await prefs.setBool('quickStartShown', true);
@@ -1103,21 +1259,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await state.sendPrompt(text);
   }
 
-  Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('authUser');
-    await prefs.remove('authPass');
-    await prefs.remove('launchToken');
-    await prefs.remove('serverUrl');
-    await prefs.remove('accountComputers');
-    await prefs.remove('currentComputerId');
-    state.disconnect();
-  }
+  Future<void> _logout() => state.signOutAppAccount();
 
   @override
   Widget build(BuildContext context) {
     return HomeView(
       state: state,
+      connectionWelcomeBuilder: state.hasEntryAccess
+          ? (_) => ConnectionEntryView(
+              state: state,
+              onPair: _pairComputer,
+              onSettings: _showConnectionCenter,
+              onAccount: _showAppAccount,
+            )
+          : null,
       drawerBuilder: (context) => SessionDrawer(
         state: state,
         theme: widget.theme,
@@ -1126,6 +1281,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         onNewSession: _showNewSessionSheet,
         onCheckUpdate: () => _checkForUpdate(manual: true),
         onConnectionCenter: _showConnectionCenter,
+        onAppAccount: _showAppAccount,
         connectionMode: _connectionMode,
         localAvailable: _localAvailable,
         updateAvailable: _availableUpdate != null,

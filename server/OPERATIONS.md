@@ -273,3 +273,45 @@ App 的默认服务器、OTA 清单、AI 内容源、官网下载链接都已从
 
 恢复旧入口：删除墓碑文件，把备份的 `dsh-ainotex.conf.removed` 还原成
 `/etc/nginx/conf.d/dsh-ainotex.conf`，`nginx -t && systemctl reload nginx`。
+
+
+## 局域网与公网目录账号兼容
+
+2026-11-03 实测：公网目录账号与本机认证代理内部账号是两套凭据。公网 nginx 经过目录验证后换用内部凭据，手机直接连接 `http://电脑局域网IP:3081` 时不会发生该转换，可能在 WebSocket 握手收到 401，即使电脑 DSH 正常、手机公网连接也正常。
+
+认证代理现可选读取 `AUTH_USERS_FILE`，在原 `AUTH_USER` / `AUTH_PASSWORD` 及 Cookie 校验之外接受额外本地密码散列。文件只读、缺失或格式不合法时拒绝额外账号，原内部账号仍可用。当前本机路径 `/home/x/.dsh/auth/lan-users.json`，权限 0600，systemd drop-in 位于 `~/.config/systemd/user/dsh-web-auth.service.d/lan-users.conf`。文件及凭据不得提交仓库。
+
+散列文件结构为 `version:1`、`users` 数组，每项为 `username`、`algorithm:"pbkdf2-sha256"`、16 字节十六进制 `salt`、32 字节十六进制 `digest`、`iterations`；当前使用 210000 次，验证器限制在 100000 至 1000000 之间。须由管理员确认账号已绑定本机后再登记，不能批量导入目录中的其他账号。运行时仅本地验证，不依赖公网；目录账号改密、解绑或撤销后，也要同步更新或删除本地散列。它不是自动目录同步功能。
+
+本轮登记前，使用手机正在发送的账号向既有 HTTPS 目录认证，确认 `OMEN 笔记本` 与 `dsh.sixuanai.com` 绑定后生成散列；临时明文材料已删除，未改旧内部账号、未关闭认证、未开放原始 DSH 端口。
+
+回退额外账号支持：移除该 drop-in 的 `AUTH_USERS_FILE` 配置，`systemctl --user daemon-reload` 后重启 `dsh-web-auth`；保留原账号及 Cookie Secret，不需要重启 DSH。散列文件独立保管，删除其中某个账号即可撤销其通过新 Basic 请求的访问。既有 Cookie 会话具有独立有效期，立即撤销 Cookie 需另行轮换 Cookie Secret 并考虑全部客户端重登。
+
+隔离回归测试：`node server/tests/dsh-auth-proxy-auth.cjs`。测试使用临时合成凭据与本机假上游，不读真实凭据。
+
+## xHarness 电脑连接器（2026-11-03）
+
+新增设备配对链路，旧 3081 与网站根路径继续兼容。安装与回退见 [连接器维护文档](../docs/connector/README.md)，已执行检查与范围见 [验收记录](../docs/connector/IMPLEMENTATION.md)。
+
+本机新服务为 `xharness-connector`（TLS 3082）和 `xharness-auth-bridge`（仅回环 3083），复用现有回环 18395 DSH；配置/设备散列位于用户私有目录 `~/.local/share/xharness-connector`，不能提交。电脑应用菜单新增管理入口。新手机配对需要 App 2.2.0+137；不会静默把手机原账户切到新设备凭据。
+
+广州现网新增 `xharness-hub`（回环 3087）以及 `xharness-accounts` 导出 service/path/timer。nginx 在 `dsh-sixuanai` 的 HTTPS vhost 增加 `/etc/nginx/snippets/xharness-connector.conf` include，仅处理 `/connector/`。修改前备份保存在该 vhost 同目录的 `.xharness-backup-时间` 文件。hub 使用独立服务用户，仅能读取 `/var/lib/xharness-accounts/accounts.json` 的加盐散列，原 `/etc/dsh-directory/users.json` 的 root:root 0600 权限保持不变。
+
+Tailscale 将网关连接到电脑，新链路限定连接器端口并固定证书。当前电脑已用现有绑定账户登记，生产环境未启用 `CONNECTOR_TEST_LOOPBACK`。检测现有设备、撤销设备、检查公网状态均不需要把长期账号密码写进手机配对码。
+
+
+### x-26 第二台电脑安装
+
+2026-11-03 在 x-26 用户 x 下新增连接器，复用原 `dsh-web.service`（回环 3080）。该服务只把启动授权信息写入用户 journal，因此连接器新增 `--token-unit dsh-web.service` 接入方式；原服务 PID 2963644 未改变。独立网关 TLS 3082、认证桥回环 3083 均 active，TLS 与公网身份检查通过。局域网地址当前为 172.16.3.193，Tailscale 为 100.89.0.2。
+
+x-26 已作为独立节点登记到同一个现有账户的连接器 registry，未把仅接受设备凭据的新路由混入旧目录账户列表。真实 Tailscale 直连与公网 HTTP/WS 检查均读到相同的 165 个会话。临时测试设备配对成功后已撤销。手机本身的首次确认仍由手机 App 完成；现有 2.2.0 二维码首次领取要求手机与 x-26 局域网互通，不能把服务安装完成当作手机已经绑定。
+
+### App 2.2.1 多电脑
+
+配对电脑改为手机安全存储中的多条记录，旧 x-26 单条配对兼容迁移。连接中心同时保留原账号电脑（OMEN）与已配对电脑（x-26）。未修改两台电脑的 DSH、网关身份或实际手机设备记录。真实客户端状态切换已验证 x-26 → 原 OMEN 账号 → 配对 OMEN → x-26，审计用测试设备与临时凭据已清理。
+
+## 2026-11-03：Cloudflare R2 公共安装包加速
+
+公共签名 APK 使用 `xharness-releases` R2 桶和 `downloads.ainotex.com` 自定义域名。原 `dsh.sixuanai.com/releases-public/` 入口对已验证版本返回 302，更新清单仍 no-store。发布器自动上传、校验、更新映射并平滑 reload；原安装包保留，`?origin=1` 可取源站备用副本。业务认证与 DSH/WebSocket 路由未改动。
+
+部署、凭据配置、回滚和测速见 [Cloudflare 下载运维](../docs/releases/CLOUDFLARE_DOWNLOADS.md)。

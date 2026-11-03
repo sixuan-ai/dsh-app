@@ -1,0 +1,8 @@
+{
+  "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+  "bucket": "xharness-releases",
+  "public_base_url": "https://downloads.example.com/xharness",
+  "key_prefix": "xharness/",
+  "token_file": "~/.config/xharness/cloudflare-token",
+  "zone_id": "YOUR_CLOUDFLARE_ZONE_ID"
+}

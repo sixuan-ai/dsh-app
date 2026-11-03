@@ -35,6 +35,7 @@ class SessionDrawer extends StatefulWidget {
     required this.onNewSession,
     required this.onCheckUpdate,
     required this.onConnectionCenter,
+    this.onAppAccount,
     required this.connectionMode,
     required this.localAvailable,
     required this.updateAvailable,
@@ -54,6 +55,7 @@ class SessionDrawer extends StatefulWidget {
   /// Runs a manual update check (HomePage owns the context).
   final VoidCallback onCheckUpdate;
   final VoidCallback onConnectionCenter;
+  final VoidCallback? onAppAccount;
   final String connectionMode;
   final bool localAvailable;
 
@@ -114,46 +116,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
     if (mounted) await _loadProfile();
   }
 
-  /// Permission-mode switcher: a sheet of presets riding the host's
-  /// /permission command (the same write path as the web Access chip), with
-  /// a risk confirmation before danger-full-access.
-  Future<void> _openPermissions() async {
-    if (state.selectedSessionId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('先选择或新建一个会话')));
-      return;
-    }
-    final preset = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => PermissionSheet(
-        onPick: (preset) => Navigator.of(sheetContext).pop(preset),
-      ),
-    );
-    if (preset == null || !mounted) return;
-    if (preset == 'danger-full-access') {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(S.enableFullAccess),
-          content: Text(S.fullAccessWarning),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(S.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(S.enable),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-    }
-    await state.runCommand('/permission $preset');
-  }
+  Future<void> _openPermissions() => showPermissionPicker(context, state);
 
   /// The "更多功能" grid sheet. Pages (pet/changelog) close the drawer first;
   /// sub-sheets (theme/permissions) stay over the open drawer.
@@ -251,7 +214,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             },
           ),
           _MoreAction(
-            icon: Icons.pets,
+            icon: Icons.waves_rounded,
             label: S.pet,
             onTap: () {
               Navigator.of(sheetContext).pop();
@@ -321,6 +284,16 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ).push(MaterialPageRoute<void>(builder: widget.changelogBuilder));
             },
           ),
+          if (widget.onAppAccount != null)
+            _MoreAction(
+              icon: Icons.account_circle_outlined,
+              label: state.signedInAccount != null ? '我的思玄账号' : '登录 / 注册',
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).pop();
+                widget.onAppAccount!();
+              },
+            ),
           _MoreAction(
             icon: Icons.logout,
             label: S.logout,
@@ -502,9 +475,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
     final ver = (profile['avatarVer'] as num?)?.toInt() ?? 0;
     final token = profile['token'] as String? ?? '';
     final headers = <String, String>{
-      if ((state.authUsername ?? '').isNotEmpty)
+      if ((state.accountUsername ?? '').isNotEmpty)
         'authorization':
-            'Basic ${base64Encode(utf8.encode('${state.authUsername}:${state.authPassword ?? ''}'))}',
+            'Basic ${base64Encode(utf8.encode('${state.accountUsername}:${state.accountPassword ?? ''}'))}',
       'x-social-token': token,
     };
     return InkWell(
@@ -639,7 +612,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
               ),
               const SizedBox(width: 2),
               Icon(
-                group.isWorkspace ? Icons.folder_outlined : Icons.inbox_outlined,
+                group.isWorkspace
+                    ? Icons.folder_outlined
+                    : Icons.inbox_outlined,
                 size: 14,
                 color: P.accentLight,
               ),

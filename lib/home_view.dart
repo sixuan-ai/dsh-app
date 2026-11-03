@@ -25,9 +25,11 @@ class HomeView extends StatelessWidget {
     required this.onCheckUpdate,
     required this.onLogout,
     required this.onSuggestion,
+    this.connectionWelcomeBuilder,
   });
 
   final AppState state;
+  final WidgetBuilder? connectionWelcomeBuilder;
   final WidgetBuilder drawerBuilder;
   final VoidCallback onModelPicker;
   final VoidCallback onNewSession;
@@ -68,7 +70,12 @@ class HomeView extends StatelessWidget {
         children: [
           AnimatedBuilder(
             animation: state,
-            builder: (context, _) => StatsBar(state: state),
+            builder: (context, _) =>
+                state.hasEntryAccess &&
+                    !state.serverAvailable &&
+                    state.sessions.isEmpty
+                ? const SizedBox.shrink()
+                : StatsBar(state: state),
           ),
           AnimatedBuilder(
             animation: state,
@@ -83,10 +90,12 @@ class HomeView extends StatelessWidget {
             child: AnimatedBuilder(
               animation: state,
               builder: (context, _) => state.selectedSessionId == null
-                  ? EmptySessionView(
-                      onNewSession: onNewSession,
-                      onSuggestion: onSuggestion,
-                    )
+                  ? (!state.serverAvailable && connectionWelcomeBuilder != null)
+                        ? connectionWelcomeBuilder!(context)
+                        : EmptySessionView(
+                            onNewSession: onNewSession,
+                            onSuggestion: onSuggestion,
+                          )
                   : ChatList(state: state),
             ),
           ),
@@ -97,7 +106,12 @@ class HomeView extends StatelessWidget {
               state.selectedRunning,
               state.serverAvailable,
             ),
-            builder: (context, _) => Composer(state: state),
+            builder: (context, _) =>
+                state.hasEntryAccess &&
+                    state.selectedSessionId == null &&
+                    !state.serverAvailable
+                ? const SizedBox.shrink()
+                : Composer(state: state),
           ),
         ],
       ),
@@ -110,6 +124,7 @@ class HomeHeaderSelection {
     required this.sessionId,
     required this.title,
     required this.subtitle,
+    this.controls = '',
   });
 
   factory HomeHeaderSelection.from(AppState state) {
@@ -129,6 +144,10 @@ class HomeHeaderSelection {
     return HomeHeaderSelection(
       sessionId: sessionId,
       title: title,
+      controls:
+          '${state.loadingModels}:${state.loadingSubagents}:'
+          '${state.queuedTasks.length}:'
+          '${state.subagents.map((a) => '${a.id}:${a.activity}:${a.label}').join(',')}',
       subtitle: [
         ?state.models?.label,
         if (state.syncingTail) '正在同步最新进度…',
@@ -141,6 +160,7 @@ class HomeHeaderSelection {
   final String? sessionId;
   final String title;
   final String subtitle;
+  final String controls;
 
   List<String> get subtitleParts =>
       subtitle.isEmpty ? const [] : subtitle.split('\u0000');
@@ -150,10 +170,11 @@ class HomeHeaderSelection {
       other is HomeHeaderSelection &&
       sessionId == other.sessionId &&
       title == other.title &&
-      subtitle == other.subtitle;
+      subtitle == other.subtitle &&
+      controls == other.controls;
 
   @override
-  int get hashCode => Object.hash(sessionId, title, subtitle);
+  int get hashCode => Object.hash(sessionId, title, subtitle, controls);
 }
 
 class ComposerSelection {

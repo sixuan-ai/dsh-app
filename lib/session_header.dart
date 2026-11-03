@@ -252,55 +252,58 @@ class _SubagentSheet extends StatelessWidget {
   final AppState state;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  '子代理运行状态',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: state,
+    builder: (context, _) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '子代理运行状态',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: '刷新',
-                onPressed: state.loadingSubagents
-                    ? null
-                    : state.refreshSubagents,
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final agent in state.subagents)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                agent.running
-                    ? Icons.autorenew_rounded
-                    : Icons.check_circle_outline,
-                color: agent.running ? P.success : P.textTertiary,
-              ),
-              title: Text(
-                agent.label?.isNotEmpty == true ? agent.label! : '子代理',
-              ),
-              subtitle: Text(
-                '${agent.mode == 'continuable' ? '可继续' : '单次任务'}${agent.hasChildren ? ' · 包含下级代理' : ''}',
-              ),
-              trailing: Text(
-                agent.running ? '工作中' : '已完成',
-                style: TextStyle(
-                  color: agent.running ? P.success : P.textTertiary,
-                  fontWeight: FontWeight.w600,
+                IconButton(
+                  tooltip: '刷新',
+                  onPressed: state.loadingSubagents
+                      ? null
+                      : state.refreshSubagents,
+                  icon: const Icon(Icons.refresh),
                 ),
-              ),
+              ],
             ),
-        ],
+            const SizedBox(height: 8),
+            for (final agent in state.subagents)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  agent.running
+                      ? Icons.autorenew_rounded
+                      : Icons.check_circle_outline,
+                  color: agent.running ? P.success : P.textTertiary,
+                ),
+                title: Text(
+                  agent.label?.isNotEmpty == true ? agent.label! : '子代理',
+                ),
+                subtitle: Text(
+                  '${agent.mode == 'continuable' ? '可继续' : '单次任务'}${agent.hasChildren ? ' · 包含下级代理' : ''}',
+                ),
+                trailing: Text(
+                  agent.running ? '工作中' : '已完成',
+                  style: TextStyle(
+                    color: agent.running ? P.success : P.textTertiary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     ),
   );

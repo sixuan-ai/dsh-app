@@ -151,8 +151,8 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => BalancePage(
-                    username: widget.state.authUsername,
-                    password: widget.state.authPassword,
+                    username: widget.state.accountUsername,
+                    password: widget.state.accountPassword,
                   ),
                 ),
               ),
@@ -163,8 +163,8 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => DshUpdatePage(
-                    username: widget.state.authUsername,
-                    password: widget.state.authPassword,
+                    username: widget.state.accountUsername,
+                    password: widget.state.accountPassword,
                   ),
                 ),
               ),
@@ -193,8 +193,8 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => DevToolsPage(
-                      username: widget.state.authUsername,
-                      password: widget.state.authPassword,
+                      username: widget.state.accountUsername,
+                      password: widget.state.accountPassword,
                     ),
                   ),
                 ),
@@ -206,8 +206,8 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => FeedbackPage(
-                    username: widget.state.authUsername,
-                    password: widget.state.authPassword,
+                    username: widget.state.accountUsername,
+                    password: widget.state.accountPassword,
                   ),
                 ),
               ),

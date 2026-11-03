@@ -9,7 +9,7 @@ void main() {
       const MaterialApp(home: Scaffold(body: ConnectionGuideSheet())),
     );
     expect(find.text('远程连接：让官网帮你找到电脑'), findsOneWidget);
-    expect(find.text('申请远程连接服务'), findsOneWidget);
+    expect(find.text('启用公网入口'), findsOneWidget);
   });
 
   testWidgets('shows LAN safety and command steps', (tester) async {
@@ -19,10 +19,7 @@ void main() {
       ),
     );
     expect(find.text('本地连接：手机直连电脑'), findsOneWidget);
-    expect(
-      find.text('dsh web --host 0.0.0.0 --port 3080 --no-open'),
-      findsOneWidget,
-    );
+    expect(find.text('bash server/connector/install.sh'), findsOneWidget);
   });
 
   testWidgets('command blocks use the code surface with accent copy icon', (

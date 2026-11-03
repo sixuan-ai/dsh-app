@@ -20,7 +20,16 @@ const kPetMoodDecayPerHour = 4.0;
 const kPetHygieneDecayPerHour = 3.0;
 
 /// Cache-hit input tokens per pet level: every 1 M levels the pet up once.
-const kPetTokensPerLevel = 1000000;
+const kPetTokensPerBowl = 1000000;
+const kPetTokensPerLevel = kPetTokensPerBowl;
+
+/// Whole bowls represented by the existing cumulative growth context.
+int petRiceBowlsForTokens(int tokens) =>
+    math.max(0, tokens) ~/ kPetTokensPerBowl;
+
+/// Progress toward the next bowl; partial bowls are never rounded up.
+double petRiceBowlProgress(int tokens) =>
+    (math.max(0, tokens) % kPetTokensPerBowl) / kPetTokensPerBowl;
 
 /// Current growth level for a cumulative token count (1-based).
 int petLevelForTokens(int tokens) =>
@@ -38,7 +47,7 @@ class PetStage {
     required this.base,
   });
 
-  /// Display name (蛋蛋/幼崽/小猫/猛虎/神兽).
+  /// Companionship title; growth does not replace the character.
   final String name;
 
   /// First level (inclusive) of this form.
@@ -59,74 +68,37 @@ class PetSpecies {
     required this.stages,
   });
 
-  /// Stable id persisted on the pet (spirit/cat/dog/dragon/phoenix).
+  /// Stable character id persisted on the pet.
   final String id;
 
-  /// Species display name (灵宠/灵猫/神犬/神龙/凤凰).
+  /// Character display name.
   final String name;
 
   /// Evolution forms, ascending by [PetStage.minLevel]; length 5.
   final List<PetStage> stages;
 
   /// The form for a cumulative token count.
-  PetStage stageForTokens(int tokens) =>
-      stages[petStageIndexForTokens(tokens)];
+  PetStage stageForTokens(int tokens) => stages[petStageIndexForTokens(tokens)];
 }
 
-/// Adoptable species, named in the 宝可梦/洛克王国 evolution-family style.
-/// The 'spirit' chain keeps the v1.10.5 emoji sequence, so pets adopted
-/// before species existed keep their exact faces (only names change).
+/// All companions share the upstream BigFish character at every level.
 const kPetSpecies = [
-  PetSpecies(id: 'spirit', name: '哈灵', stages: [
-    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '小哈仔', minLevel: 3, base: '🐥'),
-    PetStage(name: '哈灵猫', minLevel: 6, base: '🐱'),
-    PetStage(name: '威哈虎', minLevel: 10, base: '🐯'),
-    PetStage(name: '哈灵龙皇', minLevel: 15, base: '🐉'),
-  ]),
-  PetSpecies(id: 'cat', name: '雷光猫', stages: [
-    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '闪电喵', minLevel: 3, base: '🐱'),
-    PetStage(name: '疾电猫', minLevel: 6, base: '🐈'),
-    PetStage(name: '雷纹虎', minLevel: 10, base: '🐯'),
-    PetStage(name: '雷霆狮皇', minLevel: 15, base: '🦁'),
-  ]),
-  PetSpecies(id: 'dog', name: '苍月狼', stages: [
-    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '小苍犬', minLevel: 3, base: '🐶'),
-    PetStage(name: '苍月犬', minLevel: 6, base: '🐕'),
-    PetStage(name: '啸月狼', minLevel: 10, base: '🐺'),
-    PetStage(name: '九尾天狐', minLevel: 15, base: '🦊'),
-  ]),
-  PetSpecies(id: 'dragon', name: '焚天炎龙', stages: [
-    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '小火蜥', minLevel: 3, base: '🦎'),
-    PetStage(name: '熔岩鳄', minLevel: 6, base: '🐊'),
-    PetStage(name: '烈焰飞龙', minLevel: 10, base: '🐲'),
-    PetStage(name: '焚天炎龙', minLevel: 15, base: '🐉'),
-  ]),
-  PetSpecies(id: 'phoenix', name: '九天凤凰', stages: [
-    PetStage(name: '灵蛋', minLevel: 1, base: '🥚'),
-    PetStage(name: '绒绒雏', minLevel: 3, base: '🐣'),
-    PetStage(name: '云雀仔', minLevel: 6, base: '🐥'),
-    PetStage(name: '疾风鹰', minLevel: 10, base: '🦅'),
-    PetStage(name: '九天凤凰', minLevel: 15, base: '🦚'),
-  ]),
+  PetSpecies(
+    id: 'dafeiyu',
+    name: '大肥鱼',
+    stages: [
+      PetStage(name: '初见伙伴', minLevel: 1, base: '🐋'),
+      PetStage(name: '熟悉伙伴', minLevel: 3, base: '🐋'),
+      PetStage(name: '默契伙伴', minLevel: 6, base: '🐋'),
+      PetStage(name: '贴心伙伴', minLevel: 10, base: '🐋'),
+      PetStage(name: '灵魂搭档', minLevel: 15, base: '🐋'),
+    ],
+  ),
 ];
 
-/// Resolves a persisted species id; unknown/old saves map to the original
-/// 'spirit' chain.
-PetSpecies petSpeciesById(String? id) {
-  for (final species in kPetSpecies) {
-    if (species.id == id) return species;
-  }
-  return kPetSpecies.first;
-}
-
-/// Random species id for a fresh adoption (mystery egg: the species only
-/// reveals itself when the egg hatches).
-String randomPetSpeciesId() =>
-    kPetSpecies[math.Random().nextInt(kPetSpecies.length)].id;
+/// Legacy species resolve to BigFish while care and growth stay intact.
+PetSpecies petSpeciesById(String? id) => kPetSpecies.first;
+String randomPetSpeciesId() => 'dafeiyu';
 
 // ---- pet battles ----
 
@@ -227,7 +199,7 @@ bool petSpeciesCounters(String attackerId, String defenderId) {
   final order = [for (final species in kPetSpecies) species.id];
   final attacker = order.indexOf(attackerId);
   final defender = order.indexOf(defenderId);
-  if (attacker < 0 || defender < 0) return false;
+  if (attackerId == defenderId || attacker < 0 || defender < 0) return false;
   return (attacker + 1) % order.length == defender;
 }
 
@@ -273,7 +245,10 @@ PetBattleResult simulatePetBattle({
     final attacker = playerTurn ? player : wild;
     final defender = playerTurn ? wild : player;
     final level = playerTurn ? playerLevel : wildLevel;
-    final countered = petSpeciesCounters(attacker.speciesId, defender.speciesId);
+    final countered = petSpeciesCounters(
+      attacker.speciesId,
+      defender.speciesId,
+    );
     var damage = 6 + level * 3 + rng.nextInt(7);
     damage = (damage * (0.7 + attacker.overall / 100 * 0.6)).round();
     if (countered) damage = (damage * 1.25).round();
@@ -282,18 +257,23 @@ PetBattleResult simulatePetBattle({
     } else {
       playerHp = math.max(0, playerHp - damage);
     }
-    rounds.add(BattleRound(
-      attackerName: attacker.name,
-      attackerIsPlayer: playerTurn,
-      damage: damage,
-      countered: countered,
-      playerHp: playerHp,
-      wildHp: wildHp,
-    ));
+    rounds.add(
+      BattleRound(
+        attackerName: attacker.name,
+        attackerIsPlayer: playerTurn,
+        damage: damage,
+        countered: countered,
+        playerHp: playerHp,
+        wildHp: wildHp,
+      ),
+    );
     playerTurn = !playerTurn;
   }
-  final playerWon =
-      wildHp <= 0 ? true : playerHp <= 0 ? false : playerHp >= wildHp;
+  final playerWon = wildHp <= 0
+      ? true
+      : playerHp <= 0
+      ? false
+      : playerHp >= wildHp;
   return PetBattleResult(playerWon: playerWon, rounds: rounds);
 }
 
@@ -342,13 +322,12 @@ class Pet {
     required this.lastTickMs,
   });
 
-  /// A freshly adopted pet with full stats. [speciesId] defaults to the
-  /// original chain; the pet page passes [randomPetSpeciesId] for the
-  /// mystery-egg draw.
-  factory Pet.newborn(String name, int nowMs, {String speciesId = 'spirit'}) =>
+  /// A fresh BigFish companion with full stats. Legacy species arguments
+  /// remain accepted so older integrations migrate without data loss.
+  factory Pet.newborn(String name, int nowMs, {String speciesId = 'dafeiyu'}) =>
       Pet(
         name: name,
-        speciesId: speciesId,
+        speciesId: 'dafeiyu',
         hunger: kPetStatMax,
         mood: kPetStatMax,
         hygiene: kPetStatMax,
@@ -359,22 +338,27 @@ class Pet {
   /// Restores a pet from its persisted JSON (missing keys fall back to a
   /// newborn's values so older saves keep loading; the retired `growth` key
   /// from v1.10.0 saves is ignored — growth now derives from tokens).
-  factory Pet.fromJson(Map<String, dynamic> json, int nowMs) => Pet(
-        name: (json['name'] as String?)?.trim().isNotEmpty == true
-            ? (json['name'] as String).trim()
-            : '小哈',
-        speciesId: (json['speciesId'] as String?) ?? 'spirit',
-        hunger: _clampStat((json['hunger'] as num?)?.toInt() ?? kPetStatMax),
-        mood: _clampStat((json['mood'] as num?)?.toInt() ?? kPetStatMax),
-        hygiene: _clampStat((json['hygiene'] as num?)?.toInt() ?? kPetStatMax),
-        bornAtMs: (json['bornAtMs'] as num?)?.toInt() ?? nowMs,
-        lastTickMs: (json['lastTickMs'] as num?)?.toInt() ?? nowMs,
-      )..stageSeen = (json['stageSeen'] as num?)?.toInt()
-      ..pkScore = (json['pkScore'] as num?)?.toInt() ?? kPetPkScoreStart;
+  factory Pet.fromJson(Map<String, dynamic> json, int nowMs) =>
+      Pet(
+          name: (json['name'] as String?)?.trim().isNotEmpty == true
+              ? (json['name'] as String).trim()
+              : '大肥鱼',
+          speciesId: 'dafeiyu',
+          hunger: _clampStat((json['hunger'] as num?)?.toInt() ?? kPetStatMax),
+          mood: _clampStat((json['mood'] as num?)?.toInt() ?? kPetStatMax),
+          hygiene: _clampStat(
+            (json['hygiene'] as num?)?.toInt() ?? kPetStatMax,
+          ),
+          bornAtMs: (json['bornAtMs'] as num?)?.toInt() ?? nowMs,
+          lastTickMs: (json['lastTickMs'] as num?)?.toInt() ?? nowMs,
+        )
+        ..riceBowlsSeen = (json['riceBowlsSeen'] as num?)?.toInt()
+        ..stageSeen = (json['stageSeen'] as num?)?.toInt()
+        ..pkScore = (json['pkScore'] as num?)?.toInt() ?? kPetPkScoreStart;
 
   String name;
 
-  /// Species drawn at adoption; fixed for the pet's lifetime.
+  /// Character identity; legacy species are normalized when loading.
   String speciesId;
 
   int hunger;
@@ -386,6 +370,27 @@ class Pet {
   /// it silently on first load and pops a celebration when the stage
   /// crosses upward.
   int? stageSeen;
+
+  /// High-water mark for automatic meals. Null legacy saves establish a
+  /// baseline without retroactively changing their care stats.
+  int? riceBowlsSeen;
+
+  /// Newly completed context bowls restore care once, including after reopen.
+  /// Manual feeding never changes this counter or the context ledger.
+  int eatRiceForContext(int contextTokens) {
+    final bowls = petRiceBowlsForTokens(contextTokens);
+    final previous = riceBowlsSeen;
+    if (previous == null) {
+      riceBowlsSeen = bowls;
+      return 0;
+    }
+    if (bowls <= previous) return 0;
+    final meals = bowls - previous;
+    riceBowlsSeen = bowls;
+    hunger = _clampStat(hunger + 30 * meals);
+    mood = _clampStat(mood + 2 * meals);
+    return meals;
+  }
 
   /// Trainer PK score (starts at [kPetPkScoreStart]); matched battles move
   /// it by [kPetPkScoreWin]/[kPetPkScoreLose].
@@ -400,16 +405,17 @@ class Pet {
   static int _clampStat(int v) => v.clamp(0, kPetStatMax);
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'speciesId': speciesId,
-        'hunger': hunger,
-        'mood': mood,
-        'hygiene': hygiene,
-        'stageSeen': ?stageSeen,
-        'pkScore': pkScore,
-        'bornAtMs': bornAtMs,
-        'lastTickMs': lastTickMs,
-      };
+    'name': name,
+    'speciesId': speciesId,
+    'hunger': hunger,
+    'mood': mood,
+    'hygiene': hygiene,
+    'stageSeen': ?stageSeen,
+    'riceBowlsSeen': ?riceBowlsSeen,
+    'pkScore': pkScore,
+    'bornAtMs': bornAtMs,
+    'lastTickMs': lastTickMs,
+  };
 
   /// Mean of the three care stats; drives the overall face.
   double get overall => (hunger + mood + hygiene) / 3;
@@ -461,7 +467,7 @@ class Pet {
 
   /// Short status line matching [petFace], shown under the pet.
   String get statusLine {
-    if (hunger <= 15) return '肚子饿扁了,快喂我!';
+    if (hunger <= 15) return '想吃一碗热乎乎的白米饭！';
     if (hygiene <= 15) return '身上脏脏的,想洗澡…';
     if (mood <= 15) return '有点孤单,陪我玩嘛';
     if (overall >= 80) return '今天心情超棒!';
@@ -513,6 +519,26 @@ class PetStore {
 class PetTokenStore {
   static const _key = 'petTokenTotals';
   static const _bonusKey = 'petBonusTokens';
+  // Projection frames from different sessions can arrive together. Serialize
+  // writes so a later session cannot overwrite another session's rice credit.
+  static Future<void>? _writes;
+  static Future<T> _write<T>(Future<T> Function() operation) {
+    final previous = _writes;
+    final result = previous == null
+        ? operation()
+        : previous.then((_) => operation());
+    late final Future<void> tail;
+    void clear() {
+      if (identical(_writes, tail)) _writes = null;
+    }
+
+    tail = result.then<void>(
+      (_) => clear(),
+      onError: (Object error, StackTrace stack) => clear(),
+    );
+    _writes = tail;
+    return result;
+  }
 
   /// Reads the persisted per-session map (empty on corruption).
   Future<Map<String, int>> _read() async {
@@ -538,24 +564,26 @@ class PetTokenStore {
   Future<int> _bonus() async =>
       (await SharedPreferences.getInstance()).getInt(_bonusKey) ?? 0;
 
-  /// Global total: per-session sum plus the PK bonus pool.
-  Future<int> total() async =>
-      (await _read()).values.fold<int>(0, (sum, v) => sum + v) +
-      await _bonus();
+  /// Context only: battle rewards are not reported as context or rice.
+  Future<int> contextTotal() async =>
+      (await _read()).values.fold<int>(0, (sum, v) => sum + math.max(0, v));
+
+  /// Growth total retains the legacy bonus pool and level history.
+  Future<int> total() async => await contextTotal() + await _bonus();
 
   /// Settles a battle stake: adds [delta] (negative on loss) to the bonus
   /// pool, floored at 0 — a wild winner cannot steal more than the pool
   /// holds. Returns the new global total.
-  Future<int> addBonus(int delta) async {
+  Future<int> addBonus(int delta) => _write(() async {
     final prefs = await SharedPreferences.getInstance();
     final next = math.max(0, (prefs.getInt(_bonusKey) ?? 0) + delta);
     await prefs.setInt(_bonusKey, next);
     return total();
-  }
+  });
 
   /// Records one session's cumulative hit-token observation (max wins) and
   /// returns the global total (including the bonus pool).
-  Future<int> record(String sessionId, int tokens) async {
+  Future<int> record(String sessionId, int tokens) => _write(() async {
     final map = await _read();
     final previous = map[sessionId] ?? 0;
     if (tokens > previous) {
@@ -564,5 +592,5 @@ class PetTokenStore {
       await prefs.setString(_key, jsonEncode(map));
     }
     return total();
-  }
+  });
 }

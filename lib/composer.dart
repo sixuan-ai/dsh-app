@@ -1,6 +1,8 @@
 /// Chat composer, quick commands, images, and permission controls.
 library;
 
+import 'access_policy.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -12,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 import 'composer_input.dart';
 import 'src/prompt_image_normalizer.dart';
 import 'src/theme.dart';
+import 'src/l10n.dart';
 import 'state.dart';
 
 class Composer extends StatefulWidget {
@@ -133,37 +136,8 @@ class _ComposerState extends State<Composer> {
     }
   }
 
-  Future<void> _openPermissions() async {
-    final preset = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => PermissionSheet(
-        onPick: (preset) => Navigator.of(sheetContext).pop(preset),
-      ),
-    );
-    if (preset == null || !mounted) return;
-    if (preset == 'danger-full-access') {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('开启完全访问?'),
-          content: const Text('开启后 DSH 可读写设备上的所有文件，并且不再弹出审批确认。仅在信任当前任务时开启。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('开启'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-    }
-    await widget.state.runCommand('/permission $preset');
-  }
+  Future<void> _openPermissions() =>
+      showPermissionPicker(context, widget.state);
 
   Future<void> _send() async {
     final text = _controller.text.trim();
@@ -307,12 +281,6 @@ const _slashCommands = [
   _SlashCommand('plan', Icons.map_outlined, '进入或退出计划模式'),
   _SlashCommand('goal', Icons.flag_outlined, '设置或查看长期任务目标', hasInput: true),
   _SlashCommand(
-    'permission',
-    Icons.shield_outlined,
-    '切换权限模式(如 /permission danger-full-access)',
-    hasInput: true,
-  ),
-  _SlashCommand(
     'feedback',
     Icons.rate_review_outlined,
     '记录对本会话的反馈',
@@ -320,10 +288,66 @@ const _slashCommands = [
   ),
 ];
 
+/// Both the composer and drawer use the same picker and confirmation flow.
+Future<void> showPermissionPicker(BuildContext context, AppState state) async {
+  final sessionId = state.selectedSessionId;
+  if (sessionId == null) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('先选择或新建一个会话')));
+    return;
+  }
+  final preset = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => AnimatedBuilder(
+      animation: state,
+      builder: (context, _) => PermissionSheet(
+        currentPreset:
+            state.projectionOf(sessionId, 'permissions')?['currentValue']
+                as String?,
+        onPick: (value) => Navigator.of(sheetContext).pop(value),
+      ),
+    ),
+  );
+  if (preset == null ||
+      !context.mounted ||
+      state.selectedSessionId != sessionId) {
+    return;
+  }
+  if (preset == 'danger-full-access') {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(S.enableFullAccess),
+        content: Text(S.fullAccessWarning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(S.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(S.enable),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true ||
+        !context.mounted ||
+        state.selectedSessionId != sessionId) {
+      return;
+    }
+  }
+  await state.runCommand('/permission $preset');
+}
+
 /// Permission-mode sheet (drawer → 权限模式): one tap per preset; the pick
 /// rides the /permission command, so the chat shows the usual command card.
 class PermissionSheet extends StatelessWidget {
-  const PermissionSheet({super.key, required this.onPick});
+  const PermissionSheet({super.key, required this.onPick, this.currentPreset});
+
+  final String? currentPreset;
 
   /// Called with the chosen preset name ('workspace-write' etc.).
   final ValueChanged<String> onPick;
@@ -345,7 +369,7 @@ class PermissionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '控制当前会话的文件访问范围与审批策略',
+              '控制当前会话的文件访问范围与审批策略。$kComputerPermissionSummary',
               style: TextStyle(fontSize: 12, color: P.textTertiary),
             ),
             const SizedBox(height: 12),
@@ -353,6 +377,7 @@ class PermissionSheet extends StatelessWidget {
               icon: Icons.edit_note,
               title: '工作区写入',
               preset: 'workspace-write',
+              selected: currentPreset == 'workspace-write',
               description: '只能写当前工作区;越权操作会先弹审批询问你',
               onPick: onPick,
             ),
@@ -361,6 +386,7 @@ class PermissionSheet extends StatelessWidget {
               icon: Icons.lock_open_outlined,
               title: '完全访问',
               preset: 'danger-full-access',
+              selected: currentPreset == 'danger-full-access',
               description: '全部文件可读写,且不再弹审批(需二次确认)',
               danger: true,
               onPick: onPick,
@@ -380,6 +406,7 @@ class _PermissionOption extends StatelessWidget {
     required this.description,
     required this.onPick,
     this.danger = false,
+    this.selected = false,
   });
 
   final IconData icon;
@@ -392,6 +419,7 @@ class _PermissionOption extends StatelessWidget {
 
   /// Danger presets (full device access) use a warning icon treatment.
   final bool danger;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -421,6 +449,7 @@ class _PermissionOption extends StatelessWidget {
           description,
           style: TextStyle(fontSize: 12, color: P.textSecondary),
         ),
+        trailing: selected ? const Chip(label: Text('当前')) : null,
         onTap: () => onPick(preset),
       ),
     );
@@ -477,12 +506,13 @@ class _CommandsSheetState extends State<_CommandsSheet> {
       setState(() {
         _commands = [
           for (final entry in catalog)
-            _SlashCommand(
-              entry['name'] as String? ?? '',
-              _icons[entry['name']] ?? Icons.terminal,
-              entry['description'] as String? ?? '',
-              hasInput: entry['input'] != null,
-            ),
+            if (entry['name'] != 'permission')
+              _SlashCommand(
+                entry['name'] as String? ?? '',
+                _icons[entry['name']] ?? Icons.terminal,
+                entry['description'] as String? ?? '',
+                hasInput: entry['input'] != null,
+              ),
         ];
       });
     } catch (_) {

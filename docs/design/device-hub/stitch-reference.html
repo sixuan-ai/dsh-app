@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>xHarness: 连接中心</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-highest": "#303632",
+            "on-primary-fixed-variant": "#364e00",
+            "primary-fixed-dim": "#a4d73e",
+            "on-surface": "#dee4dd",
+            "outline-variant": "#434937",
+            "on-secondary": "#253500",
+            "secondary-fixed": "#cfee8b",
+            "on-tertiary-fixed-variant": "#394b3d",
+            "surface-dim": "#0f1511",
+            "on-primary": "#243600",
+            "tertiary-container": "#d3e8d5",
+            "on-secondary-container": "#afce6f",
+            "inverse-primary": "#496800",
+            "background": "#0f1511",
+            "on-error-container": "#ffdad6",
+            "surface-bright": "#343b36",
+            "secondary": "#b3d272",
+            "on-surface-variant": "#c3c9b1",
+            "on-tertiary-container": "#57695a",
+            "secondary-container": "#405801",
+            "surface-variant": "#303632",
+            "secondary-fixed-dim": "#b3d272",
+            "surface-tint": "#a4d73e",
+            "surface-container": "#1b211d",
+            "surface": "#0f1511",
+            "on-tertiary-fixed": "#0f1f13",
+            "on-primary-fixed": "#141f00",
+            "surface-container-low": "#171d19",
+            "tertiary-fixed": "#d3e8d5",
+            "primary-container": "#bff458",
+            "on-background": "#dee4dd",
+            "primary": "#ffffff",
+            "surface-container-high": "#252b27",
+            "outline": "#8d937d",
+            "on-tertiary": "#233427",
+            "on-secondary-fixed-variant": "#384e00",
+            "inverse-surface": "#dee4dd",
+            "on-error": "#690005",
+            "error-container": "#93000a",
+            "error": "#ffb4ab",
+            "primary-fixed": "#bff458",
+            "inverse-on-surface": "#2c322d",
+            "on-secondary-fixed": "#141f00",
+            "on-primary-container": "#4e6e00",
+            "surface-container-lowest": "#0a100c",
+            "tertiary-fixed-dim": "#b8ccb9",
+            "tertiary": "#ffffff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1.25rem",
+            "3xl": "1.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xl": "1.75rem",
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "0.75rem",
+            "gutter": "1rem",
+            "space-lg": "1.25rem",
+            "space-xs": "0.25rem"
+          },
+          "fontFamily": {
+            "label-sm": ["JetBrains Mono"],
+            "label-lg": ["JetBrains Mono"],
+            "body-md": ["Inter", "sans-serif"],
+            "headline-sm": ["Inter", "sans-serif"],
+            "headline-md": ["Inter", "sans-serif"],
+            "headline-lg": ["Inter", "sans-serif"],
+            "body-sm": ["Inter", "sans-serif"],
+            "title-lg": ["Inter", "sans-serif"],
+            "label-md": ["JetBrains Mono"],
+            "body-lg": ["Inter", "sans-serif"]
+          },
+          "fontSize": {
+            "label-sm": ["9px", { "lineHeight": "12px", "letterSpacing": "0.06em", "fontWeight": "600" }],
+            "label-lg": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "headline-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-sm": ["11px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "title-lg": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-md": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "500" }],
+            "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #0f1511;
+      color: #dee4dd;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    /* Tactile Neumorphic Raised */
+    .tactile-raised {
+      background: #1b211d;
+      box-shadow: 0 8px 18px -2px rgba(6, 9, 7, 0.75),
+                  0 -1px 3px 0 rgba(45, 60, 50, 0.35),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    /* Tactile Pressed / Recessed */
+    .tactile-inset {
+      background: #121914;
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.7),
+                  inset 0 -1px 2px rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    /* Liquid Specular Glass */
+    .liquid-glass {
+      background: rgba(23, 29, 25, 0.82);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      box-shadow: 0 14px 30px -4px rgba(0, 0, 0, 0.65),
+                  inset 0 1px 1px rgba(191, 244, 88, 0.28),
+                  inset 0 -1px 1px rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(191, 244, 88, 0.16);
+    }
+    /* Smooth Pulse Aura */
+    @keyframes breathing {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.92); }
+    }
+    .status-breathing {
+      animation: breathing 2.4s ease-in-out infinite;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased flex justify-center min-h-screen py-0 sm:py-6 overflow-x-hidden">
+<!-- Mobile Viewport Shell (390px width x 880px max constraint) -->
+<main class="relative w-full max-w-[390px] min-h-[880px] bg-surface flex flex-col justify-between overflow-hidden sm:rounded-3xl sm:border sm:border-outline-variant/30 shadow-2xl pb-4">
+<!-- Ambient Radial Lighting Orbs -->
+<div class="pointer-events-none absolute -top-16 -left-16 w-72 h-72 rounded-full bg-primary-fixed/10 blur-[64px]"></div>
+<div class="pointer-events-none absolute top-48 -right-20 w-64 h-64 rounded-full bg-primary-fixed-dim/5 blur-[56px]"></div>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 w-full px-margin pt-2 pb-2 overflow-y-auto space-y-2.5 scrollbar-none">
+<!-- SECTION 1: Top Bar & Editorial Header -->
+<header class="w-full">
+<!-- Top App Bar Navigation Row -->
+<div class="h-11 flex items-center justify-between">
+<button aria-label="返回" class="w-10 h-10 rounded-full tactile-raised flex items-center justify-center text-on-surface hover:text-primary-fixed active:scale-95 transition-all duration-150">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full tactile-inset">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></span>
+<span class="font-label-md text-label-md text-on-surface tracking-wider font-semibold">xHarness</span>
+</div>
+<button aria-label="帮助与指引" class="w-10 h-10 rounded-full tactile-raised flex items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-95 transition-all duration-150">
+<span class="material-symbols-outlined text-[18px]" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+<!-- Big Editorial Headline Block -->
+<div class="mt-2 px-1">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight font-bold">连接中心</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant/90 mt-0.5">工作，在每台电脑间自由继续</p>
+</div>
+</header>
+<!-- SECTION 2: Main Current Connection Hero Card -->
+<section class="relative pt-0.5">
+<div class="pointer-events-none absolute inset-x-4 top-2 h-36 rounded-3xl bg-primary-fixed/20 blur-[44px]"></div>
+<div class="relative liquid-glass rounded-3xl p-4 overflow-hidden transition-all">
+<div class="absolute top-0 inset-x-8 h-[1px] bg-gradient-to-r from-transparent via-primary-fixed/50 to-transparent"></div>
+<!-- Eyebrow status row -->
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">当前设备</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary-fixed/15 border border-primary-fixed/30 text-primary-fixed font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed mr-1 status-breathing"></span>
+已连接
+</span>
+</div>
+<div class="px-2 py-0.5 rounded-full tactile-inset flex items-center space-x-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-primary-fixed" data-icon="router">router</span>
+<span class="font-label-sm text-label-sm">局域网直连</span>
+</div>
+</div>
+<!-- Main Entity Identifier -->
+<div class="mt-3 flex items-center justify-between">
+<div>
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">x-26</span>
+</div>
+<div class="relative w-12 h-12 rounded-2xl tactile-inset flex items-center justify-center">
+<span class="material-symbols-outlined text-[26px] text-on-surface/85" data-icon="desktop_windows">desktop_windows</span>
+<span class="absolute top-1.5 right-1.5 flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-fixed opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary-fixed"></span>
+</span>
+</div>
+</div>
+<!-- Bottom reassurance prompt -->
+<div class="mt-3 pt-2.5 border-t border-outline-variant/30 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant/80">
+<span class="flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed/70 mr-1.5"></span>
+会话与工作区跟随电脑同步
+</span>
+</div>
+</div>
+</section>
+<!-- SECTION 3: Current Connection Mode Segmented Switch -->
+<section class="tactile-raised rounded-2xl p-space-md space-y-2">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-label-md text-label-md font-semibold text-on-surface">通讯通道策略</span>
+<button aria-label="重新探测网络" class="h-6 px-2 rounded-lg tactile-inset flex items-center space-x-1 text-on-surface-variant hover:text-primary-fixed active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[13px]" data-icon="sync">sync</span>
+<span class="font-label-sm text-label-sm">重测路径</span>
+</button>
+</div>
+<!-- Inset Segmented Tray -->
+<div class="tactile-inset p-1 rounded-xl flex items-center space-x-1">
+<!-- Active LAN Capsule -->
+<button class="flex-1 py-1.5 px-2.5 rounded-lg bg-surface-container-high border border-primary-fixed/30 shadow-md flex items-center justify-center space-x-1.5 text-primary-fixed transition-all">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></span>
+<span class="font-semibold text-xs">局域网</span>
+<span class="font-label-sm text-label-sm bg-primary-fixed/20 px-1 py-0.2 rounded text-primary-fixed">低开销</span>
+</button>
+<!-- Selectable Public Relay Option -->
+<button class="flex-1 py-1.5 px-2.5 rounded-lg hover:bg-surface-container-high/60 active:scale-[0.98] flex items-center justify-center space-x-1.5 text-on-surface-variant transition-all cursor-pointer">
+<span class="material-symbols-outlined text-[13px] text-on-surface-variant" data-icon="public">public</span>
+<span class="font-medium text-xs">公网中继</span>
+</button>
+</div>
+<!-- Informative note -->
+<div class="pt-0.5">
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-[13px] text-primary-fixed mr-1" data-icon="check_circle">check_circle</span>
+同一网络优先，离开后可通过公网连接
+</p>
+</div>
+</section>
+<!-- SECTION 4: '我的电脑' Section -->
+<section class="space-y-2 pt-0.5">
+<!-- Section Header -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center space-x-2">
+<h2 class="font-title-lg text-title-lg text-on-surface font-bold tracking-tight">我的电脑</h2>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full tactile-inset text-primary-fixed font-semibold">02</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant/70">轻触切换作业环境</span>
+</div>
+<!-- Device Card 1 -->
+<div class="tactile-raised rounded-2xl p-space-md border border-primary-fixed/25 relative overflow-hidden transition-all">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-xl bg-surface-container-high border border-primary-fixed/30 flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[20px]" data-icon="desktop_windows">desktop_windows</span>
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<span class="font-title-lg text-title-lg font-bold text-on-surface">x-26</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-0.5">已配对 · 当前电脑</p>
+</div>
+</div>
+<div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-primary-fixed/15 border border-primary-fixed/30">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></span>
+<span class="font-label-sm text-label-sm text-primary-fixed font-semibold">使用中</span>
+</div>
+</div>
+</div>
+<!-- Device Card 2 -->
+<div class="tactile-raised rounded-2xl p-space-md transition-all active:scale-[0.99]">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-xl tactile-inset flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="laptop_chromebook">laptop_chromebook</span>
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<span class="font-title-lg text-title-lg font-bold text-on-surface">OMEN 笔记本</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-0.5">账号设备 · 选择后连接</p>
+</div>
+</div>
+<button aria-label="切换到 OMEN 笔记本" class="h-9 px-3 rounded-xl tactile-raised flex items-center space-x-1.5 text-on-surface hover:text-primary-fixed active:bg-surface-container-highest transition-all duration-150">
+<span class="material-symbols-outlined text-[15px] text-primary-fixed" data-icon="swap_horiz">swap_horiz</span>
+<span class="font-label-sm text-label-sm font-semibold">切换</span>
+</button>
+</div>
+</div>
+</section>
+<!-- SECTION 5: Expandable '连接与局域网设置' Panel -->
+<section class="pt-0.5">
+<details class="group tactile-raised rounded-2xl overflow-hidden transition-all duration-200">
+<summary class="list-none flex items-center justify-between py-2 px-space-md cursor-pointer text-on-surface select-none">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant group-open:text-primary-fixed" data-icon="tune">tune</span>
+<span class="font-label-md text-label-md font-semibold">连接与局域网设置</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant group-open:rotate-180 transition-transform duration-200" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="px-space-md pb-space-md pt-1 border-t border-outline-variant/20 space-y-2 text-on-surface-variant">
+<div class="flex items-center justify-between p-2 rounded-xl tactile-inset">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[15px] text-primary-fixed" data-icon="lan">lan</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-medium">手动输入 IP 寻址</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant/75">跨子网或隔离网络配对</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-[15px] text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl tactile-inset">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[15px] text-primary-fixed" data-icon="radar">radar</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-medium">局域网 mDNS 自动广播</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant/75">当前端口: 49152 (已监听)</p>
+</div>
+</div>
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span>
+</div>
+</div>
+</details>
+</section>
+</div>
+<!-- SECTION 6: Bottom Primary Action Area (No unrelated global tabs, strictly contextual) -->
+<footer class="w-full px-margin pt-1.5 pb-2 bg-gradient-to-t from-surface via-surface/95 to-transparent">
+<button class="w-full h-11 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-title-lg flex items-center justify-center space-x-2 shadow-lg shadow-primary-fixed/20 active:scale-[0.98] transition-all duration-150">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+<span>添加 / 管理电脑</span>
+<span class="text-on-primary-fixed/30 mx-0.5">|</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="qr_code_scanner">qr_code_scanner</span>
+</button>
+<p class="font-label-sm text-label-sm text-center text-on-surface-variant/70 mt-1.5">
+每台电脑独立保存，切换不丢会话
+</p>
+</footer>
+</main>
+<script>
+    // Lightweight tactile click micro-feedback
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('touchstart', () => {}, { passive: true });
+    });
+  </script>
+</body></html>

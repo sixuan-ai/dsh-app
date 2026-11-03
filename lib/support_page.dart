@@ -57,8 +57,8 @@ class SupportPage extends StatelessWidget {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => FeedbackPage(
-                    username: state.authUsername,
-                    password: state.authPassword,
+                    username: state.accountUsername,
+                    password: state.accountPassword,
                   ),
                 ),
               ),

@@ -8,6 +8,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'pet_sprite.dart';
+import 'pet_habitat.dart';
 import 'src/pet.dart';
 import 'src/theme.dart';
 import 'state.dart';
@@ -27,29 +28,69 @@ class PetPage extends StatefulWidget {
   State<PetPage> createState() => _PetPageState();
 }
 
-class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
+class _PetPageState extends State<PetPage> {
   final _store = PetStore();
   final _tokenStore = PetTokenStore();
   Pet? _pet;
 
   /// Persisted token total, used when no live [AppState] is attached.
   int _tokensTotal = 0;
+  int _riceTokensTotal = 0;
+  int get _contextTokens =>
+      math.max(_riceTokensTotal, widget.state?.petContextTokensTotal ?? 0);
+
+  void _reconcileRice() {
+    final pet = _pet;
+    if (pet == null) return;
+    final previous = pet.riceBowlsSeen;
+    final meals = pet.eatRiceForContext(_contextTokens);
+    if (previous != pet.riceBowlsSeen) unawaited(_store.save(pet));
+    if (meals > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _actionClip == null) _animate('eat_token');
+      });
+    }
+  }
 
   /// Null until the first load finishes (distinguishes "loading" from
   /// "no pet yet").
   bool _loaded = false;
 
-  /// Breathing loop for the pet face.
-  late final AnimationController _breath = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
-  )..repeat(reverse: true);
-
-  /// One-shot bounce when a care action lands.
-  late final AnimationController _bounce = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 350),
-  );
+  String? _actionClip;
+  int _actionId = 0;
+  void _animate(String clip) => setState(() {
+    _actionClip = clip;
+    _actionId++;
+  });
+  String get _activityClip {
+    final state = widget.state;
+    if (state == null) return 'idle';
+    if (state.approvals.isNotEmpty || state.questions.isNotEmpty) {
+      return 'waiting';
+    }
+    if (!state.connected) return 'idle';
+    if (state.selectedRunning) {
+      for (final item in state.items.reversed) {
+        if (item.kind != ChatItemKind.tool || item.completed) continue;
+        final tool = item.name.toLowerCase();
+        if (tool.contains('search') || tool.contains('browse')) {
+          return 'working_search';
+        }
+        if (tool.contains('command') ||
+            tool.contains('shell') ||
+            tool.contains('test')) {
+          return 'working_command';
+        }
+        return 'working';
+      }
+      return 'thinking';
+    }
+    if (state.sessions.any((row) => row.running) ||
+        state.subagents.any((row) => row.running)) {
+      return 'working';
+    }
+    return 'idle';
+  }
 
   Timer? _ticker;
 
@@ -63,8 +104,6 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _ticker?.cancel();
-    _breath.dispose();
-    _bounce.dispose();
     super.dispose();
   }
 
@@ -72,10 +111,17 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     widget.state?.ensurePetTokensLoaded();
     final pet = await _store.load();
     final tokens = await _tokenStore.total();
+    final contextTokens = await _tokenStore.contextTotal();
+    final meals = pet?.eatRiceForContext(contextTokens) ?? 0;
     if (!mounted) return;
     setState(() {
       _pet = pet;
       _tokensTotal = tokens;
+      _riceTokensTotal = contextTokens;
+      if (meals > 0) {
+        _actionClip = 'eat_token';
+        _actionId++;
+      }
       _loaded = true;
     });
     if (pet != null) unawaited(_store.save(pet));
@@ -87,33 +133,44 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     if (pet == null || !mounted) return;
     setState(() => pet.applyElapsed(DateTime.now().millisecondsSinceEpoch));
     unawaited(_store.save(pet));
+    if (_actionClip == null &&
+        _activityClip == 'idle' &&
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _animate(DateTime.now().minute.isEven ? 'idle_stretch' : 'idle_yawn');
+    }
   }
 
-  Future<void> _mutate(void Function(Pet pet) action) async {
+  Future<void> _mutate(
+    void Function(Pet pet) action, [
+    String clip = 'head_pat',
+  ]) async {
     final pet = _pet;
     if (pet == null) return;
     setState(() => action(pet));
-    unawaited(_bounce.forward(from: 0));
+    _animate(clip);
     await _store.save(pet);
   }
 
   Future<void> _play() async {
     var refused = false;
-    await _mutate((p) => refused = !p.play());
+    await _mutate((p) => refused = !p.play(), 'tail');
+    if (!mounted) return;
+    if (refused) _animate('error');
     if (refused && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('太饿啦,先喂点东西吧!')));
+      ).showSnackBar(const SnackBar(content: Text('肚子饿啦，先来一碗白米饭吧！')));
     }
   }
 
   Future<void> _adopt(String name) async {
-    // Mystery egg: the species is drawn now but only reveals at hatching.
+    // Every adoption starts with the same BigFish companion.
     final pet = Pet.newborn(
       name,
       DateTime.now().millisecondsSinceEpoch,
       speciesId: randomPetSpeciesId(),
     );
+    pet.eatRiceForContext(_contextTokens);
     setState(() => _pet = pet);
     await _store.save(pet);
   }
@@ -125,7 +182,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('给宠物改名'),
+        title: const Text('给大肥鱼改名'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -153,10 +210,23 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final c = PetHabitatColors(Theme.of(context).brightness == Brightness.dark);
     return Scaffold(
+      backgroundColor: c.bg,
       appBar: AppBar(
-        title: const Text('我的宠物'),
+        backgroundColor: c.bg,
+        foregroundColor: c.text,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          '大肥鱼',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
         actions: [
+          IconButton(
+            onPressed: _showRiceRules,
+            tooltip: '白米饭与成长规则',
+            icon: const Icon(Icons.help_outline_rounded, size: 21),
+          ),
           if (_pet != null)
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
@@ -175,6 +245,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
           : AnimatedBuilder(
               animation: widget.state!,
               builder: (context, _) {
+                _reconcileRice();
                 _maybeEvolve();
                 return _buildPetView(context, _pet!);
               },
@@ -183,116 +254,102 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   }
 
   Widget _buildPetView(BuildContext context, Pet pet) {
-    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
-    final species = petSpeciesById(pet.speciesId);
-    final stageIndex = petStageIndexForTokens(tokens);
-    final stage = species.stages[stageIndex];
-    final rank = petRankForScore(pet.pkScore);
-    final days =
-        (DateTime.now().millisecondsSinceEpoch - pet.bornAtMs) ~/
-            Duration.millisecondsPerDay +
-        1;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-          decoration: BoxDecoration(
-            gradient: P.brandGradient,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [P.brandGlow],
-          ),
-          child: Column(
-            children: [
-              AnimatedBuilder(
-                animation: Listenable.merge([_breath, _bounce]),
-                builder: (context, child) {
-                  final breath = 1 + 0.04 * _breath.value;
-                  final bounce =
-                      1 + 0.15 * (1 - _bounce.value) * _bounce.value * 4;
-                  return Transform.scale(scale: breath * bounce, child: child);
-                },
-                child: PetSprite(
-                  speciesId: pet.speciesId,
-                  stageIndex: stageIndex,
-                  mood: pet.overall.round(),
-                  hatching: _isHatching(tokens),
-                  size: 180,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                pet.name,
-                style: TextStyle(
-                  color: P.onAccent,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                pet.statusLine,
-                style: TextStyle(
-                  color: P.onAccent.withValues(alpha: 0.85),
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _chip('${stage.name}期'),
-                  // The species reveals itself once the egg hatches.
-                  if (stageIndex > 0) ...[
-                    const SizedBox(width: 8),
-                    _chip(species.name),
-                  ],
-                  const SizedBox(width: 8),
-                  _chip('相伴第 $days 天'),
-                  const SizedBox(width: 8),
-                  _chip('${rank.emoji}${rank.name}·${pet.pkScore}'),
-                ],
-              ),
-            ],
+    final animation = _actionClip ?? _activityClip;
+    final activity = switch (animation) {
+      'eat_token' => '正在吃白米饭',
+      'error' => '先来一碗白米饭吧',
+      'thinking' => '正在思考',
+      'working_search' => '正在查找资料',
+      'working_command' => '正在执行任务',
+      'working' => '正在工作',
+      'waiting' => '等你确认下一步',
+      'head_pat' => '被摸摸头，好开心',
+      'poke' => '和你打个招呼',
+      'tail' => '一起吐泡泡',
+      'dragging' => '轻轻拎起来啦',
+      'dragging_release' => '稳稳落地',
+      'idle_stretch' => '伸个懒腰',
+      'idle_yawn' => '打个小哈欠',
+      _ => '在这里陪着你',
+    };
+    return SafeArea(
+      top: false,
+      child: PetHabitat(
+        pet: pet,
+        contextTokens: _contextTokens,
+        growthTokens: widget.state?.petTokensTotal ?? _tokensTotal,
+        activityLabel: activity,
+        sprite: GestureDetector(
+          onTapUp: (details) =>
+              _animate(details.localPosition.dy < 100 ? 'head_pat' : 'poke'),
+          onLongPressStart: (_) => _animate('dragging'),
+          onLongPressEnd: (_) => _animate('dragging_release'),
+          child: PetSprite(
+            speciesId: pet.speciesId,
+            stageIndex: 0,
+            size: 230,
+            animation: animation,
+            playbackId: _actionId,
+            onCompleted: () {
+              if (mounted) setState(() => _actionClip = null);
+            },
           ),
         ),
-        const SizedBox(height: 16),
-        _growthCard(pet),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                icon: '🍖',
-                label: '喂食',
-                onTap: () => _mutate((p) => p.feed()),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionButton(icon: '⚽', label: '玩耍', onTap: _play),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionButton(
-                icon: '🛁',
-                label: '洗澡',
-                onTap: () => _mutate((p) => p.clean()),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.tonal(
-            onPressed: _openBattle,
-            child: const Text('⚔️ 训练家匹配赛 · 胜者赢取 0.2M tokens'),
-          ),
-        ),
-      ],
+        onFeed: () => _mutate((p) => p.feed(), 'eat_token'),
+        onPlay: _play,
+        onClean: () => _mutate((p) => p.clean(), 'idle_stretch'),
+        onBattle: _openBattle,
+        onAbout: _showAbout,
+        onRules: _showRiceRules,
+      ),
     );
   }
+
+  void _showRiceRules() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('白米饭与成长'),
+      content: const SingleChildScrollView(
+        child: Text(
+          '1M 上下文 = 1碗白米饭\n\n'
+          '每累计 1,000,000 上下文，大肥鱼自动吃一碗，恢复饱腹与心情。未满一碗的部分会继续累计。\n\n'
+          '手动喂白米饭是陪伴互动，不扣上下文，也不会增加累计碗数。\n\n'
+          '统计沿用已记录的缓存命中上下文，各会话累计去重；训练奖励保留在成长等级中，不计入饭碗。昵称、等级和历史记录继续保留。',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('知道了'),
+        ),
+      ],
+    ),
+  );
+
+  void _showAbout() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('大肥鱼'),
+      content: const SingleChildScrollView(
+        child: SelectableText(
+          '形象与动画：PC2005-cloud/dsh-pet\nCopyright (c) 2026 PC2005-cloud · MIT\n\n'
+          '集成来源：https://github.com/QCYTSN/dsh-dafeiyu\n'
+          '使用仓库当前默认形象，保留全部 16 段原始动画。',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () =>
+              showLicensePage(context: context, applicationName: 'XHarness'),
+          child: const Text('完整许可证'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+      ],
+    ),
+  );
 
   /// Opens the battle dialog against a freshly drawn wild opponent.
   void _openBattle() {
@@ -324,23 +381,6 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     if (mounted) setState(() => _tokensTotal = total);
   }
 
-  /// Small pill on the hero card (stage name / days together).
-  Widget _chip(String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: P.onAccent.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: P.onAccent.withValues(alpha: 0.25)),
-    ),
-    child: Text(text, style: TextStyle(color: P.onAccent, fontSize: 12)),
-  );
-
-  /// The egg starts cracking during the final quarter-level before hatching.
-  bool _isHatching(int tokens) =>
-      petStageIndexForTokens(tokens) == 0 &&
-      petLevelForTokens(tokens) + 1 >= kPetStageMinLevels[1] &&
-      petLevelProgressForTokens(tokens) >= 0.75;
-
   /// Advances the seen evolution form: silently on first load (old saves
   /// must not celebrate retroactively), with a dialog when tokens push the
   /// pet into a higher form.
@@ -356,23 +396,23 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     if (seen == null || seen > index) return;
     final species = petSpeciesById(pet.speciesId);
     final stage = species.stages[index];
-    // Hatching doubles as the species reveal for the mystery egg.
-    final hatched = seen == 0 && index == 1;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: Text(hatched ? '🎉 孵化啦!' : '🎉 进化啦!'),
+          title: const Text('🎉 默契升级啦!'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(stage.base, style: const TextStyle(fontSize: 72)),
+              const PetSprite(
+                speciesId: 'dafeiyu',
+                stageIndex: 0,
+                animation: 'success',
+              ),
               const SizedBox(height: 12),
               Text(
-                hatched
-                    ? '是一颗${species.name}蛋!${pet.name} 出生啦'
-                    : '${pet.name} 进化成了 ${stage.name}!',
+                '${pet.name} 和你成为了${stage.name}!',
                 style: const TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -388,195 +428,6 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
       );
     });
   }
-
-  /// Growth card: the level derives from cumulative cache-hit input tokens
-  /// (1 M per level); the three care bars still read the pet's stats.
-  Widget _growthCard(Pet pet) {
-    final tokens = widget.state?.petTokensTotal ?? _tokensTotal;
-    final level = petLevelForTokens(tokens);
-    PetStage? nextStage;
-    for (final candidate in petSpeciesById(pet.speciesId).stages) {
-      if (candidate.minLevel > level) {
-        nextStage = candidate;
-        break;
-      }
-    }
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: P.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: P.fillLight),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(
-                '成长 Lv.$level',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '已命中 ${(tokens / kPetTokensPerLevel).toStringAsFixed(2)} M tokens',
-                style: TextStyle(fontSize: 12, color: P.textTertiary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: petLevelProgressForTokens(tokens),
-              minHeight: 8,
-              backgroundColor: P.fillMedium,
-              valueColor: AlwaysStoppedAnimation(P.accentLight),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '对话每命中 1M tokens 升一级',
-              style: TextStyle(fontSize: 11, color: P.textTertiary),
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              nextStage == null
-                  ? '已是最终形态'
-                  : 'Lv.${nextStage.minLevel} 进化为 ${nextStage.name} ${nextStage.base}',
-              style: TextStyle(fontSize: 11, color: P.textTertiary),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _StatBar(
-            icon: '🍖',
-            label: '饱腹',
-            value: pet.hunger,
-            color: const Color(0xFFFF9F43),
-          ),
-          const SizedBox(height: 12),
-          _StatBar(
-            icon: '⚽',
-            label: '心情',
-            value: pet.mood,
-            color: const Color(0xFFFF6B9D),
-          ),
-          const SizedBox(height: 12),
-          _StatBar(
-            icon: '🛁',
-            label: '清洁',
-            value: pet.hygiene,
-            color: const Color(0xFF54A0FF),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One care-stat row: emoji icon, label, and a colored progress bar.
-class _StatBar extends StatelessWidget {
-  const _StatBar({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String icon;
-  final String label;
-  final int value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(icon, style: const TextStyle(fontSize: 18)),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 34,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 13, color: P.textSecondary),
-          ),
-        ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: value / kPetStatMax,
-              minHeight: 8,
-              backgroundColor: P.fillMedium,
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 28,
-          child: Text(
-            '$value',
-            textAlign: TextAlign.end,
-            style: TextStyle(fontSize: 12, color: P.textTertiary),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Large tappable care-action button under the stats card.
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final String icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: P.card,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: P.fillLight),
-            boxShadow: P.cardShadow,
-          ),
-          child: Column(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 30)),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// First-run adoption card: name input + 领养 button.
@@ -590,7 +441,7 @@ class _AdoptView extends StatefulWidget {
 }
 
 class _AdoptViewState extends State<_AdoptView> {
-  final _controller = TextEditingController(text: '小哈');
+  final _controller = TextEditingController(text: '大肥鱼');
 
   @override
   void dispose() {
@@ -600,31 +451,32 @@ class _AdoptViewState extends State<_AdoptView> {
 
   @override
   Widget build(BuildContext context) {
+    final c = PetHabitatColors(Theme.of(context).brightness == Brightness.dark);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: P.card,
+            color: c.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: P.fillLight),
+            border: Border.all(color: c.line),
             boxShadow: P.cardShadow,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🥚', style: TextStyle(fontSize: 72)),
+              const PetSprite(speciesId: 'dafeiyu', stageIndex: 0, size: 220),
               const SizedBox(height: 12),
               const Text(
-                '领养一颗神秘蛋',
+                '把大肥鱼接回家',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               Text(
-                '哈灵、雷光猫、苍月狼、焚天炎龙、九天凤凰……孵化那一刻才揭晓',
+                '最喜欢白米饭的大肥鱼，陪你一起工作。\n1M 上下文 = 1碗白米饭，自动吃饭、慢慢长大。',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: P.textSecondary),
+                style: TextStyle(fontSize: 13, color: c.muted),
               ),
               const SizedBox(height: 20),
               TextField(
@@ -639,6 +491,14 @@ class _AdoptViewState extends State<_AdoptView> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.lime,
+                    foregroundColor: c.onLime,
+                    minimumSize: const Size(0, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   onPressed: () {
                     final name = _controller.text.trim();
                     if (name.isNotEmpty) widget.onAdopt(name);
@@ -902,18 +762,13 @@ class _BattleDialogState extends State<_BattleDialog> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        placeholder
-            ? const SizedBox(
-                width: 72,
-                height: 72,
-                child: Center(child: Text('❓', style: TextStyle(fontSize: 44))),
-              )
-            : PetSprite(
-                speciesId: speciesId,
-                stageIndex: stageIndex,
-                mood: mood,
-                size: 72,
-              ),
+        PetSprite(
+          speciesId: speciesId,
+          stageIndex: stageIndex,
+          mood: mood,
+          size: 72,
+          animation: placeholder ? 'thinking' : 'idle',
+        ),
         const SizedBox(height: 4),
         Text(
           name,

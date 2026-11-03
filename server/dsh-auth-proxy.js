@@ -14,6 +14,7 @@ const http = require('http');
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
+const {execFileSync} = require('node:child_process');
 
 const LISTEN_HOST = process.env.LISTEN_HOST || '127.0.0.1';
 const LISTEN_PORT = parseInt(process.env.LISTEN_PORT || '3081', 10);
@@ -21,6 +22,8 @@ const UPSTREAM_HOST = process.env.UPSTREAM_HOST || '127.0.0.1';
 const UPSTREAM_PORT = parseInt(process.env.UPSTREAM_PORT || '3080', 10);
 const AUTH_USER = process.env.AUTH_USER || '';
 const AUTH_PASSWORD = process.env.AUTH_PASSWORD || '';
+// Optional local hashes for directory accounts explicitly bound to this computer.
+const AUTH_USERS_FILE = process.env.AUTH_USERS_FILE || '';
 const AUTH_COOKIE_SECRET = process.env.AUTH_COOKIE_SECRET || '';
 const COOKIE_NAME = 'dshauth';
 const cookieToken = AUTH_COOKIE_SECRET
@@ -51,6 +54,28 @@ function safeEq(a, b) {
   return crypto.timingSafeEqual(ba, bb);
 }
 
+// Keep the original internal account and cookie grants working. Additional
+// accounts are enrolled by an administrator after checking computer ownership;
+// authentication itself is local and does not require the public directory.
+function additionalAccountMatches(user, pass) {
+  if (!AUTH_USERS_FILE) return false;
+  try {
+    const store = JSON.parse(fs.readFileSync(AUTH_USERS_FILE, 'utf8'));
+    if (store.version !== 1 || !Array.isArray(store.users) || store.users.length > 64) return false;
+    for (const entry of store.users) {
+      if (!entry || typeof entry.username !== 'string' || !safeEq(user, entry.username)) continue;
+      if (entry.algorithm !== 'pbkdf2-sha256' || !/^[a-f0-9]{32}$/i.test(entry.salt || '') ||
+          !/^[a-f0-9]{64}$/i.test(entry.digest || '') || !Number.isInteger(entry.iterations) ||
+          entry.iterations < 100000 || entry.iterations > 1000000) continue;
+      const actual = crypto.pbkdf2Sync(pass, Buffer.from(entry.salt, 'hex'), entry.iterations, 32, 'sha256');
+      if (crypto.timingSafeEqual(actual, Buffer.from(entry.digest, 'hex'))) return true;
+    }
+  } catch {
+    // A missing or malformed enrollment file must never open the gateway.
+  }
+  return false;
+}
+
 function authorized(req) {
   const m = /^Basic (.+)$/.exec(req.headers['authorization'] || '');
   if (m) {
@@ -64,7 +89,7 @@ function authorized(req) {
     if (idx < 0) return false;
     const user = decoded.slice(0, idx);
     const pass = decoded.slice(idx + 1);
-    if (safeEq(user, AUTH_USER) && safeEq(pass, AUTH_PASSWORD)) return true;
+    if ((safeEq(user, AUTH_USER) && safeEq(pass, AUTH_PASSWORD)) || additionalAccountMatches(user, pass)) return true;
   }
   for (const part of String(req.headers['cookie'] || '').split(';')) {
     const eq = part.indexOf('=');
@@ -103,11 +128,16 @@ function grantCookie() {
 // obtained cookie stays valid across restarts; the periodic refresh only guards
 // against its 30-day expiry and against a rotated credential store.
 //
-// Opt-in: set DSH_TOKEN_FILE to the log `dsh web` writes its startup URL to.
+// Opt-in: DSH_TOKEN_FILE points to its startup log; DSH_TOKEN_UNIT can
+// read the startup URL from a named systemd user service journal instead.
 // Left unset the broker is inert and the proxy behaves exactly as before, which
 // is the right default for deployments whose dsh is satisfied by Basic auth.
 const TOKEN_FILE = process.env.DSH_TOKEN_FILE || '';
-const BROKER_ENABLED = TOKEN_FILE !== '';
+const TOKEN_UNIT = process.env.DSH_TOKEN_UNIT || '';
+if (TOKEN_UNIT && !/^[A-Za-z0-9_.@-]+\.service$/.test(TOKEN_UNIT)) {
+  throw new Error('Invalid DSH_TOKEN_UNIT');
+}
+const BROKER_ENABLED = TOKEN_FILE !== '' || TOKEN_UNIT !== '';
 const COOKIE_CACHE = process.env.DSH_COOKIE_CACHE || `${__dirname}/dsh-session-cookie`;
 const COOKIE_REFRESH_MS =
   parseInt(process.env.DSH_COOKIE_REFRESH_MS || '', 10) || 12 * 60 * 60 * 1000;
@@ -117,7 +147,10 @@ let dshCookieRefreshing = null;
 /** Latest `token=` printed by `dsh web`, or '' when unavailable. */
 function readLaunchToken() {
   try {
-    const found = fs.readFileSync(TOKEN_FILE, 'utf8').match(/token=([A-Za-z0-9_-]+)/g);
+    const text = TOKEN_UNIT
+      ? execFileSync('/usr/bin/journalctl', ['--user', '-u', TOKEN_UNIT, '-n', '200', '-o', 'cat', '--no-pager'], {encoding:'utf8', timeout:4000, maxBuffer:2*1024*1024})
+      : fs.readFileSync(TOKEN_FILE, 'utf8');
+    const found = text.match(/token=([A-Za-z0-9_-]+)/g);
     return found && found.length ? found[found.length - 1].slice('token='.length) : '';
   } catch {
     return '';
@@ -206,7 +239,7 @@ if (BROKER_ENABLED) {
   loadCachedCookie();
   refreshDshCookie('startup');
   setInterval(() => refreshDshCookie('periodic'), COOKIE_REFRESH_MS).unref();
-  console.log(`[dsh-cookie] brokering enabled (token source: ${TOKEN_FILE})`);
+  console.log(`[dsh-cookie] brokering enabled (token source: ${TOKEN_UNIT || TOKEN_FILE})`);
 }
 
 // --- login page -------------------------------------------------------------
@@ -292,7 +325,7 @@ function handleLoginPost(req, res) {
     const pass = params.get('password') || '';
     const nextRaw = params.get('next') || '/';
     const dest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/';
-    if (!(safeEq(user, AUTH_USER) && safeEq(pass, AUTH_PASSWORD))) {
+    if (!((safeEq(user, AUTH_USER) && safeEq(pass, AUTH_PASSWORD)) || additionalAccountMatches(user, pass))) {
       noteFail(req);
       setTimeout(() => {
         res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });

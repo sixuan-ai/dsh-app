@@ -86,13 +86,20 @@ class ModelPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final models = state.models;
-    if (models == null) {
-      return const SizedBox(height: 200, child: Center(child: Text('模型目录不可用')));
-    }
     return AnimatedBuilder(
       animation: state,
       builder: (context, _) {
+        final models = state.models;
+        if (models == null) {
+          return SizedBox(
+            height: 200,
+            child: Center(
+              child: state.loadingModels
+                  ? const CircularProgressIndicator()
+                  : const Text('模型目录不可用'),
+            ),
+          );
+        }
         return SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(

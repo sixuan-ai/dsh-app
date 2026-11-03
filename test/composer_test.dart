@@ -89,7 +89,8 @@ void main() {
 
     await tester.tap(find.text('权限模式'));
     await tester.pumpAndSettle();
-    expect(find.text('控制当前会话的文件访问范围与审批策略'), findsOneWidget);
+    expect(find.textContaining('控制当前会话的文件访问范围与审批策略'), findsOneWidget);
+    expect(find.textContaining('登录不会自动获得完全权限'), findsOneWidget);
     expect(find.text('工作区写入'), findsOneWidget);
     expect(find.text('完全访问'), findsOneWidget);
   });

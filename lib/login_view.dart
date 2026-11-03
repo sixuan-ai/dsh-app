@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'brand_mark.dart';
 import 'register_view.dart';
+import 'connector_pairing_page.dart';
 import 'src/protocol.dart';
 import 'src/l10n.dart';
 import 'src/theme.dart';
@@ -15,9 +16,13 @@ class ServerSetupPage extends StatefulWidget {
     super.key,
     required this.state,
     required this.defaultServerUrl,
+    this.initialError,
+    this.onConnected,
   });
   final AppState state;
   final String defaultServerUrl;
+  final String? initialError;
+  final VoidCallback? onConnected;
   @override
   State<ServerSetupPage> createState() => _ServerSetupPageState();
 }
@@ -32,6 +37,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
   @override
   void initState() {
     super.initState();
+    _preError = widget.initialError;
     _prefill();
   }
 
@@ -67,8 +73,15 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
         pass,
       ).timeout(const Duration(seconds: 20));
       if (!mounted) return;
+      if (widget.state.pairedComputer != null) {
+        await widget.state.useAccountConnection();
+      }
       await widget.state.setComputers(login.computers);
       final prefs = await SharedPreferences.getInstance();
+      final previousUser = prefs.getString('authUser');
+      if (previousUser != null && previousUser != login.username) {
+        await widget.state.clearPairedComputers();
+      }
       await prefs.setString('authUser', login.username);
       await prefs.setString('authPass', pass);
       await prefs.remove('launchToken');
@@ -76,11 +89,13 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
       await prefs.setString('remoteServerUrl', login.defaultUrl);
       await prefs.setString('serverUrl', login.defaultUrl);
       if (!mounted) return;
+      await widget.state.acceptLegacyEntry();
       await widget.state.connect(
         login.defaultUrl,
         username: login.username,
         password: pass,
       );
+      if (widget.state.connected) widget.onConnected?.call();
     } on DshError catch (error) {
       if (!mounted) return;
       setState(
@@ -225,6 +240,19 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                 onPressed: busy ? null : _connect,
                               ),
                               const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                onPressed: busy
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ConnectorPairingPage(
+                                            state: widget.state,
+                                          ),
+                                        ),
+                                      ),
+                                icon: const Icon(Icons.qr_code_scanner),
+                                label: const Text('连接我的电脑'),
+                              ),
                               TextButton(
                                 onPressed: busy ? null : _openRegistration,
                                 child: const Text('还没有账号？用邮箱注册'),

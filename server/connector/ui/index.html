@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  /><title>xHarness 电脑连接器</title
+  ><link rel="stylesheet" href="/style.css" />
+  <script src="/app.js" defer></script>
+  <main>
+    <h1>xHarness 电脑连接器</h1>
+    <p>
+      把手机连接到这台运行 DeepSeek Harness
+      的电脑。电脑保持开机，工作区和任务对话直接同步。
+    </p>
+    <section>
+      <h2>1. 检查连接</h2>
+      <button id="refresh">刷新诊断</button>
+      <p id="health">检查中…</p>
+      <details>
+        <summary>技术诊断</summary>
+        <pre id="status"></pre>
+      </details>
+    </section>
+    <section>
+      <h2>2. 配对手机</h2>
+      <p>
+        手机与电脑连接同一网络，在
+        App「连接我的电脑」拍摄或导入二维码，核对电脑名称后连接。二维码 2
+        分钟内有效，仅能使用一次。
+      </p>
+      <label
+        >电脑局域网地址
+        <select id="host"></select></label
+      ><button id="pair">生成配对二维码</button>
+      <div id="pairing" hidden>
+        <img id="qr" width="340" alt="一次性手机配对二维码" />
+        <p id="expiry"></p>
+        <label
+          >也可以复制链接到手机 App<textarea id="link" readonly></textarea>
+        </label>
+      </div>
+    </section>
+    <section>
+      <h2>3. 公网连接（可选）</h2>
+      <p>
+        先在这台电脑完成 Tailscale
+        登录，并请网关管理员授权访问本机连接器端口。注册后重新生成配对码；已配对手机需重新配对才能获得新公网地址。
+      </p>
+      <form id="remote">
+        <label
+          >网关 HTTPS 地址<input
+            name="gateway"
+            type="url"
+            placeholder="https://你的网关域名"
+            required /></label
+        ><label
+          >网关账号<input
+            name="username"
+            autocomplete="username"
+            required /></label
+        ><label
+          >密码<input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required /></label
+        ><button>注册我的电脑</button>
+      </form>
+    </section>
+    <section>
+      <h2>已配对设备</h2>
+      <p>
+        配对设备可以操作本机
+        DSH。手机遗失或不再使用时，在这里撤销；正在运行的连接也会关闭。
+      </p>
+      <div id="devices"></div>
+    </section>
+    <p id="message" role="status"></p>
+    <footer>此管理页仅在本机可用，30 分钟后请重新打开桌面连接器。</footer>
+  </main>
+</html>

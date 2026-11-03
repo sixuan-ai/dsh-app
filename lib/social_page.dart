@@ -116,8 +116,8 @@ class CommunityPage extends StatefulWidget {
 class _CommunityPageState extends State<CommunityPage> {
   late final SocialApi _api = SocialApi(
     baseUrl: widget.socialBaseUrl,
-    basicUser: widget.state.authUsername,
-    basicPass: widget.state.authPassword,
+    basicUser: widget.state.accountUsername,
+    basicPass: widget.state.accountPassword,
   );
   SocialUser? _me;
   bool _booting = true;

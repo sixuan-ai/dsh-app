@@ -1,0 +1,18 @@
+[Unit]
+Description=xHarness connector enrollment and device relay
+After=network-online.target tailscaled.service
+[Service]
+# Use a dedicated service account with read access to the account directory only.
+User=xharness-hub
+Group=xharness-hub
+EnvironmentFile=/etc/xharness-hub/hub.env
+ExecStart=/usr/bin/python3 /opt/xharness-hub/hub.py
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/xharness-hub
+[Install]
+WantedBy=multi-user.target

@@ -6,6 +6,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:dsh_mobile/pet_page.dart';
+import 'package:dsh_mobile/pet_sprite.dart';
 import 'package:dsh_mobile/src/pet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,48 +88,109 @@ void main() {
       expect(petLevelForTokens(-5), 1);
     });
 
+    test(
+      'one million context is one rice bowl without rounding partial bowls',
+      () {
+        expect(petRiceBowlsForTokens(-20), 0);
+        expect(petRiceBowlsForTokens(999999), 0);
+        expect(petRiceBowlsForTokens(1000000), 1);
+        expect(petRiceBowlsForTokens(8360000), 8);
+        expect(petRiceBowlProgress(8360000), closeTo(.36, 1e-9));
+        expect(petRiceBowlProgress(1000000), 0);
+      },
+    );
+
+    test(
+      'automatic rice meals reward only new whole bowls and survive reopen',
+      () {
+        final pet = Pet.newborn('米饭搭子', 0)
+          ..hunger = 10
+          ..mood = 20;
+        // A pre-upgrade save establishes a baseline without retroactive rewards.
+        expect(pet.eatRiceForContext(2999999), 0);
+        expect(pet.hunger, 10);
+        expect(pet.eatRiceForContext(3000000), 1);
+        expect(pet.hunger, 40);
+        expect(pet.mood, 22);
+        expect(pet.eatRiceForContext(3000000), 0);
+        final restored = Pet.fromJson(pet.toJson(), 0);
+        expect(restored.eatRiceForContext(3000000), 0);
+        expect(restored.hunger, 40);
+        expect(restored.eatRiceForContext(2000000), 0);
+        expect(restored.eatRiceForContext(3000000), 0);
+        expect(restored.eatRiceForContext(7000000), 4);
+        expect(restored.hunger, 100);
+        final bowls = restored.riceBowlsSeen;
+        restored.feed();
+        expect(restored.riceBowlsSeen, bowls);
+      },
+    );
+
     test('evolution stages map to level bands', () {
       final spirit = petSpeciesById('spirit');
-      expect(spirit.stageForTokens(0).name, '灵蛋'); // Lv.1
-      expect(spirit.stageForTokens(2 * kPetTokensPerLevel).name, '小哈仔'); // Lv.3
-      expect(spirit.stageForTokens(5 * kPetTokensPerLevel).name, '哈灵猫'); // Lv.6
+      expect(spirit.stageForTokens(0).name, '初见伙伴'); // Lv.1
+      expect(
+        spirit.stageForTokens(2 * kPetTokensPerLevel).name,
+        '熟悉伙伴',
+      ); // Lv.3
+      expect(
+        spirit.stageForTokens(5 * kPetTokensPerLevel).name,
+        '默契伙伴',
+      ); // Lv.6
       expect(
         spirit.stageForTokens(9 * kPetTokensPerLevel).name,
-        '威哈虎',
+        '贴心伙伴',
       ); // Lv.10
       expect(
         spirit.stageForTokens(14 * kPetTokensPerLevel).name,
-        '哈灵龙皇',
+        '灵魂搭档',
       ); // Lv.15
       // Just below a boundary still belongs to the previous form.
-      expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '小哈仔');
+      expect(spirit.stageForTokens(5 * kPetTokensPerLevel - 1).name, '熟悉伙伴');
       expect(
         petStageIndexForTokens(14 * kPetTokensPerLevel),
         kPetStageMinLevels.length - 1,
       );
     });
 
-    test('species registry: five mystery-egg chains, shared thresholds', () {
-      expect(kPetSpecies.length, 5);
-      for (final species in kPetSpecies) {
-        expect(species.stages.length, kPetStageMinLevels.length);
-        for (var i = 0; i < species.stages.length; i++) {
-          expect(species.stages[i].minLevel, kPetStageMinLevels[i]);
+    test(
+      'one BigFish identity across all legacy species and growth stages',
+      () {
+        expect(kPetSpecies, hasLength(1));
+        for (final id in [
+          null,
+          'spirit',
+          'cat',
+          'dog',
+          'dragon',
+          'phoenix',
+          'unknown',
+        ]) {
+          final species = petSpeciesById(id);
+          expect(species.id, 'dafeiyu');
+          expect(species.stages.map((s) => s.base).toSet(), {'🐋'});
+          expect(species.stages.map((s) => s.minLevel), kPetStageMinLevels);
         }
-        // Every chain starts from the mystery egg.
-        expect(species.stages.first.base, '🥚');
-      }
-      // Unknown/old ids fall back to the original chain.
-      expect(petSpeciesById(null).id, 'spirit');
-      expect(petSpeciesById('dinosaur').id, 'spirit');
-      expect(petSpeciesById('dog').stages.last.name, '九尾天狐');
-    });
+        expect(randomPetSpeciesId(), 'dafeiyu');
+      },
+    );
 
-    test('speciesId persists through JSON, old saves become spirit', () {
-      final pet = Pet.newborn('小哈', 0, speciesId: 'dragon');
-      expect(Pet.fromJson(pet.toJson(), 0).speciesId, 'dragon');
-      expect(Pet.fromJson(const {'name': '豆豆'}, 0).speciesId, 'spirit');
-    });
+    test(
+      'migration preserves all user data while replacing legacy species',
+      () {
+        final original = Pet.newborn('豆豆', 1234, speciesId: 'dragon')
+          ..hunger = 42
+          ..mood = 63
+          ..hygiene = 81
+          ..stageSeen = 3
+          ..pkScore = 1420;
+        final json = original.toJson()..['speciesId'] = 'dragon';
+        final migrated = Pet.fromJson(json, 9999);
+        expect(migrated.speciesId, 'dafeiyu');
+        expect(migrated.toJson(), {...json, 'speciesId': 'dafeiyu'});
+        expect(Pet.fromJson(const {'name': '豆豆'}, 0).speciesId, 'dafeiyu');
+      },
+    );
 
     test('rank ladder bands and pkScore persistence', () {
       expect(petRankForScore(0).name, '青铜');
@@ -150,18 +212,10 @@ void main() {
       expect(kPetBotNicknames.every((n) => n.isNotEmpty), isTrue);
     });
 
-    test('species counter wheel is cyclic in registry order', () {
-      for (var i = 0; i < kPetSpecies.length; i++) {
-        final attacker = kPetSpecies[i].id;
-        final prey = kPetSpecies[(i + 1) % kPetSpecies.length].id;
-        expect(
-          petSpeciesCounters(attacker, prey),
-          isTrue,
-          reason: '$attacker counters $prey',
-        );
-        expect(petSpeciesCounters(prey, attacker), isFalse);
-      }
-      expect(petSpeciesCounters('unknown', 'spirit'), isFalse);
+    test('same-character battles never gain a species counter advantage', () {
+      expect(petSpeciesCounters('dafeiyu', 'dafeiyu'), isFalse);
+      expect(petSpeciesCounters('dragon', 'phoenix'), isFalse);
+      expect(petSpeciesCounters('unknown', 'dafeiyu'), isFalse);
     });
 
     test('wild opponent stays near the player level with mid stats', () {
@@ -204,28 +258,28 @@ void main() {
       expect(result.rounds.where((r) => r.countered), isEmpty);
     });
 
-    test('battle simulation: counter wheel adds damage and wild can win', () {
-      final rng = math.Random(11);
-      // dragon counters phoenix; Lv.10 wild dragon vs Lv.1 player phoenix.
-      final player = Pet.newborn('小哈', 0, speciesId: 'phoenix')
-        ..hunger = 40
-        ..mood = 40
-        ..hygiene = 40;
-      final wild = Pet.newborn('野生龙', 0, speciesId: 'dragon');
-      final result = simulatePetBattle(
-        player: player,
-        playerTokens: 0,
-        wild: wild,
-        wildTokens: 9 * kPetTokensPerLevel, // Lv.10
-        random: rng,
-      );
-      expect(result.playerWon, isFalse);
-      expect(
-        result.rounds.any((r) => r.countered && !r.attackerIsPlayer),
-        isTrue,
-      );
-      expect(result.rounds.last.playerHp, 0);
-    });
+    test(
+      'battle simulation: stronger opponent can win without species bonuses',
+      () {
+        final rng = math.Random(11);
+        // dragon counters phoenix; Lv.10 wild dragon vs Lv.1 player phoenix.
+        final player = Pet.newborn('小哈', 0, speciesId: 'phoenix')
+          ..hunger = 40
+          ..mood = 40
+          ..hygiene = 40;
+        final wild = Pet.newborn('野生龙', 0, speciesId: 'dragon');
+        final result = simulatePetBattle(
+          player: player,
+          playerTokens: 0,
+          wild: wild,
+          wildTokens: 9 * kPetTokensPerLevel, // Lv.10
+          random: rng,
+        );
+        expect(result.playerWon, isFalse);
+        expect(result.rounds.any((r) => r.countered), isFalse);
+        expect(result.rounds.last.playerHp, 0);
+      },
+    );
     test('rename trims and rejects blanks', () {
       final pet = Pet.newborn('小哈', 0);
       expect(pet.rename('   '), isFalse);
@@ -334,6 +388,21 @@ void main() {
       expect(await PetTokenStore().total(), 2000000);
     });
 
+    test(
+      'concurrent context projections preserve every session and never double count',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        await Future.wait([
+          PetTokenStore().record('one', 1000000),
+          PetTokenStore().record('two', 2000000),
+          PetTokenStore().record('one', 500000),
+          PetTokenStore().addBonus(200000),
+        ]);
+        expect(await PetTokenStore().contextTotal(), 3000000);
+        expect(await PetTokenStore().total(), 3200000);
+      },
+    );
+
     test('bonus pool joins the total and losses floor at zero', () async {
       SharedPreferences.setMockInitialValues({});
       final store = PetTokenStore();
@@ -341,6 +410,7 @@ void main() {
       // Winning a battle adds the stake to the growth total.
       expect(await store.addBonus(kPetBattleStake), 1200000);
       expect(await PetTokenStore().total(), 1200000);
+      expect(await PetTokenStore().contextTotal(), 1000000);
       // Losing drains the pool but never below zero, and never touches the
       // per-session observations.
       expect(await store.addBonus(-kPetBattleStake), 1000000);
@@ -374,16 +444,21 @@ void main() {
     await tester.pump();
 
     // Pet view with stats and actions.
-    expect(find.text('小哈'), findsWidgets);
+    expect(find.text('大肥鱼'), findsWidgets);
     expect(find.text('相伴第 1 天'), findsOneWidget);
-    expect(find.text('喂食'), findsOneWidget);
+    expect(find.text('喂白米饭'), findsOneWidget);
     expect(find.text('玩耍'), findsOneWidget);
     expect(find.text('洗澡'), findsOneWidget);
-    await tester.tap(find.text('喂食'));
+    await tester.tap(find.text('喂白米饭'));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
     );
     await tester.pump();
-    expect(find.text('成长 Lv.1'), findsOneWidget);
+    expect(find.textContaining('成长 Lv.1'), findsOneWidget);
+    expect(
+      tester.widget<PetSprite>(find.byType(PetSprite).first).animation,
+      'eat_token',
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

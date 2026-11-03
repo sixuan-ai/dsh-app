@@ -9,7 +9,7 @@
 #   SERVER=user@host tool/publish.sh    # 发布到别的服务器
 #   ABI=all tool/publish.sh             # 打胖包(默认只打 arm64-v8a)
 #
-# 需要本机有 sshpass(仅 SERVER_PASSWORD 回退时);服务器上已按 README 配好
+# 需要本机有 SSH 密钥认证及网关上的 sudo -n 发布权限；服务器已按 README 配好
 # nginx /releases/ 与 /etc/nginx/.htpasswd-dsh。发布内容:
 #   /var/www/dsh-releases/dsh-app-<version>.apk
 #   /var/www/dsh-releases/latest.json   (version/versionCode/url/size/sha256)
@@ -22,10 +22,10 @@
 #   3. 单次上传:公开副本在服务器端同盘 cp,不再二次传输 24MB。
 set -euo pipefail
 
-SERVER="${SERVER:-root@47.239.235.154}"
+SERVER="${SERVER:-sx-server}"
 REMOTE_DIR="/var/www/dsh-releases"
 PUBLIC_DIR="/var/www/dsh-releases-public"
-BASE_URL="${BASE_URL:-https://dsh.ainotex.com/releases}"
+BASE_URL="${BASE_URL:-https://dsh.sixuanai.com/releases-public}"
 NOTES="${NOTES:-详见应用内更新日志}"
 ABI="${ABI:-arm64-v8a}"
 
@@ -156,63 +156,13 @@ if [ ! -f "$APK" ]; then
   echo "错误: 产物不存在: $APK" >&2
   exit 1
 fi
-SIZE=$(stat -c%s "$APK")
-SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
-REAL=$(apk_real_code "$APK")
-CODE=${REAL:-$CODE}
-
-TMP=$(mktemp -d)
-# ControlMaster 复用同一 SSH 连接:跨境 RTT 高,每次 ssh/scp 单独建连要数秒
-SOCKET="/tmp/dsh-publish-$$.sock"
-trap 'rm -rf "$TMP" "$SOCKET"' EXIT
-cp "$APK" "$TMP/$APK_NAME"
-cat > "$TMP/latest.json" <<EOF
-{
-  "version": "${VERSION}",
-  "versionCode": ${CODE},
-  "url": "${BASE_URL}/${APK_NAME}",
-  "notes": "${NOTES}",
-  "size": ${SIZE},
-  "sha256": "${SHA256}"
-}
-EOF
-
-# 官网公开下载:latest APK + version.json(无认证,/APK 本身不含密钥)
-cat > "$TMP/version.json" <<EOF
-{"version": "${VERSION}", "versionCode": ${CODE}, "size": ${SIZE}, "sha256": "${SHA256}", "date": "$(date +%F)"}
-EOF
-
-# 服务器已禁用 SSH 密码认证:默认走密钥(~/.ssh/id_ed25519);仅在显式
-# 提供 SERVER_PASSWORD 时回退 sshpass(兼容旧环境)。
-if [ -n "${SERVER_PASSWORD:-}" ]; then
-  SSHRUN=(sshpass -p "$SERVER_PASSWORD")
-  AUTH_OPTS="-o PubkeyAuthentication=no -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1"
-else
-  SSHRUN=()
-  AUTH_OPTS="-o BatchMode=yes -i ${SSH_KEY:-$HOME/.ssh/id_ed25519}"
-fi
-SSH_OPTS="$AUTH_OPTS -o ControlMaster=auto -o ControlPath=$SOCKET -o ControlPersist=600"
-
-echo "==> 上传到 ${SERVER}:${REMOTE_DIR} (单次传输)"
-# 首条命令建立主连接,同时建目录并查询服务器已有内容
-REMOTE_SHA=$("${SSHRUN[@]}" ssh $SSH_OPTS "$SERVER" \
-  "mkdir -p $REMOTE_DIR $PUBLIC_DIR; sha256sum $REMOTE_DIR/$APK_NAME 2>/dev/null | cut -d' ' -f1" || true)
-# 跨境带宽是发布的主要耗时:服务器已有同 sha256 的 APK 时(重复发布同一
-# 版本)跳过 24MB 传输,只刷新清单和公开副本。
-if [ "$REMOTE_SHA" = "$SHA256" ]; then
-  echo "==> 服务器已有相同内容,跳过 APK 传输,仅刷新清单"
-else
-  "${SSHRUN[@]}" scp $SSH_OPTS "$TMP/$APK_NAME" "$SERVER:$REMOTE_DIR/"
-fi
-# 后续 ssh/scp 全部复用主连接,不再逐条建连。
-"${SSHRUN[@]}" scp $SSH_OPTS "$TMP/latest.json" "$SERVER:$REMOTE_DIR/"
-# 公开副本在服务器端同盘复制,避免再传一次 24MB。
-"${SSHRUN[@]}" ssh $SSH_OPTS "$SERVER" "cp -f $REMOTE_DIR/$APK_NAME $PUBLIC_DIR/dsh-app-latest.apk"
-"${SSHRUN[@]}" scp $SSH_OPTS "$TMP/version.json" "$SERVER:$PUBLIC_DIR/"
-# OpenSSH >=9 scp 走 SFTP 会保留源文件权限,临时文件是 600,nginx(www-data)
-# 读不到会 403;显式放开读权限。非 root 的发布账号只对自有文件生效。
-"${SSHRUN[@]}" ssh $SSH_OPTS "$SERVER" "chmod -R a+rX $REMOTE_DIR $PUBLIC_DIR" || true
-"${SSHRUN[@]}" ssh $SSH_OPTS -O exit "$SERVER" 2>/dev/null || true
-
-echo "==> 完成: ${BASE_URL}/latest.json"
-cat "$TMP/latest.json"
+# The publisher validates the APK identity, increasing versionCode, existing
+# release signing certificate and public download hash before reporting success.
+ORIGIN=$(python3 - "$BASE_URL" <<'PYORIGIN'
+import sys,urllib.parse
+u=urllib.parse.urlsplit(sys.argv[1])
+print(urllib.parse.urlunsplit((u.scheme,u.netloc,'','','')))
+PYORIGIN
+)
+python3 tool/publish_release.py --server "$SERVER" --origin "$ORIGIN" \
+  --apk "$APK" --expected-version "$VERSION" --notes "$NOTES"
