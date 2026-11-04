@@ -794,6 +794,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
       state.resyncAfterResume();
+      state.petBoardReporter.resumed();
       if (state.signedInAccount != null) unawaited(state.verifyAppAccount());
       unawaited(_checkLocalConnection());
       final pending = _pendingUpdate;
