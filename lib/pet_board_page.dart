@@ -417,7 +417,7 @@ class _PetBoardPageState extends State<PetBoardPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Icon(Icons.water_rounded, color: P.info),
+                _PetAvatar(size: 46, ring: _medal(e.rank), glow: true),
                 const SizedBox(height: 8),
                 Text(
                   e.nickname,
@@ -479,7 +479,7 @@ class _PetBoardPageState extends State<PetBoardPage> {
         width: 38,
         child: Text('#${e.rank}', style: TextStyle(color: P.textSecondary)),
       ),
-      Icon(Icons.water_rounded, color: P.info),
+      _PetAvatar(size: 34, ring: P.accent.withValues(alpha: .55)),
       const SizedBox(width: 10),
       Expanded(
         child: Column(
@@ -510,5 +510,41 @@ class _PetBoardPageState extends State<PetBoardPage> {
         ),
       ),
     ],
+  );
+}
+
+/// Round BigFish head avatar with a colored ring; replaces the generic
+/// waves glyph so rows show the actual companion.
+class _PetAvatar extends StatelessWidget {
+  const _PetAvatar({required this.size, required this.ring, this.glow = false});
+
+  final double size;
+  final Color ring;
+  final bool glow;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: const EdgeInsets.all(2),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: ring, width: 1.5),
+      boxShadow: glow
+          ? [BoxShadow(color: ring.withValues(alpha: .35), blurRadius: 12)]
+          : null,
+    ),
+    child: ClipOval(
+      child: ColoredBox(
+        color: P.cardAlt,
+        child: Image.asset(
+          'assets/pet/dafeiyu/avatar.webp',
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, _, _) =>
+              Icon(Icons.pets_rounded, color: ring, size: size * .5),
+        ),
+      ),
+    ),
   );
 }
