@@ -50,6 +50,7 @@ xHarness 是 DeepSeek Harness（DSH） 的 Flutter 手机客户端。通过 DSH 
 
 - **黑曜荧光主题**（默认）：荧光绿主色，青 / 紫 / 琥珀 / 珊瑚作为信息、Agent、审批、错误的语义色；另有晨雾白浅色主题及多款经典主题。设计规范见 [docs/design/obsidian-neon](docs/design/obsidian-neon/DESIGN.md)。
 - **大肥鱼互动宠物**：上下文累计 1M token 对应一碗白米饭，自动成长与手动互动；素材来源与许可见 [资源说明](docs/pet/DAFEIYU.md)。
+- **宠物排行榜**：思玄账号参与总榜与本周成长榜，支持公开昵称和退出排行，访客可查看。[规则与自建部署](docs/pet/LEADERBOARD.md)。
 - 社区动态、好友码、等级排行与私聊。
 - 应用内更新（Android）、内置更新日志、中英文界面。
 

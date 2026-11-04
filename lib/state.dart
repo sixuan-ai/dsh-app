@@ -18,6 +18,7 @@ import 'src/directory_listing.dart';
 import 'src/frame_router.dart';
 import 'src/localstore.dart';
 import 'src/pet.dart';
+import 'src/pet_board.dart';
 import 'src/protocol.dart';
 import 'src/connector_pairing.dart';
 import 'src/sixuan_account.dart';
@@ -233,6 +234,62 @@ class AppState extends ChangeNotifier {
   bool _identityVerified = false;
   int _identityGeneration = 0;
   String? identityNotice;
+  String? get petBoardToken =>
+      _identityVerified &&
+          signedInAccount != null &&
+          signedInAccount!.expiresAt.isAfter(DateTime.now())
+      ? signedInAccount!.token
+      : null;
+  late final PetBoardApi petBoardApi = PetBoardApi(token: () => petBoardToken);
+  late final PetBoardReporter petBoardReporter = PetBoardReporter(
+    send: _reportPet,
+  );
+  String? _boardIdentity;
+  bool _petBoardOptedOut = false;
+  void setPetBoardOptedOut(bool value) {
+    _petBoardOptedOut = value;
+    petBoardReporter.setActive(petBoardToken != null && !value);
+    if (!value) petBoardReporter.opened();
+  }
+
+  Future<void> _reportPet() async {
+    final token = petBoardToken;
+    if (token == null || _petBoardOptedOut) return;
+    final pet = await PetStore().load();
+    if (pet == null || token != petBoardToken) return;
+    // Check the server preference on every attempt, including another device's opt-out.
+    final data = await petBoardApi.board();
+    if (token != petBoardToken) return;
+    if (data.me?.optedOut == true) {
+      setPetBoardOptedOut(true);
+      return;
+    }
+    final total = await _petTokens.total();
+    if (token != petBoardToken || _petBoardOptedOut) return;
+    final result = await petBoardApi.report({
+      'petName': pet.name,
+      'species': pet.speciesId,
+      'stage': petSpeciesById(pet.speciesId).stageForTokens(total).name,
+      'tokens': total,
+      'pkScore': pet.pkScore,
+    });
+    if (token == petBoardToken && result['optedOut'] == true) {
+      setPetBoardOptedOut(true);
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    final identity = petBoardToken;
+    if (_boardIdentity != identity) {
+      petBoardReporter.setActive(false);
+      _boardIdentity = identity;
+      _petBoardOptedOut = false;
+      petBoardReporter.setActive(identity != null);
+    }
+    super.notifyListeners();
+  }
+
   bool get hasEntryAccess => guestAccess || signedInAccount != null;
   // App accounts are optional; desktop credentials authorize every route.
   bool get canUsePublicConnection => true;
@@ -265,6 +322,8 @@ class AppState extends ChangeNotifier {
 
   Future<void> enterGuestMode() async {
     final generation = ++_identityGeneration;
+    _identityVerified = false;
+    notifyListeners();
     verifyingAccount = false;
     await identityStore.clear();
     if (generation != _identityGeneration) return;
@@ -285,8 +344,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> acceptLegacyEntry() async {
     ++_identityGeneration;
+    _identityVerified = false;
+    notifyListeners();
     await identityStore.clear();
     signedInAccount = null;
+    _identityVerified = false;
     guestAccess = false;
     verifyingAccount = false;
     final prefs = await SharedPreferences.getInstance();
@@ -651,6 +713,7 @@ class AppState extends ChangeNotifier {
     ]);
     if (values[0] != petTokensTotal || values[1] != petContextTokensTotal) {
       petTokensTotal = values[0];
+      petBoardReporter.changed();
       petContextTokensTotal = values[1];
       notifyListeners();
     }
@@ -3110,6 +3173,9 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     ++_identityGeneration;
+    _identityVerified = false;
+    petBoardReporter.dispose();
+    petBoardApi.close();
     identityApi.close();
     disconnect();
     super.dispose();

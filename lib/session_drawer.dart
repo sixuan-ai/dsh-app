@@ -12,6 +12,7 @@ import 'composer.dart';
 import 'directory_tree_page.dart';
 import 'network_diagnostics_page.dart';
 import 'pet_page.dart';
+import 'pet_board_page.dart';
 import 'session_mode_badge.dart';
 import 'settings_center.dart';
 import 'src/ai_hub_pages.dart';
@@ -223,6 +224,19 @@ class _SessionDrawerState extends State<SessionDrawer> {
               Navigator.of(context).pop();
               Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => PetPage(state: state)),
+              );
+            },
+          ),
+          _MoreAction(
+            icon: Icons.leaderboard_rounded,
+            label: '宠物排行榜',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PetBoardPage(state: state),
+                ),
               );
             },
           ),

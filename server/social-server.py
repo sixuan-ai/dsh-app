@@ -9,6 +9,9 @@ x-social-token 头;等级由客户端上报 promptCount,服务端按与 App 相�
 
 import base64
 import json
+import os
+from urllib.parse import urlsplit, parse_qs
+from pet_board import PetBoard, BoardError
 import re
 import secrets
 import sqlite3
@@ -18,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 9981
-DB_PATH = "/opt/dsh-social/social.db"
+DB_PATH = os.environ.get("SOCIAL_DB_PATH", "/opt/dsh-social/social.db")
 FEEDBACK_LOG = "/opt/dsh-social/feedback.log"
 
 MAX_NICKNAME = 24
@@ -100,6 +103,16 @@ def init_db():
         )
 
 
+pet_board = None
+_pet_init_lock = threading.Lock()
+
+def get_pet_board():
+    global pet_board
+    with _pet_init_lock:
+        if pet_board is None:
+            pet_board = PetBoard(_db, _db_lock)
+    return pet_board
+
 def avatar_ver(user_id):
     with _db_lock:
         row = _db.execute(
@@ -164,6 +177,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if self._pet_route().startswith("/pet/"):
+            self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -208,7 +223,51 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- verbs ------------------------------------------------------------
 
+    def _pet_route(self):
+        route = urlsplit(self.path).path
+        if route.startswith('/social/pet/'):
+            route = route[len('/social'):]
+        return route
+
+    def _pet(self, method):
+        try:
+            board = get_pet_board()
+            identity = board.authenticate(self.headers.get('Authorization'), optional=method == 'GET')
+            route = self._pet_route()
+            if method == 'GET' and route == '/pet/board':
+                query = parse_qs(urlsplit(self.path).query)
+                try:
+                    limit = int(query.get('limit', ['100'])[0])
+                except ValueError:
+                    raise BoardError(400, 'limit 无效')
+                return self._send(200, board.board(identity, query.get('scope', ['all'])[0], limit))
+            if method in ('POST', 'PATCH') and route == '/pet/me':
+                try:
+                    length = int(self.headers.get('Content-Length', '0'))
+                except ValueError:
+                    length = 0
+                if not 0 < length <= 4096 or self.headers.get('Transfer-Encoding'):
+                    self.close_connection = True
+                    raise BoardError(413, '请求体上限 4096 字节')
+                try:
+                    body = json.loads(self.rfile.read(length).decode('utf-8'))
+                except (ValueError, UnicodeError):
+                    raise BoardError(400, 'JSON 无效')
+                return self._send(200, board.update(identity, body, settings=method == 'PATCH'))
+            raise BoardError(404, '未知路径')
+        except BoardError as error:
+            # Unread request bodies must never be interpreted as a second request.
+            self.close_connection = True
+            return self._error(error.status, error.message)
+
+    def do_PATCH(self):
+        if self._pet_route().startswith('/pet/'):
+            return self._pet('PATCH')
+        self._error(404, '未知路径')
+
     def do_GET(self):
+        if self._pet_route().startswith('/pet/'):
+            return self._pet('GET')
         route = self._route()
         if route == "/social/health":
             return self._send(200, {"ok": True})
@@ -232,6 +291,8 @@ class Handler(BaseHTTPRequestHandler):
         self._error(404, "未知路径")
 
     def do_POST(self):
+        if self._pet_route().startswith("/pet/"):
+            return self._pet("POST")
         route = self._route()
         body = self._body()
         if body is None:

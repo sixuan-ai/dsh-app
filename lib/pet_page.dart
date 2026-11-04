@@ -8,6 +8,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'pet_sprite.dart';
+import 'pet_board_page.dart';
 import 'pet_habitat.dart';
 import 'src/pet.dart';
 import 'src/theme.dart';
@@ -125,6 +126,7 @@ class _PetPageState extends State<PetPage> {
       _loaded = true;
     });
     if (pet != null) unawaited(_store.save(pet));
+    widget.state?.petBoardReporter.opened();
   }
 
   /// Applies elapsed-time decay and persists; called by the periodic timer.
@@ -149,6 +151,7 @@ class _PetPageState extends State<PetPage> {
     setState(() => action(pet));
     _animate(clip);
     await _store.save(pet);
+    widget.state?.petBoardReporter.changed();
   }
 
   Future<void> _play() async {
@@ -173,6 +176,7 @@ class _PetPageState extends State<PetPage> {
     pet.eatRiceForContext(_contextTokens);
     setState(() => _pet = pet);
     await _store.save(pet);
+    widget.state?.petBoardReporter.changed();
   }
 
   Future<void> _rename() async {
@@ -205,6 +209,7 @@ class _PetPageState extends State<PetPage> {
     if (name != null && pet.rename(name)) {
       setState(() {});
       await _store.save(pet);
+      widget.state?.petBoardReporter.changed();
     }
   }
 
@@ -222,6 +227,15 @@ class _PetPageState extends State<PetPage> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => PetBoardPage(state: widget.state),
+              ),
+            ),
+            icon: const Icon(Icons.leaderboard_rounded),
+            label: const Text('排行榜'),
+          ),
           IconButton(
             onPressed: _showRiceRules,
             tooltip: '白米饭与成长规则',
@@ -372,6 +386,7 @@ class _PetPageState extends State<PetPage> {
       playerWon ? kPetBattleStake : -kPetBattleStake,
     );
     await widget.state?.refreshPetTokens();
+    widget.state?.petBoardReporter.changed();
     if (mounted) setState(() => _tokensTotal = total);
   }
 

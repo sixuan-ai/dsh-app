@@ -79,6 +79,19 @@ server {
         }
     }
 
+    # 宠物榜独立使用思玄 Bearer；公开读取，绝不继承 Basic。
+    location ^~ /social/pet/ {
+        auth_basic off;
+        limit_req zone=dsh_api burst=20 nodelay;
+        limit_req_status 429;
+        client_max_body_size 4k;
+        proxy_pass http://127.0.0.1:9981/pet/;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header Host $host;
+        proxy_read_timeout 15s;
+        add_header Cache-Control "no-store" always;
+    }
+
     # App 社交后端(好友/社区/私信),Basic 认证,限流防爆破。
     location /social/ {
         limit_req zone=dsh_auth burst=20 nodelay;
