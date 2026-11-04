@@ -113,3 +113,16 @@ XHARNESS_RENDER_UI=1 flutter test -j 6 test/pet_board_test.dart
 - 既有认证代理回归：12 通过。
 - `XHARNESS_RENDER_UI=1 flutter test --no-pub -j 6 test/pet_board_test.dart`：19 通过；两张 390×844 深色 PNG 已生成并实际查看；包含浅色与 160% 字体布局验证。
 - `git diff --check` 通过；未改版本号或 changelog，未 commit/push、部署、SSH、操作手机或读取指定凭据。
+
+## 线上部署记录（2026-11-05，广州 sx-server）
+
+| 项 | 值 |
+| --- | --- |
+| 代码 | `/opt/dsh-social/social-server.py`（sha256 `f6f5d868…`）、`pet_board.py`（`e00197e7…`），对应 main `e0b408a` |
+| 密钥 | `/etc/dsh-social/pet-board.env`（root 0600，64 字符），由 `dsh-social.service.d/pet-board.conf` 注入；未写入仓库或日志 |
+| nginx | `sites-available/dsh-sixuanai` 在 `/social/` 前新增 `location ^~ /social/pet/`（不经共享账号网关）；限流 zone `dsh_pet_board`（`conf.d/dsh-pet-board-rate.conf`，5 r/s，burst 20） |
+| 备份 | `/var/backups/dsh-social/pet-board-20261105-025246/`（旧代码、SQLite 在线备份、nginx 站点、unit），root 0600 |
+
+公网验收：匿名总榜/周榜 200 且无 Basic 挑战、`Cache-Control: no-store`；无会话上报 401；无效会话上报/读榜 401；原 `/social/` 其余路由仍 401。原社区接口本机复测行为不变。真实账号的上报与排名尚待用测试账号在 App 中验证。
+
+回滚：删除该 location 与 `conf.d/dsh-pet-board-rate.conf` → `nginx -t` → reload；`install` 备份中的 `social-server.py` 并删除 `pet_board.py` 与 drop-in → `daemon-reload` → 重启 `dsh-social`。新表可保留；密钥文件保留以免重新启用时产生重复身份。
