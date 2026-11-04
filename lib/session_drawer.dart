@@ -217,7 +217,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             },
           ),
           _MoreAction(
-            icon: Icons.waves_rounded,
+            icon: Icons.pets_rounded,
             label: S.pet,
             onTap: () {
               Navigator.of(sheetContext).pop();
