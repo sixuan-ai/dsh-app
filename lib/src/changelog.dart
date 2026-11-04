@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.7.0';
+const kAppVersion = '2.7.1';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.7.1',
+    date: '2026-11-05',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '宠物等级排行榜：登录思玄账号即可上榜，支持总榜与本周榜、我的排名、公开昵称和不参与排行',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '宠物页与侧边栏新增排行榜入口，访客也可查看榜单',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.7.0',
     date: '2026-11-05',
