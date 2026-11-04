@@ -43,9 +43,9 @@ void main() {
         );
       }
       if (adopted) await PetTokenStore().record('preview-context', 8360000);
-      final palette = paletteFor(mode == 'light' ? 'light' : 'night');
+      final palette = paletteFor(mode == 'light' ? 'light' : 'obsidian');
       P = palette;
-      addTearDown(() => P = paletteFor('night'));
+      addTearDown(() => P = paletteFor(kAppThemes.first.id));
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = Size(mode == 'large' ? 320 : 390, 844);
       tester.view.padding = const FakeViewPadding(top: 24, bottom: 20);
