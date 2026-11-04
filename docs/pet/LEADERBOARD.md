@@ -39,7 +39,7 @@ GET 示例：
 
 周榜 score 为本周增量，tokens 始终为累计总量。匿名响应没有 me。未上报/已退出的 me 返回 `rank:null,nickname,optedOut`，不返回个人标识。错误为 `{"error":"说明"}`；400 参数无效、401 会话无效、413 请求超过 4096 字节、429 上报太频繁、503 校验服务不可用或尚未配置 HMAC 密钥。
 
-账号验证使用 `POST https://accounts.sixuanai.com/api/currentUser`，JSON `{}` 和 Bearer 头，8 秒超时。`PET_ACCOUNTS_URL` 可覆盖完整地址。预期 JSON 为 `{"user":{"id":"稳定账号id","email":"用户邮箱"}}` 或直接的 user 对象。部署前须核对自建账号服务格式，格式错误返回 503；认证边界是 `pet_board.validate_account(token)`，测试注入假实现。绝不以客户端邮箱代替服务端身份。
+账号验证使用 `POST https://accounts.sixuanai.com/api/currentUser`，JSON `{}` 和 Bearer 头，8 秒超时。`PET_ACCOUNTS_URL` 可覆盖完整地址。实际返回（2026-11-05 核对线上 sixuan-accounts）为直接的 user 对象 `{"name","email","display_name","status","is_admin","info"}`，没有数字 id；以规范化（去空白、小写）的已验证邮箱作为账号键，仅以 HMAC 散列入库。也兼容 `{"user":{...}}` 包装。部署前须核对自建账号服务格式，格式错误返回 503；认证边界是 `pet_board.validate_account(token)`，测试注入假实现。绝不以客户端邮箱代替服务端身份。
 
 ## 数据与反作弊
 
