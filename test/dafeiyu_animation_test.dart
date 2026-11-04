@@ -72,7 +72,9 @@ void main() {
             (path) =>
                 path.startsWith('assets/pet/dafeiyu/') &&
                 path.endsWith('.webp') &&
-                !path.endsWith('/poster.webp'),
+                // Static stills: reduced-motion poster and leaderboard avatar.
+                !path.endsWith('/poster.webp') &&
+                !path.endsWith('/avatar.webp'),
           )
           .toSet();
       expect(bundled, kDafeiyuClips.map(dafeiyuAnimationAsset).toSet());
