@@ -26,11 +26,13 @@ def validate_account(token):
         with urllib.request.urlopen(request, timeout=8) as response:
             result = json.loads(response.read(65536))
         user = result.get('user', result)
-        identifier = user.get('id')
         email = user.get('email')
-        if result.get('error') or not isinstance(identifier, (str, int)) or not email:
+        if result.get('error') or not isinstance(email, str) or '@' not in email:
             raise BoardError(503, '账号服务响应无效')
-        return str(identifier), str(email)
+        # sixuan-accounts currentUser returns no numeric id; the verified email
+        # is the unique, immutable account key there. It is only stored HMAC'd.
+        email = email.strip()
+        return email.lower(), email
     except urllib.error.HTTPError as error:
         raise BoardError(401 if error.code in (401, 403) else 503, '账号校验失败') from None
     except (OSError, ValueError, TypeError, AttributeError):

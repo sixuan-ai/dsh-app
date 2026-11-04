@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import os
 import sqlite3
@@ -62,6 +63,25 @@ class PetBoardTests(unittest.TestCase):
             with self.assertRaises(BoardError) as e:
                 validate_account('synthetic')
             self.assertEqual(401, e.exception.status)
+
+    def test_account_service_live_shape(self):
+        # sixuan-accounts /api/currentUser: no id field, email is the key.
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        live = {'name': 'Fish@Example.com', 'email': ' Fish@Example.com', 'display_name': 'fish',
+                'status': 1, 'is_admin': False, 'info': {'email_verification': True}}
+        with patch('urllib.request.urlopen', return_value=Response(json.dumps(live).encode())):
+            self.assertEqual(('fish@example.com', 'Fish@Example.com'), validate_account('synthetic'))
+        for bad in ({'error': 'x'}, {'name': 'n'}, {'email': 'not-an-email'}):
+            with patch('urllib.request.urlopen', return_value=Response(json.dumps(bad).encode())):
+                with self.assertRaises(BoardError) as e:
+                    validate_account('synthetic')
+                self.assertEqual(503, e.exception.status)
 
     def test_anonymous_privacy_and_server_stage(self):
         self.assertEqual([], self.board.board()['items'])
