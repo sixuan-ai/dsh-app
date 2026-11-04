@@ -18,6 +18,8 @@ import 'src/ai_hub_pages.dart';
 import 'social_page.dart';
 import 'src/l10n.dart';
 import 'src/theme.dart';
+import 'src/ui/glass.dart';
+import 'src/ui/neumorphic.dart';
 import 'src/session_list_projection.dart';
 import 'state.dart';
 
@@ -196,9 +198,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const AiNewsPage()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => AiNewsPage()));
             },
           ),
           _MoreAction(
@@ -208,9 +210,9 @@ class _SessionDrawerState extends State<SessionDrawer> {
             onTap: () {
               Navigator.of(sheetContext).pop();
               Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const AiLearningPage()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => AiLearningPage()));
             },
           ),
           _MoreAction(
@@ -333,67 +335,64 @@ class _SessionDrawerState extends State<SessionDrawer> {
           : state.serverUrl,
     ).host;
     return Drawer(
+      width: (MediaQuery.sizeOf(context).width - 24).clamp(280, 420),
       child: SafeArea(
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: P.brandGradient,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _profileHeader(),
-                  Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: P.onAccent, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'xHarness',
-                        style: TextStyle(
-                          color: P.onAccent,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.dns_outlined,
-                        size: 12,
-                        color: P.onAccent.withValues(alpha: 0.8),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          host,
-                          overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: GlassPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _profileHeader(),
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome, color: P.text, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'xHarness',
                           style: TextStyle(
-                            color: P.onAccent.withValues(alpha: 0.8),
-                            fontSize: 12,
+                            color: P.text,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${state.sessions.length} 个会话',
-                    style: TextStyle(
-                      color: P.onAccent.withValues(alpha: 0.8),
-                      fontSize: 12,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  _LevelBadge(level: state.userLevel),
-                ],
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.dns_outlined,
+                          size: 12,
+                          color: P.text.withValues(alpha: 0.8),
+                        ),
+                        SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            state.pairedComputer?.name ?? host,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: P.text.withValues(alpha: 0.8),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '${state.serverAvailable ? (widget.connectionMode == 'lan' ? '局域网已连接' : '公网已连接') : '离线'} · ${state.sessions.length} 个会话',
+                      style: TextStyle(
+                        color: P.text.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    _LevelBadge(level: state.userLevel),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -410,28 +409,23 @@ class _SessionDrawerState extends State<SessionDrawer> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: [
-                  _filterChip(0, '会话'),
-                  _filterChip(1, '运行中'),
-                  _filterChip(3, '置顶'),
-                  _filterChip(2, '已归档'),
-                ],
+            SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: NeuSegmented<int>(
+                values: const {0: '会话', 1: '运行中', 3: '置顶', 2: '已归档'},
+                selected: _sessionFilter,
+                onSelected: (value) => setState(() => _sessionFilter = value),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 children: _groupedSessionTiles(context),
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.groups_outlined, size: 20),
               title: const Text('社区', style: TextStyle(fontSize: 14)),
@@ -503,7 +497,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
               )
             else
               _letterAvatar(nickname),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,7 +506,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                     nickname,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: P.onAccent,
+                      color: P.text,
                       fontSize: 14.5,
                       fontWeight: FontWeight.bold,
                     ),
@@ -520,7 +514,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                   Text(
                     'Lv.${profile['level']} · ${profile['title']}',
                     style: TextStyle(
-                      color: P.onAccent.withValues(alpha: 0.8),
+                      color: P.text.withValues(alpha: 0.8),
                       fontSize: 11,
                     ),
                   ),
@@ -529,7 +523,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
             ),
             Icon(
               Icons.chevron_right,
-              color: P.onAccent.withValues(alpha: 0.8),
+              color: P.text.withValues(alpha: 0.8),
               size: 18,
             ),
           ],
@@ -543,29 +537,17 @@ class _SessionDrawerState extends State<SessionDrawer> {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
+        color: P.neuShadow.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(12),
       ),
       alignment: Alignment.center,
       child: Text(
         nickname.isEmpty ? '?' : nickname.characters.first,
         style: TextStyle(
-          color: P.onAccent,
+          color: P.text,
           fontSize: 17,
           fontWeight: FontWeight.bold,
         ),
-      ),
-    );
-  }
-
-  Widget _filterChip(int value, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        selected: _sessionFilter == value,
-        onSelected: (_) => setState(() => _sessionFilter = value),
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -610,7 +592,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                 size: 16,
                 color: P.accentLight,
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: 2),
               Icon(
                 group.isWorkspace
                     ? Icons.folder_outlined
@@ -618,7 +600,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
                 size: 14,
                 color: P.accentLight,
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Expanded(
                 child: Tooltip(
                   message: group.path ?? '未分组',
@@ -645,92 +627,113 @@ class _SessionDrawerState extends State<SessionDrawer> {
     );
   }
 
+  Widget _sessionTag(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 10.5)),
+  );
+
   Widget _sessionTile(BuildContext context, SessionRow row) {
     final selected = row.sessionId == state.selectedSessionId;
     final archived = state.archivedSessionIds.contains(row.sessionId);
     final pinned = state.pinnedSessionIds.contains(row.sessionId);
     final mode = state.sessionModeOf(row.sessionId);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: selected ? P.accent.withValues(alpha: 0.10) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            ListTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              dense: true,
-              contentPadding: const EdgeInsets.only(left: 18, right: 4),
-              leading: Icon(
-                archived
-                    ? Icons.archive_outlined
-                    : pinned
-                    ? Icons.push_pin
-                    : Icons.circle,
-                size: pinned || archived ? 18 : 8,
-                color: archived
-                    ? P.textTertiary
-                    : pinned
-                    ? P.accentLight
-                    : row.running
-                    ? P.success
-                    : P.textTertiary,
-              ),
-              title: Text(
-                row.title?.isNotEmpty == true ? row.title! : '新会话',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? P.accentLight : null,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: NeuSurface(
+        padding: EdgeInsets.zero,
+        child: Material(
+          color: selected ? P.accent.withValues(alpha: 0.10) : P.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            children: [
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              ),
-              subtitle: Row(
-                children: [
-                  if (mode != SessionMode.auto) ...[
-                    SessionModeBadge(mode: mode, compact: true),
-                    const SizedBox(width: 6),
+                dense: true,
+                contentPadding: const EdgeInsets.only(left: 18, right: 4),
+                leading: Icon(
+                  archived
+                      ? Icons.archive_outlined
+                      : pinned
+                      ? Icons.push_pin
+                      : Icons.circle,
+                  size: pinned || archived ? 18 : 8,
+                  color: archived
+                      ? P.textTertiary
+                      : pinned
+                      ? P.accentLight
+                      : row.running
+                      ? P.success
+                      : P.textTertiary,
+                ),
+                title: Text(
+                  row.title?.isNotEmpty == true ? row.title! : '新会话',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    color: selected ? P.accentLight : null,
+                  ),
+                ),
+                subtitle: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (state.approvals.any(
+                      (a) => a.sessionId == row.sessionId,
+                    ))
+                      _sessionTag('待审批', P.warning)
+                    else if (row.running)
+                      _sessionTag('运行中', P.accent),
+                    if (mode != SessionMode.auto) ...[
+                      SessionModeBadge(mode: mode, compact: true),
+                      SizedBox(width: 6),
+                    ],
+                    Text(
+                      _timeAgo(row.updatedAt),
+                      style: TextStyle(fontSize: 11.5, color: P.textTertiary),
+                    ),
                   ],
-                  Text(
-                    _timeAgo(row.updatedAt),
-                    style: TextStyle(fontSize: 11.5, color: P.textTertiary),
-                  ),
-                ],
+                ),
+                trailing: PopupMenuButton<String>(
+                  tooltip: '会话操作',
+                  onSelected: (action) => _sessionAction(row, action),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: pinned ? 'unpin' : 'pin',
+                      child: Text(pinned ? '取消置顶' : '置顶'),
+                    ),
+                    if (!archived)
+                      PopupMenuItem(value: 'archive', child: Text('归档')),
+                  ],
+                ),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pop();
+                  state.openSession(row.sessionId);
+                },
               ),
-              trailing: PopupMenuButton<String>(
-                tooltip: '会话操作',
-                onSelected: (action) => _sessionAction(row, action),
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: pinned ? 'unpin' : 'pin',
-                    child: Text(pinned ? '取消置顶' : '置顶'),
-                  ),
-                  if (!archived)
-                    const PopupMenuItem(value: 'archive', child: Text('归档')),
-                ],
-              ),
-              onTap: () {
-                HapticFeedback.selectionClick();
-                Navigator.of(context).pop();
-                state.openSession(row.sessionId);
-              },
-            ),
-            if (selected)
-              Positioned(
-                left: 5,
-                top: 11,
-                bottom: 11,
-                child: Container(
-                  width: 3,
-                  decoration: BoxDecoration(
-                    gradient: P.brandGradient,
-                    borderRadius: BorderRadius.circular(2),
+              if (selected)
+                Positioned(
+                  left: 5,
+                  top: 11,
+                  bottom: 11,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      gradient: P.brandGradient,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -767,7 +770,7 @@ class _SessionDrawerState extends State<SessionDrawer> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('会话已归档')));
+        ).showSnackBar(SnackBar(content: Text('会话已归档')));
       }
     } catch (error) {
       if (mounted) {
@@ -783,197 +786,58 @@ class _SessionDrawerState extends State<SessionDrawer> {
 /// applies instantly (the app root listens to the controller) and persists.
 class _ThemeSheet extends StatelessWidget {
   const _ThemeSheet({required this.theme});
-
   final ThemeController theme;
-
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: theme,
-      builder: (context, _) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  S.pickTheme,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  S.appliesInstantly,
-                  style: TextStyle(color: P.textTertiary, fontSize: 12.5),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.55,
-                  children: [
-                    for (final spec in kAppThemes)
-                      _ThemeCard(
-                        spec: spec,
-                        selected: spec.id == theme.themeId,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          theme.select(spec.id);
-                        },
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// One theme preview card in the picker: a miniature mock of the chat page
-/// rendered in that theme's own palette.
-class _ThemeCard extends StatelessWidget {
-  const _ThemeCard({
-    required this.spec,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final AppThemeSpec spec;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = spec.palette;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: palette.bg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? palette.accent : P.divider,
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: palette.accent.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: theme,
+    builder: (context, _) => SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .85,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // mini app bar
-                  Row(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(S.pickTheme, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                S.appliesInstantly,
+                style: TextStyle(color: P.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns =
+                      MediaQuery.textScalerOf(context).scale(14) > 18 ? 1 : 2;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          gradient: palette.brandGradient,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 42,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: palette.text,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // mini assistant line
-                  Container(
-                    width: double.infinity,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: palette.card,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: palette.divider, width: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  // mini user bubble
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      width: 56,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        gradient: palette.brandGradient,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          spec.name,
-                          style: TextStyle(
-                            color: palette.text,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                      for (final spec in kAppThemes)
+                        SizedBox(
+                          width:
+                              (constraints.maxWidth - (columns - 1) * 12) /
+                              columns,
+                          child: ThemeChoiceCard(
+                            spec: spec,
+                            selected: spec.id == theme.themeId,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              theme.select(spec.id);
+                            },
                           ),
                         ),
-                      ),
-                      Text(
-                        spec.subtitle,
-                        style: TextStyle(
-                          color: palette.textTertiary,
-                          fontSize: 10,
-                        ),
-                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
-            if (selected)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    gradient: palette.brandGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.check, size: 12, color: palette.onAccent),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// Level badge with progress bar shown in the drawer header; taps open the
@@ -991,44 +855,47 @@ class _LevelBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.18),
+          color: P.neuShadow.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           children: [
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
               children: [
-                const Icon(Icons.military_tech, size: 16, color: Colors.amber),
-                const SizedBox(width: 6),
+                Icon(Icons.military_tech, size: 16, color: P.warning),
+                SizedBox(width: 6),
                 Text(
                   'Lv.${level.level} · ${level.title}',
                   style: TextStyle(
-                    color: P.onAccent,
+                    color: P.text,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 Text(
                   '${level.count} 次对话',
                   style: TextStyle(
-                    color: P.onAccent.withValues(alpha: 0.8),
+                    color: P.text.withValues(alpha: 0.8),
                     fontSize: 11,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(
                 value: level.progress,
                 minHeight: 5,
                 backgroundColor: P.fillMedium,
-                valueColor: const AlwaysStoppedAnimation(Colors.amber),
+                valueColor: AlwaysStoppedAnimation(P.warning),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -1048,9 +915,9 @@ class _LevelBadge extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.military_tech, color: Colors.amber),
+            Icon(Icons.military_tech, color: P.warning),
             SizedBox(width: 8),
             Text('等级规则'),
           ],
@@ -1066,7 +933,7 @@ class _LevelBadge extends StatelessWidget {
                   '每发送一条消息计 1 次对话,累计达到阈值即可升级。计数保存在本机。',
                   style: TextStyle(fontSize: 12.5, color: P.textSecondary),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 for (var i = 0; i < levelThresholds.length; i++)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1078,17 +945,17 @@ class _LevelBadge extends StatelessWidget {
                               : Icons.circle_outlined,
                           size: 14,
                           color: i + 1 <= level.level
-                              ? Colors.amber
+                              ? P.warning
                               : P.textTertiary,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Lv.${i + 1} · ${levelTitles[i]}',
                             style: TextStyle(
                               fontSize: 13,
                               color: i + 1 == level.level
-                                  ? Colors.amber
+                                  ? P.warning
                                   : P.textSecondary,
                               fontWeight: i + 1 == level.level
                                   ? FontWeight.w600
@@ -1184,7 +1051,7 @@ class _MoreSheet extends StatelessWidget {
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               GridView.count(
                 crossAxisCount: 4,
                 shrinkWrap: true,
@@ -1248,7 +1115,7 @@ class _MoreCell extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             action.label,
             style: TextStyle(

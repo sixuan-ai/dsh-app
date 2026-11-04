@@ -19,7 +19,6 @@ import 'src/connector_pairing.dart';
 import 'connector_pairing_page.dart';
 import 'app_account_page.dart';
 import 'connection_entry_view.dart';
-import 'src/connection_access.dart';
 import 'connection_guide.dart';
 import 'connection_center.dart';
 import 'brand_mark.dart';
@@ -38,6 +37,7 @@ import 'model_picker.dart';
 import 'changelog_view.dart';
 import 'new_session_sheet.dart';
 import 'state.dart';
+import 'src/ui/glass.dart';
 
 // The canonical origin lives in protocol.dart; re-export so existing
 // `import 'main.dart' show kDefaultServerUrl` sites keep working.
@@ -164,19 +164,11 @@ class _DshAppState extends State<DshApp> {
       // The instance URL was resolved through the directory at login;
       // reconnect to it directly (no directory round-trip at boot).
       final mode = prefs.getString('connectionMode') ?? 'public';
-      var serverUrl = mode == 'lan'
+      final serverUrl = mode == 'lan'
           ? (prefs.getString('lanServerUrl') ??
                 prefs.getString('serverUrl') ??
                 kDefaultServerUrl)
           : (prefs.getString('serverUrl') ?? kDefaultServerUrl);
-      if (!appState.canUsePublicConnection && !isLanConnectionUrl(serverUrl)) {
-        final local = prefs.getString('lanServerUrl');
-        if (local == null || !isLanConnectionUrl(local)) {
-          if (mounted) setState(() => _restored = true);
-          return;
-        }
-        serverUrl = local;
-      }
       if (mounted) setState(() => _restored = true);
       unawaited(
         appState.connect(
@@ -213,6 +205,8 @@ class _DshAppState extends State<DshApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(P),
       locale: language.locale,
+      builder: (context, child) =>
+          AppBackdrop(enabled: theme.themeId == 'obsidian', child: child!),
       home: AnimatedBuilder(
         animation: appState,
         builder: (context, _) {
@@ -255,11 +249,11 @@ class _Splash extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const BrandMark(size: 76),
-            const SizedBox(height: 20),
+            BrandMark(size: 76),
+            SizedBox(height: 20),
             Text(label, style: TextStyle(color: P.textSecondary)),
-            const SizedBox(height: 16),
-            const SizedBox(
+            SizedBox(height: 16),
+            SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(strokeWidth: 2.5),
@@ -348,14 +342,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
     // Silent re-check every 30 minutes; a find raises the green dot.
     _updateTimer = Timer.periodic(
-      const Duration(minutes: 30),
+      Duration(minutes: 30),
       (_) => _checkForUpdate(),
     );
     // Private-message notifications: first poll primes watermarks silently.
-    _socialTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) => _pollSocial(),
-    );
+    _socialTimer = Timer.periodic(Duration(seconds: 60), (_) => _pollSocial());
     Timer(const Duration(seconds: 8), _pollSocial);
     Timer(const Duration(seconds: 2), _checkLocalConnection);
   }
@@ -458,10 +449,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _switchConnection(String mode) async {
-    if (mode != 'lan' && !state.canUsePublicConnection) {
-      await _showAppAccount();
-      if (!state.canUsePublicConnection) return;
-    }
     final prefs = await SharedPreferences.getInstance();
     final paired = state.pairedComputer;
     var target = paired != null
@@ -503,10 +490,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (mode == 'direct') {
       // Prefer the qxrobot hostname; retain the old ainotex hostname for
       // rollback compatibility while DNS and installed clients converge.
-      for (final candidate in const [
-        kDirectServerUrl,
-        kDirectServerFallbackUrl,
-      ]) {
+      for (final candidate in [kDirectServerUrl, kDirectServerFallbackUrl]) {
         if (await state.switchConnection(candidate)) {
           target = candidate;
           ok = true;
@@ -556,10 +540,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   /// Switch to one of the account's computers, with feedback.
   Future<void> _switchToComputer(AccountComputer computer) async {
-    if (!state.canUsePublicConnection && !isLanConnectionUrl(computer.url)) {
-      await _showAppAccount();
-      if (!mounted || !state.canUsePublicConnection) return;
-    }
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(SnackBar(content: Text('正在切换到 ${computer.name}…')));
     final ok = await state.switchToComputer(computer);
@@ -592,7 +572,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('切换失败，已保存的电脑密钥会继续保留')));
+        ).showSnackBar(SnackBar(content: Text('切换失败，已保存的电脑密钥会继续保留')));
       }
     }
   }
@@ -662,7 +642,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             activePairedNodeId: state.pairedComputer?.nodeId,
             onSwitchPairedComputer: _switchToPairedComputer,
             pairedName: state.pairedComputer?.name,
-            publicAccessAllowed: state.canUsePublicConnection,
             accountLabel: state.signedInAccount?.email,
             onAccount: () {
               Navigator.of(context).pop();
@@ -850,17 +829,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.14),
+                  color: P.warning.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.install_mobile_outlined,
                   size: 18,
-                  color: Colors.amber,
+                  color: P.warning,
                 ),
               ),
-              const SizedBox(width: 10),
-              const Text('需要安装权限', style: TextStyle(fontSize: 16)),
+              SizedBox(width: 10),
+              Text('需要安装权限', style: TextStyle(fontSize: 16)),
             ],
           ),
           content: Text(
@@ -1111,36 +1090,39 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       gone: () =>
           !state.approvals.any((a) => a.approvalId == approval.approvalId),
       builder: (dialogContext, close) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.gpp_maybe_outlined, color: Colors.amber),
+            Icon(Icons.gpp_maybe_outlined, color: P.warning),
             SizedBox(width: 10),
             Text('审批请求'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: P.fillLight,
-                borderRadius: BorderRadius.circular(8),
+        content: GlassPanel(
+          tint: P.warning.withValues(alpha: .35),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: P.fillLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  approval.toolName,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                ),
               ),
-              child: Text(
-                approval.toolName,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-              ),
-            ),
-            if (approval.reason != null && approval.reason!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                approval.reason!,
-                style: TextStyle(color: P.textSecondary, height: 1.4),
-              ),
+              if (approval.reason != null && approval.reason!.isNotEmpty) ...[
+                SizedBox(height: 12),
+                Text(
+                  approval.reason!,
+                  style: TextStyle(color: P.textSecondary, height: 1.4),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -1233,10 +1215,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (state.selectedSessionId != null && cwd != null && cwd.isNotEmpty) {
       state.createSession(cwd: cwd);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已在当前工作区新建会话'),
-          duration: Duration(seconds: 2),
-        ),
+        SnackBar(content: Text('已在当前工作区新建会话'), duration: Duration(seconds: 2)),
       );
       return;
     }
@@ -1360,16 +1339,16 @@ class _LanSearchSheetState extends State<_LanSearchSheet> {
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (devices == null)
               Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     S.searchingDevices,
                     style: TextStyle(color: P.textSecondary),
@@ -1389,7 +1368,7 @@ class _LanSearchSheetState extends State<_LanSearchSheet> {
                 S.deviceList,
                 style: TextStyle(color: P.textTertiary, fontSize: 12.5),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               for (final device in devices)
                 Card(
                   margin: const EdgeInsets.only(bottom: 8),

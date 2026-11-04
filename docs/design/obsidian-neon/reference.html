@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xHarness 黑曜荧光</title>
+<style>
+:root{
+  --bg:#050706; --bg2:#0A0E0C; --surface:#0F1412; --surface-hi:#151B18; --code:#070A09;
+  --glass:rgba(255,255,255,.045); --glass-hi:rgba(255,255,255,.08); --stroke:rgba(255,255,255,.08); --stroke-hi:rgba(255,255,255,.16);
+  --text:#ECF3EE; --text2:#9DAAA2; --text3:#5E6B64;
+  --neon:#39FF88; --neon-soft:#9CFFC4; --on-neon:#02140A; --neon-glow:rgba(57,255,136,.35);
+  --cyan:#22D3EE; --violet:#A78BFA; --amber:#FFB547; --coral:#FF5C7A;
+  --nm-out:-5px -5px 12px rgba(255,255,255,.035), 7px 7px 16px rgba(0,0,0,.85);
+  --nm-in:inset -3px -3px 7px rgba(255,255,255,.03), inset 4px 4px 9px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#020302;color:var(--text);font:14px/1.5 -apple-system,"PingFang SC","Noto Sans SC",system-ui,sans-serif;padding:32px 16px 64px}
+h1{font-size:22px;text-align:center;margin-bottom:6px}
+.lead{color:var(--text2);text-align:center;margin-bottom:28px}
+.tokens{max-width:1240px;margin:0 auto 32px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.sw{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--stroke);font-size:12px;color:var(--text2)}
+.sw i{width:18px;height:18px;border-radius:6px;display:block}
+.screens{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+.cap{text-align:center;color:var(--text2);font-size:13px;margin-top:10px}
+.phone{width:340px;height:720px;border-radius:44px;padding:10px;background:#111;box-shadow:0 0 0 1px #222,0 30px 80px rgba(0,0,0,.8)}
+.scr{position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:
+  radial-gradient(120% 60% at 85% -10%,rgba(57,255,136,.16),transparent 60%),
+  radial-gradient(80% 50% at -10% 105%,rgba(34,211,238,.10),transparent 60%),
+  radial-gradient(60% 40% at 110% 70%,rgba(167,139,250,.08),transparent 60%),var(--bg);
+  display:flex;flex-direction:column}
+.status{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;color:var(--text2)}
+.pad{padding:0 18px}
+.glass{background:linear-gradient(160deg,var(--glass-hi),var(--glass));backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+  border:1px solid var(--stroke);border-top-color:var(--stroke-hi);border-radius:22px;box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06)}
+.nm{background:var(--surface);border-radius:18px;box-shadow:var(--nm-out)}
+.nm-in{background:var(--bg2);border-radius:16px;box-shadow:var(--nm-in)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:16px;font-weight:700;font-size:15px}
+.btn-neon{background:linear-gradient(180deg,#5CFF9E,var(--neon));color:var(--on-neon);box-shadow:0 0 0 1px rgba(57,255,136,.5),0 8px 24px var(--neon-glow),inset 0 1px 0 rgba(255,255,255,.5)}
+.btn-nm{background:var(--surface);color:var(--text);box-shadow:var(--nm-out)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:11.5px;border:1px solid var(--stroke)}
+.dot{width:7px;height:7px;border-radius:50%}
+.on{background:var(--neon);box-shadow:0 0 8px var(--neon)}
+.muted{color:var(--text2)} .t3{color:var(--text3)}
+.ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.row{display:flex;align-items:center;gap:12px}
+.seg{display:flex;padding:4px;gap:4px}
+.seg span{flex:1;text-align:center;height:34px;line-height:34px;border-radius:12px;font-size:13px;color:var(--text2)}
+.seg .sel{background:var(--surface-hi);color:var(--neon);box-shadow:var(--nm-out),0 0 0 1px rgba(57,255,136,.25)}
+.nav{margin-top:auto;margin-bottom:14px;display:flex;justify-content:space-around;padding:10px 6px}
+.nav div{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--text3)}
+.nav .a{color:var(--neon)} .nav .a b{filter:drop-shadow(0 0 6px var(--neon))}
+.bubble-u{align-self:flex-end;max-width:78%;padding:10px 14px;border-radius:18px 18px 6px 18px;background:linear-gradient(160deg,rgba(57,255,136,.20),rgba(57,255,136,.08));border:1px solid rgba(57,255,136,.30);font-size:13.5px}
+.bubble-a{max-width:92%;font-size:13.5px;line-height:1.7}
+.tool{padding:10px 12px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.tag{font-size:10.5px;padding:2px 7px;border-radius:7px}
+.toggle{width:44px;height:26px;border-radius:13px;position:relative;box-shadow:var(--nm-in);background:var(--bg2)}
+.toggle.on2{background:rgba(57,255,136,.18);box-shadow:inset 0 0 0 1px rgba(57,255,136,.4)}
+.toggle i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#2A322E;box-shadow:2px 2px 5px rgba(0,0,0,.7)}
+.toggle.on2 i{left:21px;background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.spec{max-width:1000px;margin:40px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.spec div{padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--stroke);font-size:13px;color:var(--text2)}
+.spec b{color:var(--text);display:block;margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>xHarness · 黑曜荧光 Obsidian Neon</h1>
+<p class="lead">纯黑底 · 液态玻璃浮层 · 新拟态控件 · 荧光绿主色，青/紫/琥珀/珊瑚作为语义辅助色</p>
+
+<div class="tokens">
+  <span class="sw"><i style="background:#050706;border:1px solid #333"></i>bg #050706</span>
+  <span class="sw"><i style="background:#0F1412"></i>surface #0F1412</span>
+  <span class="sw"><i style="background:#39FF88"></i>neon 主色 #39FF88</span>
+  <span class="sw"><i style="background:#9CFFC4"></i>neon-soft #9CFFC4</span>
+  <span class="sw"><i style="background:#22D3EE"></i>cyan 信息/链接 #22D3EE</span>
+  <span class="sw"><i style="background:#A78BFA"></i>violet Agent/工具 #A78BFA</span>
+  <span class="sw"><i style="background:#FFB547"></i>amber 审批/警告 #FFB547</span>
+  <span class="sw"><i style="background:#FF5C7A"></i>coral 危险/错误 #FF5C7A</span>
+</div>
+
+<div class="screens">
+<!-- 1. 连接入口 -->
+<div><div class="phone"><div class="scr">
+  <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+  <div class="pad" style="margin-top:14px">
+    <span class="chip glass" style="border-radius:13px"><span class="dot on"></span>连接你的电脑 · 无需登录</span>
+    <div style="font-size:27px;font-weight:800;line-height:1.35;margin:20px 0 10px">先连接电脑，<br>再继续你的<span style="color:var(--neon);text-shadow:0 0 18px var(--neon-glow)">任务</span>。</div>
+    <p class="muted" style="font-size:13px;line-height:1.8">电脑运行 xHarness 连接器，手机配对后即可查看工作区、任务进度和对话。</p>
+    <div class="nm" style="margin-top:20px;padding:14px">
+      <div class="row"><div class="ico nm-in" style="color:var(--neon)">⌂</div><div style="flex:1"><b>局域网直连</b><div class="t3" style="font-size:12px">同一 Wi-Fi，延迟最低</div></div><span class="t3">›</span></div>
+    </div>
+    <div class="nm" style="margin-top:12px;padding:14px">
+      <div class="row"><div class="ico nm-in" style="color:var(--cyan)">◎</div><div style="flex:1"><b>公网连接</b><div class="t3" style="font-size:12px">任意网络访问已配对电脑</div></div><span class="t3">›</span></div>
+    </div>
+    <div class="btn btn-neon" style="margin-top:22px">⌗ 配对我的电脑</div>
+    <div class="btn btn-nm" style="margin-top:12px;height:46px;font-weight:600">连接设置 / 选择电脑</div>
+    <p style="text-align:center;margin-top:16px;font-size:13px"><span style="color:var(--neon-soft)">登录 / 注册思玄账号</span><span class="t3"> · 可选</span></p>
+  </div>
+</div></div><div class="cap">① 连接入口：公网不再要求登录</div></div>
+
+<!-- 2. 会话列表 -->
+<div><div class="phone"><div class="scr">
+  <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+  <div class="pad" style="margin-top:6px">
+    <div class="glass" style="padding:14px 16px">
+      <div class="row"><div class="ico" style="background:rgba(57,255,136,.12);color:var(--neon);box-shadow:0 0 16px rgba(57,255,136,.25)">▣</div>
+        <div style="flex:1"><b>OMEN</b><div style="font-size:12px;color:var(--neon-soft)"><span class="dot on" style="display:inline-block;margin-right:6px"></span>公网已连接</div></div>
+        <span class="chip" style="color:var(--text2)">切换</span></div>
+    </div>
+    <div class="nm-in seg" style="margin-top:16px"><span class="sel">全部</span><span>进行中</span><span>已完成</span></div>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+      <div class="nm" style="padding:13px 14px"><div class="row" style="justify-content:space-between"><b style="font-size:14px">重构连接中心</b><span class="tag" style="background:rgba(57,255,136,.12);color:var(--neon)">运行中</span></div><div class="t3" style="font-size:12px;margin-top:4px">sx/xharness-app · 2 分钟前</div></div>
+      <div class="nm" style="padding:13px 14px"><div class="row" style="justify-content:space-between"><b style="font-size:14px">修复 OTA 下载卡 0%</b><span class="tag" style="background:rgba(255,181,71,.12);color:var(--amber)">待审批</span></div><div class="t3" style="font-size:12px;margin-top:4px">sx/dsh_mobile · 18 分钟前</div></div>
+      <div class="nm" style="padding:13px 14px"><div class="row" style="justify-content:space-between"><b style="font-size:14px">官网 AI 时间线</b><span class="tag" style="background:rgba(167,139,250,.12);color:var(--violet)">计划</span></div><div class="t3" style="font-size:12px;margin-top:4px">sx/websites · 昨天</div></div>
+      <div class="nm" style="padding:13px 14px"><div class="row" style="justify-content:space-between"><b style="font-size:14px">语音任务让路租约</b><span class="tag" style="background:rgba(255,255,255,.06);color:var(--text2)">已完成</span></div><div class="t3" style="font-size:12px;margin-top:4px">sx/mono · 11-04</div></div>
+    </div>
+  </div>
+  <div class="pad" style="margin-top:auto"><div class="glass nav"><div class="a"><b>◉</b>会话</div><div><b>☰</b>任务</div><div><b>✦</b>AI</div><div><b>⚙</b>设置</div></div></div>
+</div></div><div class="cap">② 会话列表：玻璃电脑卡 + 新拟态列表</div></div>
+
+<!-- 3. 对话 -->
+<div><div class="phone"><div class="scr">
+  <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+  <div class="pad"><div class="glass row" style="padding:10px 14px;border-radius:18px"><span class="muted">‹</span><div style="flex:1"><b style="font-size:14px">重构连接中心</b><div class="t3" style="font-size:11px">V4 Flash · <span style="color:var(--violet)">auto</span></div></div><span class="dot on"></span></div></div>
+  <div class="pad" style="display:flex;flex-direction:column;gap:12px;margin-top:14px;flex:1;overflow:hidden">
+    <div class="bubble-u">把连接中心改成整页，并保留多电脑切换。</div>
+    <div class="bubble-a">好的，我先读取现有的 <code style="color:var(--cyan)">connection_center.dart</code>，再拆分页面。</div>
+    <div class="nm-in tool"><div class="row" style="justify-content:space-between;margin-bottom:6px"><span style="color:var(--violet)">✎ edit</span><span class="t3">lib/connection_center.dart</span></div>
+      <div style="color:var(--coral)">- showModalBottomSheet(</div><div style="color:var(--neon)">+ Navigator.push(ConnectionCenterPage(</div></div>
+    <div class="glass" style="padding:12px 14px;border-color:rgba(255,181,71,.35)">
+      <div style="color:var(--amber);font-size:12px;font-weight:700">⚠ 需要你的确认</div><div style="font-size:13px;margin:6px 0 10px">执行 <code>flutter test</code>？</div>
+      <div class="row"><div class="btn btn-neon" style="height:36px;flex:1;font-size:13px">允许</div><div class="btn btn-nm" style="height:36px;flex:1;font-size:13px">拒绝</div></div>
+    </div>
+  </div>
+  <div class="pad" style="margin-bottom:16px"><div class="glass row" style="padding:8px 8px 8px 16px;border-radius:24px"><span class="t3" style="flex:1;font-size:13px">继续描述你的任务…</span><div class="ico" style="width:40px;height:40px;border-radius:20px;background:var(--neon);color:var(--on-neon);box-shadow:0 0 18px var(--neon-glow)">↑</div></div></div>
+</div></div><div class="cap">③ 对话：工具卡内凹、审批琥珀、发送荧光</div></div>
+
+<!-- 4. 设置 -->
+<div><div class="phone"><div class="scr">
+  <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+  <div class="pad" style="margin-top:6px">
+    <div style="font-size:24px;font-weight:800;margin:6px 0 16px">设置</div>
+    <div class="glass" style="padding:16px"><div class="row"><div class="ico" style="border-radius:50%;background:linear-gradient(135deg,var(--neon),var(--cyan));color:var(--on-neon);font-weight:800">访</div><div style="flex:1"><b>访客模式</b><div class="t3" style="font-size:12px">局域网与公网均可使用 · 登录可同步账号</div></div><span class="chip" style="color:var(--neon);border-color:rgba(57,255,136,.4)">登录</span></div></div>
+    <div class="nm" style="margin-top:16px;padding:4px 14px">
+      <div class="row" style="height:52px;justify-content:space-between"><span>通知</span><div class="toggle on2"><i></i></div></div>
+      <div class="row" style="height:52px;justify-content:space-between;border-top:1px solid var(--stroke)"><span>开发者模式</span><div class="toggle"><i></i></div></div>
+      <div class="row" style="height:52px;justify-content:space-between;border-top:1px solid var(--stroke)"><span>语言</span><span class="t3">简体中文 ›</span></div>
+    </div>
+    <div class="t3" style="font-size:12px;margin:18px 0 8px">主题</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="nm" style="padding:12px;box-shadow:var(--nm-out),0 0 0 1.5px var(--neon)"><div style="height:42px;border-radius:10px;background:linear-gradient(135deg,#050706 55%,#39FF88)"></div><div style="font-size:12.5px;margin-top:8px">黑曜荧光 <span style="color:var(--neon)">✓</span></div></div>
+      <div class="nm" style="padding:12px"><div style="height:42px;border-radius:10px;background:linear-gradient(135deg,#F4F7F5 55%,#12B866)"></div><div style="font-size:12.5px;margin-top:8px" class="muted">晨雾白</div></div>
+    </div>
+    <div class="btn" style="margin-top:20px;height:46px;color:var(--coral);background:rgba(255,92,122,.08);border:1px solid rgba(255,92,122,.25)">退出登录</div>
+  </div>
+  <div class="pad" style="margin-top:auto"><div class="glass nav"><div><b>◉</b>会话</div><div><b>☰</b>任务</div><div><b>✦</b>AI</div><div class="a"><b>⚙</b>设置</div></div></div>
+</div></div><div class="cap">④ 设置：新拟态开关与主题卡</div></div>
+</div>
+
+<div class="spec">
+  <div><b>液态玻璃（浮层）</b>顶栏、底部导航、当前电脑卡、输入框、审批卡、对话框/底部弹窗。白 4.5–8% 渐变填充 + 18px 背景模糊 + 1px 细边（顶边更亮）+ 内高光。</div>
+  <div><b>新拟态（控件）</b>列表卡、设置组、按钮次级态：双向阴影浮起；分段控件、输入槽、开关、工具调用/代码块：内凹。只在黑底上使用低对比，避免发灰。</div>
+  <div><b>荧光绿（唯一主色）</b>主按钮、选中态、在线状态、发送、链接高亮。带 0–24px 柔光，不大面积铺色；文字在荧光底上用 #02140A。</div>
+  <div><b>辅助色（语义）</b>青=信息/链接/公网；紫=Agent 模式、工具调用；琥珀=待审批/警告；珊瑚=错误/删除/diff 删除行。透明度 12% 作为标签底。</div>
+</div>
+</body>
+</html>

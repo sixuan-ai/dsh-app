@@ -82,22 +82,22 @@ class _UserBubble extends StatelessWidget {
           onLongPressStart: (details) =>
               _showCopyMenu(context, details.globalPosition, item.text),
           child: Container(
-            margin: const EdgeInsets.only(
-              left: 56,
-              right: 12,
-              top: 5,
-              bottom: 5,
-            ),
+            margin: EdgeInsets.only(left: 56, right: 12, top: 5, bottom: 5),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
-              gradient: P.brandGradient,
-              borderRadius: const BorderRadius.only(
+              gradient: LinearGradient(
+                colors: [
+                  P.accent.withValues(alpha: .20),
+                  P.accent.withValues(alpha: .08),
+                ],
+              ),
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(6),
               ),
-              border: Border.all(color: P.onAccent.withValues(alpha: 0.22)),
+              border: Border.all(color: P.accent.withValues(alpha: .30)),
               boxShadow: [
                 BoxShadow(
                   color: P.accent.withValues(alpha: 0.3),
@@ -117,7 +117,7 @@ class _UserBubble extends StatelessWidget {
                     Text(
                       item.text,
                       style: TextStyle(
-                        color: P.onAccent,
+                        color: P.text,
                         fontSize: 15.5,
                         height: 1.45,
                         fontFamily: item.text.startsWith('/')
@@ -153,8 +153,8 @@ void _showCopyMenu(BuildContext context, Offset position, String text) {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.copy_rounded, size: 16, color: P.textSecondary),
-            const SizedBox(width: 8),
-            const Text('复制'),
+            SizedBox(width: 8),
+            Text('复制'),
           ],
         ),
       ),
@@ -163,7 +163,7 @@ void _showCopyMenu(BuildContext context, Offset position, String text) {
     if (value != 'copy' || !context.mounted) return;
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
+      SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
     );
   });
 }
@@ -199,17 +199,17 @@ class _AssistantMessage extends StatelessWidget {
     }
     if (_streaming) {
       children.add(
-        const Padding(padding: EdgeInsets.only(top: 6), child: _TypingDots()),
+        Padding(padding: EdgeInsets.only(top: 6), child: _TypingDots()),
       );
     }
     if (item.interrupted) {
       children.add(
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 6),
           child: MiniChip(
             icon: Icons.stop_circle_outlined,
             label: '已中断',
-            color: Colors.orange,
+            color: P.warning,
           ),
         ),
       );
@@ -228,7 +228,7 @@ class _AssistantMessage extends StatelessWidget {
               Clipboard.setData(ClipboardData(text: copyable));
               HapticFeedback.selectionClick();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('已复制回复内容'),
                   duration: Duration(seconds: 1),
                 ),
@@ -263,7 +263,7 @@ class _AssistantMessage extends StatelessWidget {
             ),
             child: Icon(Icons.auto_awesome, color: P.onAccent, size: 16),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +295,7 @@ MarkdownStyleSheet _markdownStyle(BuildContext context) {
     listBulletPadding: const EdgeInsets.only(right: 6),
     strong: base.copyWith(fontWeight: FontWeight.bold),
     em: base.copyWith(fontStyle: FontStyle.italic),
-    a: base.copyWith(color: P.accentLight),
+    a: base.copyWith(color: P.info),
     code: TextStyle(
       fontFamily: 'monospace',
       fontSize: 13.5,
@@ -397,9 +397,9 @@ class _ReasoningCardState extends State<_ReasoningCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.06),
+        color: P.warning.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.18)),
+        border: Border.all(color: P.warning.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,25 +411,25 @@ class _ReasoningCardState extends State<_ReasoningCard> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.psychology_alt_outlined,
                     size: 16,
-                    color: Colors.amber,
+                    color: P.warning,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     widget.streaming ? '正在思考…' : '思考过程',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: Colors.amber,
+                      color: P.warning,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
                     size: 18,
-                    color: Colors.amber.withValues(alpha: 0.7),
+                    color: P.warning.withValues(alpha: 0.7),
                   ),
                 ],
               ),
@@ -491,7 +491,7 @@ class MiniChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(label, style: TextStyle(fontSize: 11, color: color)),
         ],
       ),
@@ -519,7 +519,7 @@ class _ToolImageResult extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.image_outlined, size: 16, color: P.accentLight),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 '图片结果',
                 style: TextStyle(
@@ -528,14 +528,14 @@ class _ToolImageResult extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 '来自 ${item.name}',
                 style: TextStyle(color: P.textTertiary, fontSize: 11.5),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           _ImageStrip(state: state, images: item.images),
         ],
       ),
@@ -605,7 +605,7 @@ class _ToolCardState extends State<ToolCard> {
   bool _expanded = false;
 
   Color get _statusColor {
-    if (!widget.item.completed) return Colors.amber;
+    if (!widget.item.completed) return P.accent;
     if (widget.item.resultIsError) return P.danger;
     return P.success;
   }
@@ -646,9 +646,10 @@ class _ToolCardState extends State<ToolCard> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: P.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: P.fillLight),
+        color: P.code,
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(colors: [P.code, P.card]),
+        border: Border.all(color: P.divider),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -664,14 +665,14 @@ class _ToolCardState extends State<ToolCard> {
                     InkWell(
                       onTap: () => setState(() => _expanded = !_expanded),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 9,
                         ),
                         child: Row(
                           children: [
-                            Icon(_icon, size: 16, color: P.textSecondary),
-                            const SizedBox(width: 8),
+                            Icon(_icon, size: 16, color: P.agent),
+                            SizedBox(width: 8),
                             Flexible(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,7 +681,7 @@ class _ToolCardState extends State<ToolCard> {
                                   Text(
                                     item.name,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'monospace',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -699,7 +700,7 @@ class _ToolCardState extends State<ToolCard> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             MiniChip(
                               icon: item.completed
                                   ? (item.resultIsError
@@ -709,7 +710,7 @@ class _ToolCardState extends State<ToolCard> {
                               label: _statusLabel,
                               color: _statusColor,
                             ),
-                            const Spacer(),
+                            Spacer(),
                             Icon(
                               _expanded ? Icons.expand_less : Icons.expand_more,
                               size: 18,
@@ -720,7 +721,7 @@ class _ToolCardState extends State<ToolCard> {
                       ),
                     ),
                     if (_expanded) ...[
-                      const Divider(height: 1),
+                      Divider(height: 1),
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
@@ -734,7 +735,7 @@ class _ToolCardState extends State<ToolCard> {
                                 _truncate(summarizeArguments(item.arguments)),
                               ),
                             if (item.resultText != null) ...[
-                              const SizedBox(height: 10),
+                              SizedBox(height: 10),
                               _codeSection(
                                 item.resultIsError ? '错误' : '结果',
                                 _truncate(item.resultText!),
@@ -787,7 +788,7 @@ class _ToolCardState extends State<ToolCard> {
             color: isError ? P.danger : P.textTertiary,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(10),
@@ -820,9 +821,7 @@ class _ToolCardState extends State<ToolCard> {
   Widget _diffSection(ToolDiff diff) {
     const maxLines = 160;
     final lines = diff.lines;
-    final shown = lines.length > maxLines
-        ? lines.sublist(0, maxLines)
-        : lines;
+    final shown = lines.length > maxLines ? lines.sublist(0, maxLines) : lines;
     bool isRemoved(ToolDiffLine line) => line.kind == ToolDiffKind.removed;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,7 +836,7 @@ class _ToolCardState extends State<ToolCard> {
                 color: P.textTertiary,
               ),
             ),
-            const Spacer(),
+            Spacer(),
             if (!diff.isCreate)
               Text(
                 '+${diff.addedLines.length}  −${diff.removedLines.length}',
@@ -849,7 +848,7 @@ class _ToolCardState extends State<ToolCard> {
               ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -865,10 +864,7 @@ class _ToolCardState extends State<ToolCard> {
                   color: isRemoved(line)
                       ? P.danger.withValues(alpha: 0.10)
                       : P.success.withValues(alpha: 0.10),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 1,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                   child: SelectableText(
                     '${isRemoved(line) ? '−' : '+'} ${line.text}',
                     style: TextStyle(
@@ -955,7 +951,7 @@ class _NoticeCard extends StatelessWidget {
               size: 14,
               color: color,
             ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               item.text,
@@ -969,10 +965,7 @@ class _NoticeCard extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: color,
                   minimumSize: Size.zero,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: state.selectedRunning
@@ -1098,7 +1091,7 @@ class _ChatImageTileState extends State<_ChatImageTile> {
                             : Icons.image_outlined,
                         color: P.textTertiary,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         _failed ? '加载失败,点击重试' : '点击加载',
                         style: TextStyle(color: P.textSecondary, fontSize: 12),
@@ -1134,7 +1127,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('图片已保存到系统相册')));
+      ).showSnackBar(SnackBar(content: Text('图片已保存到系统相册')));
     } on GalException catch (error) {
       if (!mounted) return;
       final message = error.type == GalExceptionType.accessDenied
@@ -1147,7 +1140,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('保存图片失败，请稍后重试')));
+      ).showSnackBar(SnackBar(content: Text('保存图片失败，请稍后重试')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1156,19 +1149,19 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: P.neuShadow,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: P.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: P.glassHighlight,
         title: Text(widget.name ?? '图片预览'),
         actions: [
           IconButton(
             tooltip: '下载图片',
             onPressed: _saving ? null : _save,
             icon: _saving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),

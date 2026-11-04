@@ -44,9 +44,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
     });
     for (var i = 0; i < _sampleCount; i++) {
       try {
-        final ms = await widget.state.pingHost().timeout(
-          const Duration(seconds: 5),
-        );
+        final ms = await widget.state.pingHost().timeout(Duration(seconds: 5));
         if (!mounted) return;
         setState(() => _samples.add(ms));
       } catch (_) {
@@ -68,7 +66,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
     final ratingColor = switch (rating.level) {
       0 => P.success,
       1 => P.accentLight,
-      2 => Colors.amber,
+      2 => P.warning,
       _ => P.danger,
     };
     return Scaffold(
@@ -90,14 +88,14 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
                 Row(
                   children: [
                     Icon(Icons.dns_outlined, size: 18, color: P.accentLight),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         widget.state.serverUrl.isEmpty
                             ? '未连接服务器'
                             : Uri.parse(widget.state.serverUrl).host,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -105,7 +103,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   '对服务器发送 $_sampleCount 次探测，统计往返延迟与成功率。',
                   style: TextStyle(fontSize: 12, color: P.textTertiary),
@@ -113,7 +111,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -151,14 +149,14 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   _samples.isEmpty && _failures == 0
                       ? '平均延迟'
                       : '平均延迟 · ${rating.label}',
                   style: TextStyle(fontSize: 12.5, color: ratingColor),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Row(
                   children: [
                     _stat('最小', '${stats.min} ms'),
@@ -175,7 +173,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           if (_samples.isNotEmpty || _failures > 0)
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -196,7 +194,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
                       color: P.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   for (var i = 0; i < _samples.length; i++)
                     _sampleBar(i + 1, _samples[i], stats.max),
                   if (_failures > 0)
@@ -210,7 +208,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
                 ],
               ),
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -232,7 +230,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
             value,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(label, style: TextStyle(fontSize: 11, color: P.textTertiary)),
         ],
       ),
@@ -263,7 +261,7 @@ class _NetworkDiagnosticsPageState extends State<NetworkDiagnosticsPage> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           SizedBox(
             width: 58,
             child: Text(

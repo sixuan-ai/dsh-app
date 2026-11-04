@@ -71,7 +71,7 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
         widget.defaultServerUrl,
         user,
         pass,
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(Duration(seconds: 20));
       if (!mounted) return;
       if (widget.state.pairedComputer != null) {
         await widget.state.useAccountConnection();
@@ -160,8 +160,8 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const BrandMark(size: 84),
-                      const SizedBox(height: 20),
+                      BrandMark(size: 84),
+                      SizedBox(height: 20),
                       Text(
                         'xHarness',
                         style: Theme.of(context).textTheme.headlineMedium
@@ -170,13 +170,13 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               letterSpacing: 0.5,
                             ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         S.tagline,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: P.textSecondary),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -193,19 +193,19 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                               TextField(
                                 controller: _user,
                                 enabled: !busy,
-                                autofillHints: const [AutofillHints.username],
+                                autofillHints: [AutofillHints.username],
                                 textInputAction: TextInputAction.next,
                                 decoration: _loginDecoration(
                                   '邮箱或用户名',
                                   Icons.person_outline,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               TextField(
                                 controller: _pass,
                                 enabled: !busy,
                                 obscureText: _obscurePass,
-                                autofillHints: const [AutofillHints.password],
+                                autofillHints: [AutofillHints.password],
                                 onSubmitted: (_) => _connect(),
                                 decoration:
                                     _loginDecoration(
@@ -226,20 +226,20 @@ class _ServerSetupPageState extends State<ServerSetupPage> {
                                     ),
                               ),
                               if (error != null) ...[
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   error,
                                   style: TextStyle(color: P.danger),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
-                              const SizedBox(height: 20),
+                              SizedBox(height: 20),
                               GradientActionButton(
                                 label: '登录',
                                 loading: busy,
                                 onPressed: busy ? null : _connect,
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               OutlinedButton.icon(
                                 onPressed: busy
                                     ? null
@@ -322,9 +322,9 @@ class GradientActionButton extends StatelessWidget {
         child: ElevatedButton(
           onPressed: enabled ? onPressed : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
+            backgroundColor: P.transparent,
+            disabledBackgroundColor: P.transparent,
+            shadowColor: P.transparent,
             foregroundColor: P.onAccent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -341,10 +341,7 @@ class GradientActionButton extends StatelessWidget {
                 )
               : Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
         ),
       ),

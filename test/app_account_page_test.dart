@@ -138,7 +138,7 @@ void main() {
       expect(find.text('不登录，先连接'), findsOneWidget);
       await tap(tester, '不登录，先连接');
       expect(find.text('配对我的电脑'), findsOneWidget);
-      expect(find.text('局域网模式 · 未登录'), findsOneWidget);
+      expect(find.text('连接你的电脑 · 无需登录'), findsOneWidget);
       expect(find.text('验证你的邮箱'), findsNothing);
       await tester.pump(const Duration(seconds: 9));
       await tester.pumpWidget(const SizedBox());
@@ -238,9 +238,9 @@ void main() {
         ),
       );
       await tap(tester, '局域网直连');
-      await tap(tester, '登录后使用公网连接');
-      expect(pairing, 1);
-      expect(account, 1);
+      await tap(tester, '公网连接');
+      expect(pairing, 2);
+      expect(account, 0);
     },
   );
   testWidgets(
@@ -296,7 +296,7 @@ void main() {
     },
   );
   testWidgets(
-    'guest public control opens login rather than switching transport',
+    'guest can switch to public connection without opening account login',
     (tester) async {
       var account = 0, route = 0;
       await tester.pumpWidget(
@@ -305,7 +305,6 @@ void main() {
             connectionMode: 'lan',
             checkingLocal: false,
             localAvailable: true,
-            publicAccessAllowed: false,
             onAccount: () => account++,
             onSwitchRemote: () => route++,
             onSwitchLocal: () {},
@@ -313,9 +312,9 @@ void main() {
           ),
         ),
       );
-      await tap(tester, '登录后使用');
-      expect(account, 1);
-      expect(route, 0);
+      await tap(tester, '公网');
+      expect(account, 0);
+      expect(route, 1);
     },
   );
   testWidgets('legacy logout callback preserves paired and account computers', (
@@ -348,7 +347,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(state.signedInAccount, isNull);
     expect(state.guestAccess, isTrue);
-    expect(state.canUsePublicConnection, isFalse);
+    expect(state.canUsePublicConnection, isTrue);
     expect((await ConnectorStore().load())?.nodeId, computer.nodeId);
     expect(state.savedPairedComputers.single.nodeId, computer.nodeId);
     expect(state.computers.any((c) => c.id == omen.id), isTrue);

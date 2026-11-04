@@ -86,7 +86,7 @@ class _ConnectionGuideSheetState extends State<ConnectionGuideSheet> {
                   number: 3,
                   title: '启用公网入口',
                   detail:
-                      '在 App 登录账号。电脑端完成 Tailscale 登录，请网关管理员授权访问连接器。在连接器的公网表单填写网关地址和账号，注册后重新配对手机。离开家后可使用该电脑的公网入口。',
+                      'App 无需登录。电脑端完成 Tailscale 登录，请网关管理员授权访问连接器。在连接器的公网表单填写网关地址和账号，注册后重新配对手机。离开家后可使用该电脑的公网入口。',
                 ),
                 const _GuideTip(
                   text:

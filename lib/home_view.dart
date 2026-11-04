@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'src/theme.dart';
 
 import 'chat_list.dart';
 import 'composer.dart';
@@ -218,7 +219,7 @@ class _ConnectionStatusBanner extends StatelessWidget {
     final reconnecting =
         status == ServerConnectionStatus.reconnecting ||
         status == ServerConnectionStatus.connecting;
-    final color = reconnecting ? Colors.amber.shade800 : Colors.red.shade700;
+    final color = reconnecting ? P.warning : P.danger;
     final label = isAuth
         ? '登录状态已失效，请重新连接'
         : reconnecting
@@ -242,7 +243,7 @@ class _ConnectionStatusBanner extends StatelessWidget {
             color: color,
             size: 19,
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               label,

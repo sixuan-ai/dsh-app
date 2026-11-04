@@ -19,9 +19,9 @@ class SessionModeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color, icon) = switch (mode) {
-      SessionMode.goal => (S.modeGoal, P.accent2, Icons.flag_outlined),
-      SessionMode.plan => (S.modePlan, P.accent, Icons.edit_note_outlined),
-      SessionMode.auto => (S.modeAuto, P.textTertiary, Icons.auto_awesome),
+      SessionMode.goal => (S.modeGoal, P.agent, Icons.flag_outlined),
+      SessionMode.plan => (S.modePlan, P.agent, Icons.edit_note_outlined),
+      SessionMode.auto => (S.modeAuto, P.agent, Icons.auto_awesome),
     };
     return Container(
       padding: EdgeInsets.symmetric(

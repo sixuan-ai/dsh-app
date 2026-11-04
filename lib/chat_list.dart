@@ -197,7 +197,7 @@ class _ChatListState extends State<ChatList> {
                 color: P.accentLight,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text('发送消息开始对话', style: TextStyle(color: P.textTertiary)),
           ],
         ),
@@ -224,7 +224,7 @@ class _ChatListState extends State<ChatList> {
                       older: true,
                     ),
               icon: state.loadingHistory
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -367,7 +367,7 @@ class _ScrollToBottomButton extends StatelessWidget {
               color: P.cardAlt,
               shape: const CircleBorder(),
               elevation: 4,
-              shadowColor: Colors.black.withValues(alpha: 0.3),
+              shadowColor: P.neuShadow.withValues(alpha: 0.3),
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: onTap,

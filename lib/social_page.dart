@@ -45,13 +45,13 @@ class _Avatar extends StatelessWidget {
   final String? imageUrl;
   final Map<String, String>? headers;
 
-  static const _colors = [
-    Color(0xFF4D6BFE),
-    Color(0xFF7C5CFF),
-    Color(0xFF2EA44F),
-    Color(0xFFD29922),
-    Color(0xFFDB61A2),
-    Color(0xFF39C5CF),
+  static List<Color> get _colors => [
+    P.accent,
+    P.agent,
+    P.success,
+    P.warning,
+    P.danger,
+    P.info,
   ];
 
   @override
@@ -202,7 +202,7 @@ class _CommunityPageState extends State<CommunityPage> {
               '设置你的昵称,系统会为你分配一个 8 位好友码,朋友凭它添加你。',
               style: TextStyle(fontSize: 13, color: P.textSecondary),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             TextField(
               controller: controller,
               autofocus: true,
@@ -235,7 +235,7 @@ class _CommunityPageState extends State<CommunityPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('加载失败: $_bootError', style: TextStyle(color: P.danger)),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   FilledButton(onPressed: _bootstrap, child: const Text('重试')),
                 ],
               ),
@@ -260,7 +260,7 @@ class _CommunityPageState extends State<CommunityPage> {
           : NavigationBar(
               selectedIndex: _tab,
               onDestinationSelected: (i) => setState(() => _tab = i),
-              destinations: const [
+              destinations: [
                 NavigationDestination(
                   icon: Icon(Icons.dynamic_feed_outlined),
                   selectedIcon: Icon(Icons.dynamic_feed),
@@ -393,10 +393,10 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
               Row(
                 children: [
                   ActionChip(
-                    avatar: const Icon(
+                    avatar: Icon(
                       Icons.military_tech,
                       size: 16,
-                      color: Colors.amber,
+                      color: P.warning,
                     ),
                     label: Text(
                       '分享等级 Lv.${level.level}',
@@ -406,11 +406,11 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
                         ? null
                         : () => _publish(shareLevel: true),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   FilledButton(
                     onPressed: _posting ? null : _publish,
                     child: _posting
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
@@ -430,7 +430,7 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
                   child: _posts.isEmpty
                       ? ListView(
                           children: [
-                            const SizedBox(height: 120),
+                            SizedBox(height: 120),
                             Center(
                               child: Text(
                                 '还没有动态,来发第一条吧',
@@ -516,7 +516,7 @@ class _PostCardState extends State<_PostCard> {
                     : null,
                 headers: widget.api.imageHeaders,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,7 +547,7 @@ class _PostCardState extends State<_PostCard> {
             ],
           ),
           if (levelInfo != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -558,12 +558,8 @@ class _PostCardState extends State<_PostCard> {
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.military_tech,
-                    color: Colors.amber,
-                    size: 26,
-                  ),
-                  const SizedBox(width: 10),
+                  Icon(Icons.military_tech, color: P.warning, size: 26),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,9 +586,9 @@ class _PostCardState extends State<_PostCard> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(post.text, style: const TextStyle(height: 1.5)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Row(
             children: [
               IconButton(
@@ -776,7 +772,7 @@ class _FriendsTabState extends State<FriendsTab>
           if (mounted) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('图片过大,请换一张')));
+            ).showSnackBar(SnackBar(content: Text('图片过大,请换一张')));
           }
           return;
         }
@@ -869,8 +865,8 @@ class _FriendsTabState extends State<FriendsTab>
                             bottom: 0,
                             child: Container(
                               padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
+                              decoration: BoxDecoration(
+                                color: P.neuShadow,
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -883,7 +879,7 @@ class _FriendsTabState extends State<FriendsTab>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,21 +913,18 @@ class _FriendsTabState extends State<FriendsTab>
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: code));
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(const SnackBar(content: Text('好友码已复制')));
+                    ).showSnackBar(SnackBar(content: Text('好友码已复制')));
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: P.neuShadow.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -949,7 +942,7 @@ class _FriendsTabState extends State<FriendsTab>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Icon(
                           Icons.copy,
                           size: 16,
@@ -959,7 +952,7 @@ class _FriendsTabState extends State<FriendsTab>
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '这是我的好友码,点按复制',
                   style: TextStyle(
@@ -970,7 +963,7 @@ class _FriendsTabState extends State<FriendsTab>
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(
@@ -980,46 +973,42 @@ class _FriendsTabState extends State<FriendsTab>
             ),
           ),
           if (_requests.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Row(
               children: [
-                const Icon(
-                  Icons.person_add_alt,
-                  size: 16,
-                  color: Colors.orangeAccent,
-                ),
-                const SizedBox(width: 6),
+                Icon(Icons.person_add_alt, size: 16, color: P.warning),
+                SizedBox(width: 6),
                 Text(
                   '好友申请(${_requests.length})',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Colors.orangeAccent,
+                    color: P.warning,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             for (final request in _requests) _requestTile(request),
           ],
-          const SizedBox(height: 14),
-          const Row(
+          SizedBox(height: 14),
+          Row(
             children: [
-              Icon(Icons.emoji_events_outlined, size: 16, color: Colors.amber),
+              Icon(Icons.emoji_events_outlined, size: 16, color: P.warning),
               SizedBox(width: 6),
               Text(
                 '等级排名',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.amber,
+                  color: P.warning,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           if (_loading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()),
             )
@@ -1042,9 +1031,9 @@ class _FriendsTabState extends State<FriendsTab>
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.orangeAccent.withValues(alpha: 0.07),
+        color: P.warning.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+        border: Border.all(color: P.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -1056,7 +1045,7 @@ class _FriendsTabState extends State<FriendsTab>
                 : null,
             headers: widget.api.imageHeaders,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1087,9 +1076,9 @@ class _FriendsTabState extends State<FriendsTab>
 
   Widget _rankTile(SocialUser user, int rank, bool isMe, int topCount) {
     final medal = switch (rank) {
-      1 => const Color(0xFFFFD54F),
-      2 => const Color(0xFFB0BEC5),
-      3 => const Color(0xFFFFAB91),
+      1 => P.warning,
+      2 => P.textSecondary,
+      3 => P.agent,
       _ => P.textTertiary,
     };
     final ratio = topCount > 0 ? user.promptCount / topCount : 0.0;
@@ -1129,7 +1118,7 @@ class _FriendsTabState extends State<FriendsTab>
                     : null,
                 headers: widget.api.imageHeaders,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1151,7 +1140,7 @@ class _FriendsTabState extends State<FriendsTab>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
@@ -1262,10 +1251,7 @@ class _MessagesTabState extends State<MessagesTab>
                 if (c.unread > 0)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 1,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
                       color: P.danger,
                       borderRadius: BorderRadius.circular(9),
@@ -1397,7 +1383,7 @@ class _FriendChatPageState extends State<FriendChatPage> {
                             : Alignment.centerLeft,
                         child: Container(
                           margin: const EdgeInsets.symmetric(vertical: 3),
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 10,
                           ),
@@ -1414,10 +1400,7 @@ class _FriendChatPageState extends State<FriendChatPage> {
                               bottomRight: Radius.circular(mine ? 4 : 16),
                             ),
                           ),
-                          child: Text(
-                            m.text,
-                            style: const TextStyle(height: 1.4),
-                          ),
+                          child: Text(m.text, style: TextStyle(height: 1.4)),
                         ),
                       );
                     },
@@ -1447,7 +1430,7 @@ class _FriendChatPageState extends State<FriendChatPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   // Container, not Ink: Ink+gradient paint fails on Xiaomi
                   // HyperOS, hiding the button (see the composer send fix).
                   Container(
@@ -1621,9 +1604,9 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     final display = _displayBytes;
     final image = _image;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: P.neuShadow,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: P.neuShadow,
         title: const Text('调整头像'),
         actions: [
           IconButton(
@@ -1634,12 +1617,12 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
           TextButton(
             onPressed: _exporting ? null : _confirm,
             child: _exporting
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text(
+                : Text(
                     '确定',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
@@ -1671,7 +1654,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                           height: side,
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: Colors.white54,
+                              color: P.textSecondary,
                               width: 1.5,
                             ),
                           ),
@@ -1699,7 +1682,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                   padding: const EdgeInsets.all(20),
                   child: Text(
                     '缩放 ${(_scale / _coverScale * 100).round()}% · 拖动/双指缩放调整',
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    style: TextStyle(color: P.textSecondary, fontSize: 13),
                   ),
                 ),
               ],

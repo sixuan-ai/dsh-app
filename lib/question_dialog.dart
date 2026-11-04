@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'src/theme.dart';
+import 'src/ui/glass.dart';
 import 'state.dart';
 
 // ---------------------------------------------------------------------------
@@ -100,23 +101,26 @@ class _QuestionDialogState extends State<QuestionDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.quiz_outlined, color: P.accentLight),
+          Icon(Icons.quiz_outlined, color: P.warning),
           SizedBox(width: 10),
           Text('请回答'),
         ],
       ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < widget.pending.questions.length; i++) ...[
-                if (i > 0) const Divider(height: 24),
-                _questionView(widget.pending.questions[i]),
+      content: GlassPanel(
+        tint: P.warning.withValues(alpha: .35),
+        child: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < widget.pending.questions.length; i++) ...[
+                  if (i > 0) const Divider(height: 24),
+                  _questionView(widget.pending.questions[i]),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -146,7 +150,7 @@ class _QuestionDialogState extends State<QuestionDialog> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: P.accent.withValues(alpha: 0.10),
+                color: P.warning.withValues(alpha: .12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -154,7 +158,7 @@ class _QuestionDialogState extends State<QuestionDialog> {
                 style: TextStyle(
                   fontSize: 11,
                   letterSpacing: 0.4,
-                  color: P.accentLight,
+                  color: P.warning,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -178,7 +182,7 @@ class _QuestionDialogState extends State<QuestionDialog> {
           ),
         if (multi)
           Padding(
-            padding: EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 4),
             child: Text(
               '可多选',
               style: TextStyle(fontSize: 11, color: P.textTertiary),
@@ -245,7 +249,7 @@ class _QuestionDialogState extends State<QuestionDialog> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? P.accent.withValues(alpha: 0.10) : P.fillSubtle,
+            color: selected ? P.warning.withValues(alpha: .12) : P.fillSubtle,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? P.accent.withValues(alpha: 0.4) : P.fillMedium,

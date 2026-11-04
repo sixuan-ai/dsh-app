@@ -5,16 +5,37 @@ library;
 
 import 'package:dsh_mobile/src/theme.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('old theme migrates once and subsequent choices persist', () async {
+    SharedPreferences.setMockInitialValues({'themeId': 'night'});
+    final first = ThemeController();
+    await first.load();
+    expect(first.themeId, 'obsidian');
+    await first.select('light');
+    final restored = ThemeController();
+    await restored.load();
+    expect(restored.themeId, 'light');
+    expect(
+      (await SharedPreferences.getInstance()).getBool('obsidianMigrationV1'),
+      isTrue,
+    );
+    first.dispose();
+    restored.dispose();
+  });
+
   test('theme ids are unique and resolve back', () {
     final ids = kAppThemes.map((spec) => spec.id).toList();
     expect(ids.toSet().length, ids.length);
     for (final spec in kAppThemes) {
       expect(identical(paletteFor(spec.id), spec.palette), isTrue);
     }
-    expect(identical(paletteFor('no-such-theme'), kAppThemes.first.palette),
-        isTrue);
+    expect(
+      identical(paletteFor('no-such-theme'), kAppThemes.first.palette),
+      isTrue,
+    );
   });
 
   test('neon theme is dark with readable neon contrast', () {

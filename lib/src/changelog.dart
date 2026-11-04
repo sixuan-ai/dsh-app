@@ -25,10 +25,24 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.6.2';
+const kAppVersion = '2.7.0';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.7.0',
+    date: '2026-11-05',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '统一黑曜荧光设计：液态玻璃浮层、新拟态控件与荧光绿主色',
+      ),
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '未登录也可使用公网连接，登录可选用于账号同步与注册，电脑端配对和授权保持不变',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.6.2',
     date: '2026-11-03',

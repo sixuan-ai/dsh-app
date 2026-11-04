@@ -72,6 +72,14 @@ class LanguageController extends ChangeNotifier {
 /// feedback/support, update dialogs, login); long-form pages stay zh and
 /// migrate progressively.
 class Strings {
+  String get guestMode => settings == 'Settings' ? 'Guest mode' : '访客模式';
+  String get optionalAccountHint => settings == 'Settings'
+      ? 'LAN and public access · Account sign-in is optional'
+      : '局域网与公网均可使用 · 登录可选用于账号同步';
+  String get publicWithoutLogin => settings == 'Settings'
+      ? 'Public access · No sign-in required'
+      : '公网连接 · 无需登录';
+
   const Strings({
     required this.settings,
     required this.language,

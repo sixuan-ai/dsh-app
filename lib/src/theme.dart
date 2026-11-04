@@ -22,6 +22,10 @@ class ThemeController extends ChangeNotifier {
   /// Loads the persisted selection; call once at app start.
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('obsidianMigrationV1') != true) {
+      await prefs.setString('themeId', 'obsidian');
+      await prefs.setBool('obsidianMigrationV1', true);
+    }
     final stored = prefs.getString('themeId');
     if (stored != null && stored != _themeId) {
       _themeId = stored;
@@ -101,32 +105,56 @@ class AppPalette {
   final Color danger;
   final Color success;
 
+  Color get info => isDark ? const Color(0xFF22D3EE) : const Color(0xFF087F91);
+  Color get agent => isDark ? const Color(0xFFA78BFA) : const Color(0xFF7052BC);
+  Color get warning =>
+      isDark ? const Color(0xFFFFB547) : const Color(0xFF9C6009);
+  Color get glassFill =>
+      isDark ? const Color(0x0BFFFFFF) : const Color(0xBFFFFFFF);
+  Color get glassStroke => isDark ? const Color(0x14FFFFFF) : divider;
+  Color get glassHighlight =>
+      isDark ? const Color(0x29FFFFFF) : const Color(0xFFFFFFFF);
+  Color get neuHighlight =>
+      isDark ? const Color(0x09FFFFFF) : const Color(0xFFFFFFFF);
+  Color get neuShadow =>
+      isDark ? const Color(0xD9000000) : const Color(0x33818F87);
+  Color get accentGlow => accent.withValues(alpha: .35);
+  Color get transparent => const Color(0x00000000);
+  List<BoxShadow> get neuShadows => [
+    BoxShadow(
+      color: neuHighlight,
+      blurRadius: 12,
+      offset: const Offset(-5, -5),
+    ),
+    BoxShadow(color: neuShadow, blurRadius: 16, offset: const Offset(7, 7)),
+  ];
+
   bool get isDark => brightness == Brightness.dark;
 
   /// Brand gradient for bubbles, primary buttons, and the logo tile.
   LinearGradient get brandGradient => LinearGradient(
-        colors: [accent, accent2],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [accentLight, accent],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// Soft glow behind accent-filled controls (brand mark, send button).
   BoxShadow get brandGlow => BoxShadow(
-        color: accent.withValues(alpha: 0.35),
-        blurRadius: 14,
-        offset: const Offset(0, 4),
-      );
+    color: accent.withValues(alpha: 0.35),
+    blurRadius: 14,
+    offset: const Offset(0, 4),
+  );
 
   /// Card drop shadow — visible on light themes, subtle depth on dark ones.
   List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: isDark
-              ? Colors.black.withValues(alpha: 0.3)
-              : text.withValues(alpha: 0.06),
-          blurRadius: isDark ? 12 : 16,
-          offset: Offset(0, isDark ? 3 : 4),
-        ),
-      ];
+    BoxShadow(
+      color: isDark
+          ? Colors.black.withValues(alpha: 0.3)
+          : text.withValues(alpha: 0.06),
+      blurRadius: isDark ? 12 : 16,
+      offset: Offset(0, isDark ? 3 : 4),
+    ),
+  ];
 }
 
 /// One selectable theme: identity, palette, and the swatches shown in the
@@ -146,6 +174,27 @@ class AppThemeSpec {
   final String subtitle;
   final AppPalette palette;
 }
+
+const _obsidian = AppPalette(
+  brightness: Brightness.dark,
+  bg: Color(0xFF050706),
+  card: Color(0xFF0F1412),
+  cardAlt: Color(0xFF151B18),
+  code: Color(0xFF070A09),
+  text: Color(0xFFECF3EE),
+  textSecondary: Color(0xFF9DAAA2),
+  textTertiary: Color(0xFF5E6B64),
+  accent: Color(0xFF39FF88),
+  accent2: Color(0xFF22D3EE),
+  accentLight: Color(0xFF9CFFC4),
+  onAccent: Color(0xFF02140A),
+  divider: Color(0x14FFFFFF),
+  fillSubtle: Color(0x0BFFFFFF),
+  fillLight: Color(0x14FFFFFF),
+  fillMedium: Color(0x1FFFFFFF),
+  danger: Color(0xFFFF5C7A),
+  success: Color(0xFF39FF88),
+);
 
 const _night = AppPalette(
   brightness: Brightness.dark,
@@ -170,16 +219,16 @@ const _night = AppPalette(
 
 const _light = AppPalette(
   brightness: Brightness.light,
-  bg: Color(0xFFF3F4F9),
+  bg: Color(0xFFF4F7F5),
   card: Color(0xFFFFFFFF),
   cardAlt: Color(0xFFFFFFFF),
   code: Color(0xFFEEF0F6),
   text: Color(0xFF1B1F2A),
   textSecondary: Color(0xFF5B6274),
   textTertiary: Color(0xFF969DB0),
-  accent: Color(0xFF4D6BFE),
-  accent2: Color(0xFF7C5CFF),
-  accentLight: Color(0xFF3B5BDB),
+  accent: Color(0xFF12B866),
+  accent2: Color(0xFF087F91),
+  accentLight: Color(0xFF087F43),
   onAccent: Color(0xFFFFFFFF),
   divider: Color(0xFFE4E6F0),
   fillSubtle: Color(0x0A1B1F2A),
@@ -258,15 +307,16 @@ const _neon = AppPalette(
 /// Built-in themes in picker order. The first entry is the default.
 const kAppThemes = [
   AppThemeSpec(
-      id: 'night', name: '暗夜蓝', subtitle: '经典深色', palette: _night),
-  AppThemeSpec(
-      id: 'light', name: '纯净白', subtitle: '明亮简洁', palette: _light),
-  AppThemeSpec(
-      id: 'eyecare', name: '护眼绿', subtitle: '柔和舒缓', palette: _eyecare),
-  AppThemeSpec(
-      id: 'sakura', name: '樱花粉', subtitle: '温柔甜美', palette: _sakura),
-  AppThemeSpec(
-      id: 'neon', name: '炫彩霓光', subtitle: '赛博霓虹', palette: _neon),
+    id: 'obsidian',
+    name: '黑曜荧光',
+    subtitle: '液态玻璃 · 荧光绿',
+    palette: _obsidian,
+  ),
+  AppThemeSpec(id: 'night', name: '暗夜蓝', subtitle: '经典深色', palette: _night),
+  AppThemeSpec(id: 'light', name: '晨雾白', subtitle: '清新浅色', palette: _light),
+  AppThemeSpec(id: 'eyecare', name: '护眼绿', subtitle: '柔和舒缓', palette: _eyecare),
+  AppThemeSpec(id: 'sakura', name: '樱花粉', subtitle: '温柔甜美', palette: _sakura),
+  AppThemeSpec(id: 'neon', name: '炫彩霓光', subtitle: '赛博霓虹', palette: _neon),
 ];
 
 /// Resolves a stored theme id to its palette (unknown ids fall back to the
@@ -275,32 +325,147 @@ AppPalette paletteFor(String themeId) {
   for (final spec in kAppThemes) {
     if (spec.id == themeId) return spec.palette;
   }
-  return _night;
+  return _obsidian;
 }
 
 /// The active palette. Reassigned by the root widget before its tree builds;
 /// a theme change rebuilds the whole tree, so reads always observe the
 /// current value.
-AppPalette P = _night;
+AppPalette P = _obsidian;
 
 /// Assembles the Material theme for [palette].
-ThemeData buildAppTheme(AppPalette palette) {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: palette.accent,
-    brightness: palette.brightness,
-  ).copyWith(
-    surface: palette.bg,
-    primary: palette.accent,
-    onSurface: palette.text,
-  );
-  final overlay =
-      palette.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+ThemeData buildAppTheme(AppPalette palette, {String? fontFamily}) {
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: palette.accent,
+        brightness: palette.brightness,
+      ).copyWith(
+        surface: palette.bg,
+        primary: palette.accent,
+        onSurface: palette.text,
+        onPrimary: palette.onAccent,
+        secondary: palette.info,
+        error: palette.danger,
+      );
+  final overlay = palette.isDark
+      ? SystemUiOverlayStyle.light
+      : SystemUiOverlayStyle.dark;
   return ThemeData(
     useMaterial3: true,
+    fontFamily: fontFamily,
     colorScheme: scheme,
     brightness: palette.brightness,
-    scaffoldBackgroundColor: palette.bg,
+    scaffoldBackgroundColor: palette == _obsidian
+        ? Colors.transparent
+        : palette.bg,
     splashFactory: InkSparkle.splashFactory,
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: palette.accent,
+        foregroundColor: palette.onAccent,
+        minimumSize: const Size(48, 52),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: palette.card,
+        foregroundColor: palette.text,
+        shadowColor: palette.neuShadow,
+        elevation: 4,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: palette.accentLight,
+        side: BorderSide(color: palette.divider),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: palette.accentLight),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? palette.accent
+            : palette.textTertiary,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? palette.accent.withValues(alpha: .18)
+            : palette.code,
+      ),
+      trackOutlineColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? palette.accent.withValues(alpha: .4)
+            : palette.divider,
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: palette.card,
+      selectedColor: palette.accent.withValues(alpha: .12),
+      labelStyle: TextStyle(
+        color: palette.textSecondary,
+        fontFamily: fontFamily,
+      ),
+      side: BorderSide(color: palette.divider),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? palette.accentLight
+              : palette.textSecondary,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) =>
+              s.contains(WidgetState.selected) ? palette.cardAlt : palette.code,
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: palette.divider)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: palette.code,
+      hintStyle: TextStyle(color: palette.textTertiary),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: palette.divider),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: palette.divider),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: palette.accent),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: palette.card.withValues(alpha: .92),
+      indicatorColor: palette.accent.withValues(alpha: .12),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (s) => IconThemeData(
+          color: s.contains(WidgetState.selected)
+              ? palette.accent
+              : palette.textTertiary,
+        ),
+      ),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          color: s.contains(WidgetState.selected)
+              ? palette.accent
+              : palette.textSecondary,
+          fontSize: 12,
+        ),
+      ),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: palette.bg,
       foregroundColor: palette.text,
@@ -327,18 +492,25 @@ ThemeData buildAppTheme(AppPalette palette) {
     drawerTheme: DrawerThemeData(backgroundColor: palette.bg),
     dividerTheme: DividerThemeData(color: palette.divider, thickness: 0.5),
     iconTheme: IconThemeData(color: palette.textSecondary),
-    textTheme: (palette.isDark
-            ? Typography.material2021().white
-            : Typography.material2021().black)
-        .apply(bodyColor: palette.text, displayColor: palette.text),
+    textTheme:
+        (palette.isDark
+                ? Typography.material2021().white
+                : Typography.material2021().black)
+            .apply(
+              bodyColor: palette.text,
+              displayColor: palette.text,
+              fontFamily: fontFamily,
+            ),
     hintColor: palette.textTertiary,
-    progressIndicatorTheme:
-        ProgressIndicatorThemeData(color: palette.accentLight),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: palette.accentLight,
+    ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: palette.isDark ? palette.cardAlt : palette.text,
-      contentTextStyle:
-          TextStyle(color: palette.isDark ? palette.text : palette.bg),
+      contentTextStyle: TextStyle(
+        color: palette.isDark ? palette.text : palette.bg,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );

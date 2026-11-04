@@ -5,6 +5,7 @@ import 'access_policy.dart';
 
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'src/theme.dart';
 
 import 'src/l10n.dart';
 import 'src/connector_pairing.dart';
@@ -34,13 +35,11 @@ class ConnectionCenterSheet extends StatelessWidget {
     this.pairedRemoteUrl,
     this.onPairComputer,
     this.onSwitchComputer,
-    this.publicAccessAllowed = true,
     this.accountLabel,
     this.onAccount,
   });
 
   final String connectionMode;
-  final bool publicAccessAllowed;
   final String? accountLabel;
   final VoidCallback? onAccount;
   final bool connected;
@@ -101,8 +100,7 @@ class ConnectionCenterSheet extends StatelessWidget {
     final otherAccount = computers
         .where((p) => activePairedNodeId != null || p.id != currentComputerId)
         .toList();
-    final publicEnabled =
-        publicAccessAllowed && (pairedName == null || pairedRemoteUrl != null);
+    final publicEnabled = (pairedName == null || pairedRemoteUrl != null);
     final lanEnabled =
         localAvailable ||
         connectionMode == 'lan' ||
@@ -117,7 +115,7 @@ class ConnectionCenterSheet extends StatelessWidget {
       data: Theme.of(context).copyWith(
         splashColor: c.lime.withValues(alpha: .08),
         highlightColor: c.lime.withValues(alpha: .05),
-        dividerColor: Colors.transparent,
+        dividerColor: P.transparent,
       ),
       child: Scaffold(
         backgroundColor: c.bg,
@@ -157,9 +155,9 @@ class ConnectionCenterSheet extends StatelessWidget {
                           tooltip: '返回',
                           onTap: () => Navigator.of(context).maybePop(),
                         ),
-                        const Spacer(),
+                        Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: 15,
                             vertical: 8,
                           ),
@@ -179,7 +177,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text(
                                 'xHarness',
                                 style: TextStyle(
@@ -192,7 +190,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Spacer(),
+                        Spacer(),
                         _RoundControl(
                           c: c,
                           icon: Icons.help_outline_rounded,
@@ -201,7 +199,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Text(
                       '连接中心',
                       style: TextStyle(
@@ -212,7 +210,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                         letterSpacing: -.8,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       '工作，在每台电脑间自由继续',
                       style: TextStyle(
@@ -221,7 +219,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    SizedBox(height: 22),
                     _CurrentDevice(
                       c: c,
                       name: _deviceName,
@@ -229,7 +227,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                       reconnecting: reconnecting,
                       route: routeLabel,
                     ),
-                    const SizedBox(height: 18),
+                    SizedBox(height: 18),
                     _Surface(
                       c: c,
                       radius: 25,
@@ -248,13 +246,13 @@ class ConnectionCenterSheet extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const Spacer(),
+                                Spacer(),
                                 IconButton(
                                   tooltip: S.retestLocal,
                                   onPressed: checkingLocal
                                       ? null
                                       : onRefreshLocal,
-                                  constraints: const BoxConstraints(
+                                  constraints: BoxConstraints(
                                     minWidth: 44,
                                     minHeight: 44,
                                   ),
@@ -275,7 +273,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 3),
+                            SizedBox(height: 3),
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
@@ -284,7 +282,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                                 border: Border.all(color: c.line),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(
+                                    color: P.neuShadow.withValues(
                                       alpha: c.dark ? .24 : .04,
                                     ),
                                     blurRadius: 6,
@@ -305,33 +303,22 @@ class ConnectionCenterSheet extends StatelessWidget {
                                           _switch(context, onSwitchLocal),
                                     ),
                                   ),
-                                  const SizedBox(width: 5),
+                                  SizedBox(width: 5),
                                   Expanded(
                                     child: _RouteChoice(
                                       c: c,
-                                      label: publicAccessAllowed
-                                          ? '公网'
-                                          : '登录后使用',
+                                      label: '公网',
                                       icon: Icons.public_rounded,
                                       selected: connectionMode == 'public',
-                                      enabled:
-                                          publicEnabled ||
-                                          (!publicAccessAllowed &&
-                                              onAccount != null),
-                                      onTap:
-                                          !publicAccessAllowed &&
-                                              onAccount != null
-                                          ? onAccount!
-                                          : () => _switch(
-                                              context,
-                                              onSwitchRemote,
-                                            ),
+                                      enabled: publicEnabled,
+                                      onTap: () =>
+                                          _switch(context, onSwitchRemote),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 13),
+                            SizedBox(height: 13),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -342,15 +329,11 @@ class ConnectionCenterSheet extends StatelessWidget {
                                   size: 16,
                                   color: c.accent,
                                 ),
-                                const SizedBox(width: 7),
+                                SizedBox(width: 7),
                                 Expanded(
                                   child: Text(
                                     checkingLocal
                                         ? '正在检测局域网入口…'
-                                        : !publicAccessAllowed
-                                        ? (accountLabel == null
-                                              ? '局域网功能完整开放；登录后增加公网连接'
-                                              : '请先验证账号，局域网连接仍可使用')
                                         : !publicEnabled
                                         ? '此电脑尚未配置公网，可先在同一网络使用'
                                         : pairedName != null
@@ -393,7 +376,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                         label: Text('功能与权限', style: TextStyle(color: c.accent)),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Text(
@@ -404,9 +387,9 @@ class ConnectionCenterSheet extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(width: 9),
+                        SizedBox(width: 9),
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 3,
                           ),
@@ -424,14 +407,14 @@ class ConnectionCenterSheet extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Spacer(),
+                        Spacer(),
                         Text(
                           '选择后连接',
                           style: TextStyle(color: c.muted, fontSize: 11),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 13),
+                    SizedBox(height: 13),
                     for (final computer in otherPaired)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 11),
@@ -480,7 +463,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                                 color: c.muted,
                                 size: 27,
                               ),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Text(
                                   total == 0
@@ -497,7 +480,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _Surface(
                       c: c,
                       radius: 22,
@@ -505,7 +488,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(22),
                         child: ExpansionTile(
                           key: const PageStorageKey('connection-advanced'),
-                          tilePadding: const EdgeInsets.symmetric(
+                          tilePadding: EdgeInsets.symmetric(
                             horizontal: 17,
                             vertical: 3,
                           ),
@@ -528,12 +511,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                             '地址、发现与诊断',
                             style: TextStyle(color: c.muted, fontSize: 11),
                           ),
-                          childrenPadding: const EdgeInsets.fromLTRB(
-                            12,
-                            0,
-                            12,
-                            12,
-                          ),
+                          childrenPadding: EdgeInsets.fromLTRB(12, 0, 12, 12),
                           children: [
                             if (localUrl?.isNotEmpty ?? false)
                               Padding(
@@ -542,7 +520,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                                   alignment: Alignment.centerLeft,
                                   child: SelectableText(
                                     localUrl!,
-                                    key: const PageStorageKey(
+                                    key: PageStorageKey(
                                       'connection-local-address',
                                     ),
                                     style: TextStyle(
@@ -615,9 +593,9 @@ class ConnectionCenterSheet extends StatelessWidget {
                           onPressed: onPairComputer,
                           style: FilledButton.styleFrom(
                             backgroundColor: c.lime,
-                            foregroundColor: const Color(0xff17220d),
+                            foregroundColor: P.onAccent,
                             minimumSize: const Size(double.infinity, 54),
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 21,
                               vertical: 14,
                             ),
@@ -628,9 +606,9 @@ class ConnectionCenterSheet extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.add_rounded, size: 23),
-                              const SizedBox(width: 8),
-                              const Flexible(
+                              Icon(Icons.add_rounded, size: 23),
+                              SizedBox(width: 8),
+                              Flexible(
                                 child: Text(
                                   '添加 / 管理电脑',
                                   style: TextStyle(
@@ -639,22 +617,19 @@ class ConnectionCenterSheet extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 15),
+                              SizedBox(width: 15),
                               Container(
                                 width: 1,
                                 height: 18,
-                                color: Colors.black.withValues(alpha: .18),
+                                color: P.neuShadow.withValues(alpha: .18),
                               ),
-                              const SizedBox(width: 15),
-                              const Icon(
-                                Icons.qr_code_scanner_rounded,
-                                size: 21,
-                              ),
+                              SizedBox(width: 15),
+                              Icon(Icons.qr_code_scanner_rounded, size: 21),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       Text(
                         '独立保存电脑，切换不丢会话',
                         style: TextStyle(fontSize: 10.5, color: c.muted),
@@ -672,7 +647,7 @@ class ConnectionCenterSheet extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: c.surface,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) => SafeArea(
@@ -690,11 +665,11 @@ class ConnectionCenterSheet extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               for (final tip in [
                 '1. 电脑打开 xHarness 连接器，生成一次性配对码。',
                 '2. 手机与电脑在同一网络，添加电脑并核对名称。',
-                '3. 无需登录即可完整使用局域网，登录后增加公网连接。',
+                '3. 无需登录即可使用局域网与公网，登录可选用于账号同步。',
                 '4. 切换电脑不会停止电脑上正在运行的任务。',
               ])
                 Padding(
@@ -708,7 +683,7 @@ class ConnectionCenterSheet extends StatelessWidget {
                 '其他已保存电脑的在线状态，以实际连接结果为准。',
                 style: TextStyle(color: c.accent, fontSize: 12, height: 1.5),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '$kLocalAccessLimits $kComputerPermissionSummary',
                 style: TextStyle(color: c.muted, height: 1.6),
@@ -724,27 +699,18 @@ class ConnectionCenterSheet extends StatelessWidget {
 class _HubColors {
   _HubColors(this.dark);
   final bool dark;
-  final lime = const Color(0xffc8ff5f);
-  Color get accent => dark ? lime : const Color(0xff3b6518);
-  Color get bg => dark ? const Color(0xff101612) : const Color(0xffeef3e9);
-  Color get surface => dark ? const Color(0xff1c251f) : const Color(0xfff6f9f1);
-  Color get inset => dark ? const Color(0xff101710) : const Color(0xffe5eddd);
-  Color get text => dark ? const Color(0xfff0f6e8) : const Color(0xff202e1b);
-  Color get muted => dark ? const Color(0xffa6b39f) : const Color(0xff596c50);
-  Color get line =>
-      dark ? Colors.white.withValues(alpha: .065) : const Color(0xffd9e3d0);
-  List<BoxShadow> get shadows => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? .34 : .07),
-      blurRadius: 22,
-      offset: const Offset(7, 9),
-    ),
-    BoxShadow(
-      color: Colors.white.withValues(alpha: dark ? .035 : .80),
-      blurRadius: 9,
-      offset: const Offset(-3, -3),
-    ),
-  ];
+  AppPalette get palette =>
+      dark == P.isDark ? P : paletteFor(dark ? "obsidian" : "light");
+  Color get bg => palette.bg;
+  Color get surface => palette.card;
+  Color get inset => palette.code;
+  Color get text => palette.text;
+  Color get muted => palette.textSecondary;
+  Color get lime => palette.accent;
+  Color get accent => palette.accent;
+  Color get line => palette.divider;
+  Color get onLime => palette.onAccent;
+  List<BoxShadow> get shadows => palette.neuShadows;
 }
 
 class _Surface extends StatelessWidget {
@@ -769,7 +735,7 @@ class _Surface extends StatelessWidget {
       boxShadow: c.shadows,
     ),
     child: Material(
-      color: Colors.transparent,
+      color: P.transparent,
       borderRadius: BorderRadius.circular(radius),
       child: child,
     ),
@@ -799,8 +765,8 @@ class _CurrentDevice extends StatelessWidget {
         : reconnecting
         ? c.muted
         : c.dark
-        ? const Color(0xffffc783)
-        : const Color(0xff865012);
+        ? P.warning
+        : P.warning;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
@@ -812,7 +778,7 @@ class _CurrentDevice extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -822,8 +788,8 @@ class _CurrentDevice extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  c.surface.withValues(alpha: .94),
-                  c.surface.withValues(alpha: .76),
+                  c.dark ? P.glassHighlight.withValues(alpha: .08) : c.surface,
+                  c.dark ? P.glassFill : c.surface,
                 ],
               ),
             ),
@@ -840,10 +806,10 @@ class _CurrentDevice extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Flexible(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 9,
                           vertical: 4,
                         ),
@@ -866,7 +832,7 @@ class _CurrentDevice extends StatelessWidget {
                               size: 8,
                               color: statusColor,
                             ),
-                            const SizedBox(width: 5),
+                            SizedBox(width: 5),
                             Flexible(
                               child: Text(
                                 status,
@@ -883,7 +849,7 @@ class _CurrentDevice extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
@@ -901,7 +867,7 @@ class _CurrentDevice extends StatelessWidget {
                               letterSpacing: -.5,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(
@@ -909,7 +875,7 @@ class _CurrentDevice extends StatelessWidget {
                                 size: 13,
                                 color: c.accent,
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   route,
@@ -925,7 +891,7 @@ class _CurrentDevice extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 15),
+                    SizedBox(width: 15),
                     Container(
                       width: 67,
                       height: 67,
@@ -934,14 +900,14 @@ class _CurrentDevice extends StatelessWidget {
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(
+                            color: P.neuShadow.withValues(
                               alpha: c.dark ? .38 : .08,
                             ),
                             blurRadius: 10,
                             offset: const Offset(3, 5),
                           ),
                           BoxShadow(
-                            color: Colors.white.withValues(
+                            color: P.glassHighlight.withValues(
                               alpha: c.dark ? .04 : .8,
                             ),
                             blurRadius: 7,
@@ -980,14 +946,14 @@ class _CurrentDevice extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 13),
+                SizedBox(height: 13),
                 Container(height: 1, color: c.line),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.link_rounded, size: 14, color: c.muted),
-                    const SizedBox(width: 7),
+                    SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         connected ? '工作区与任务来自这台电脑' : '显示已缓存内容，等待连接恢复',
@@ -1030,7 +996,7 @@ class _DeviceRow extends StatelessWidget {
       c: c,
       active: active,
       child: Material(
-        color: Colors.transparent,
+        color: P.transparent,
         child: InkWell(
           onTap: active ? null : onTap,
           borderRadius: BorderRadius.circular(20),
@@ -1054,7 +1020,7 @@ class _DeviceRow extends StatelessWidget {
                     color: active ? c.accent : c.muted,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1069,7 +1035,7 @@ class _DeviceRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
                       Text(
                         source,
                         style: TextStyle(color: c.muted, fontSize: 10.5),
@@ -1077,13 +1043,10 @@ class _DeviceRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 if (active)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 6,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                     decoration: BoxDecoration(
                       color: c.accent.withValues(alpha: .13),
                       borderRadius: BorderRadius.circular(20),
@@ -1097,7 +1060,7 @@ class _DeviceRow extends StatelessWidget {
                           size: 13,
                           color: c.accent,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           '使用中',
                           style: TextStyle(
@@ -1121,7 +1084,7 @@ class _DeviceRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Icon(
                         Icons.arrow_forward_rounded,
                         color: c.muted,
@@ -1162,17 +1125,15 @@ class _RouteChoice extends StatelessWidget {
           ? Duration.zero
           : const Duration(milliseconds: 160),
       decoration: BoxDecoration(
-        color: selected ? c.surface : Colors.transparent,
+        color: selected ? c.surface : P.transparent,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: selected
-              ? c.accent.withValues(alpha: .42)
-              : Colors.transparent,
+          color: selected ? c.accent.withValues(alpha: .42) : P.transparent,
         ),
         boxShadow: selected
             ? [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: c.dark ? .25 : .05),
+                  color: P.neuShadow.withValues(alpha: c.dark ? .25 : .05),
                   blurRadius: 6,
                   offset: const Offset(0, 3),
                 ),
@@ -1180,7 +1141,7 @@ class _RouteChoice extends StatelessWidget {
             : null,
       ),
       child: Material(
-        color: Colors.transparent,
+        color: P.transparent,
         child: InkWell(
           onTap: enabled && !selected ? onTap : null,
           borderRadius: BorderRadius.circular(15),
@@ -1194,11 +1155,13 @@ class _RouteChoice extends StatelessWidget {
                   Icon(
                     icon,
                     size: 17,
-                    color: selected
+                    color: icon == Icons.public_rounded && enabled
+                        ? P.info
+                        : selected
                         ? c.accent
                         : c.muted.withValues(alpha: enabled ? 1 : .45),
                   ),
-                  const SizedBox(width: 7),
+                  SizedBox(width: 7),
                   Flexible(
                     child: Text(
                       label,

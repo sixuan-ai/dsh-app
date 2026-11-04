@@ -234,10 +234,8 @@ class AppState extends ChangeNotifier {
   int _identityGeneration = 0;
   String? identityNotice;
   bool get hasEntryAccess => guestAccess || signedInAccount != null;
-  // Existing device/DSH credentials retain their old routes unless the user
-  // explicitly chooses local-only entry. New account sessions are verified.
-  bool get canUsePublicConnection =>
-      !guestAccess && (signedInAccount == null || _identityVerified);
+  // App accounts are optional; desktop credentials authorize every route.
+  bool get canUsePublicConnection => true;
 
   Future<void> restoreAppEntry() async {
     final prefs = await SharedPreferences.getInstance();
@@ -279,9 +277,6 @@ class AppState extends ChangeNotifier {
     _pairedRouteGeneration++;
     _pairedRouteRecovery = false;
     _pairedRouteComputer = null;
-    if (serverUrl.isNotEmpty && !isLanConnectionUrl(serverUrl)) {
-      disconnect(preserveCachedContent: true, keepCredentials: true);
-    }
     notifyListeners();
     if (pairedComputer != null && !connected) {
       unawaited(reconnectPairedComputer());
@@ -318,16 +313,16 @@ class AppState extends ChangeNotifier {
       if (generation != _identityGeneration) return false;
       _identityVerified = false;
       if (error.status == 401) {
-        identityNotice = '账号登录已过期，仍可使用局域网连接';
+        identityNotice = '账号登录已过期，仍可使用局域网与公网连接';
         await enterGuestMode();
       } else {
-        identityNotice = '暂时无法验证账号，仍可使用局域网连接';
+        identityNotice = '暂时无法验证账号，仍可使用局域网与公网连接';
       }
       return false;
     } catch (_) {
       if (generation == _identityGeneration) {
         _identityVerified = false;
-        identityNotice = '暂时无法验证账号，仍可使用局域网连接';
+        identityNotice = '暂时无法验证账号，仍可使用局域网与公网连接';
       }
       return false;
     } finally {
@@ -498,7 +493,7 @@ class AppState extends ChangeNotifier {
       if (!identical(p, pairedComputer) || attempt != _pairedRouteGeneration) {
         return;
       }
-      if (!local && p.remoteUrl != null && canUsePublicConnection) {
+      if (!local && p.remoteUrl != null) {
         target = p.remoteUrl!;
       }
       final selected = selectedSessionId;
@@ -798,9 +793,6 @@ class AppState extends ChangeNotifier {
   /// reconnects. Sessions always belong to a machine, so switching replaces the
   /// visible session list with that machine's.
   Future<bool> switchToComputer(AccountComputer computer) async {
-    if (!canUsePublicConnection && !isLanConnectionUrl(computer.url)) {
-      return false;
-    }
     final identityGeneration = _identityGeneration;
     final prefs = await SharedPreferences.getInstance();
     final previousPaired = pairedComputer;
@@ -812,7 +804,7 @@ class AppState extends ChangeNotifier {
         : authPassword;
     if (username == null || password == null) return false;
     try {
-      final resolved = canUsePublicConnection
+      final resolved = !isLanConnectionUrl(computer.url)
           ? await _directoryResolver(
               kDefaultServerUrl,
               username: username,
@@ -820,8 +812,7 @@ class AppState extends ChangeNotifier {
               computerId: computer.id,
             )
           : computer;
-      if (identityGeneration != _identityGeneration ||
-          (!canUsePublicConnection && !isLanConnectionUrl(resolved.url))) {
+      if (identityGeneration != _identityGeneration) {
         return false;
       }
       bool ok;
@@ -836,8 +827,7 @@ class AppState extends ChangeNotifier {
         } finally {
           probe.close();
         }
-        if (identityGeneration != _identityGeneration ||
-            (!canUsePublicConnection && !isLanConnectionUrl(resolved.url))) {
+        if (identityGeneration != _identityGeneration) {
           return false;
         }
         await useAccountConnection();
@@ -914,10 +904,6 @@ class AppState extends ChangeNotifier {
     String? certificateFingerprint,
     Duration timeout = const Duration(seconds: 3),
   }) async {
-    if (!canUsePublicConnection && !isLanConnectionUrl(url)) {
-      lastProbeError = '请先登录账号，再使用公网连接';
-      return false;
-    }
     if (pairedComputer != null && !pairedComputer!.containsUrl(url)) {
       return false;
     }
@@ -1045,9 +1031,6 @@ class AppState extends ChangeNotifier {
     String? password,
     String? launchToken,
   }) async {
-    if (!canUsePublicConnection && !isLanConnectionUrl(url)) {
-      throw const FormatException('请先登录并验证账号后使用公网连接');
-    }
     if (pairedComputer != null && !pairedComputer!.containsUrl(url)) {
       throw const FormatException('请通过配对管理更换电脑地址');
     }
