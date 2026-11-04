@@ -56,7 +56,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                     color: P.onAccent,
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text(
                   S.updateAvailableTitle,
                   style: TextStyle(
@@ -65,7 +65,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
                   'v${info.version}',
                   style: TextStyle(
@@ -84,10 +84,7 @@ class UpdateAvailableDialog extends StatelessWidget {
               children: [
                 if (info.size != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: P.fillSubtle,
                       borderRadius: BorderRadius.circular(14),
@@ -100,7 +97,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                           size: 13,
                           color: P.textTertiary,
                         ),
-                        const SizedBox(width: 5),
+                        SizedBox(width: 5),
                         Text(
                           '${S.installPackage} ${formatBytes(info.size!)}',
                           style: TextStyle(
@@ -112,7 +109,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                     ),
                   ),
                 if (info.notes != null && info.notes!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
                     width: double.infinity,
                     constraints: const BoxConstraints(maxHeight: 150),
@@ -133,7 +130,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 // gradient CTA
                 Container(
                   width: double.infinity,
@@ -144,7 +141,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                     boxShadow: [P.brandGlow],
                   ),
                   child: Material(
-                    color: Colors.transparent,
+                    color: P.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(23),
                       onTap: onUpdate,
@@ -157,7 +154,7 @@ class UpdateAvailableDialog extends StatelessWidget {
                               size: 18,
                               color: P.onAccent,
                             ),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
                               S.updateNow,
                               style: TextStyle(
@@ -258,7 +255,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
       _slowHint = false;
     });
     _slowHintTimer?.cancel();
-    _slowHintTimer = Timer(const Duration(seconds: 8), () {
+    _slowHintTimer = Timer(Duration(seconds: 8), () {
       if (mounted && _error == null && _received == 0) {
         setState(() => _slowHint = true);
       }
@@ -301,12 +298,12 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
               S.downloadingUpdate,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 3),
+            SizedBox(height: 3),
             Text(
               'v${widget.info.version}',
               style: TextStyle(fontSize: 12.5, color: P.textTertiary),
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: 22),
             if (_error != null) ...[
               Container(
                 width: 52,
@@ -321,7 +318,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                   color: P.danger,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '下载失败',
                 style: TextStyle(
@@ -330,7 +327,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                   color: P.danger,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
@@ -340,7 +337,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                   color: P.textTertiary,
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -348,7 +345,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text('关闭', style: TextStyle(color: P.textTertiary)),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   FilledButton.icon(
                     onPressed: _start,
                     icon: const Icon(Icons.refresh, size: 16),
@@ -407,18 +404,16 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 total != null
                     ? '${formatBytes(_received)} / ${formatBytes(total)}'
                     : '已下载 ${formatBytes(_received)}',
                 style: TextStyle(fontSize: 12, color: P.textSecondary),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
-                _slowHint
-                    ? '网络较慢,连接无响应会自动重试…'
-                    : '完成后将自动打开安装界面',
+                _slowHint ? '网络较慢,连接无响应会自动重试…' : '完成后将自动打开安装界面',
                 style: TextStyle(fontSize: 11, color: P.textTertiary),
               ),
             ],

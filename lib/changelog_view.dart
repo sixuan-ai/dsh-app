@@ -25,7 +25,7 @@ import 'src/theme.dart';
     label: '优化',
   ),
   ChangelogChangeType.fix => (
-    color: Colors.orangeAccent,
+    color: P.warning,
     icon: Icons.bug_report_outlined,
     label: '修复',
   ),
@@ -57,7 +57,7 @@ class _ChangelogChangeRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(meta.icon, size: 11, color: meta.color),
-                const SizedBox(width: 3),
+                SizedBox(width: 3),
                 Text(
                   meta.label,
                   style: TextStyle(fontSize: 10, color: meta.color),
@@ -65,7 +65,7 @@ class _ChangelogChangeRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               change.text,
@@ -122,15 +122,15 @@ class ChangelogPage extends StatelessWidget {
                     children: [
                       Text(
                         'v${release.version}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       if (release.version == kLatestRelease.version) ...[
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 2,
                           ),
@@ -144,14 +144,14 @@ class ChangelogPage extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const Spacer(),
+                      Spacer(),
                       Text(
                         release.date,
                         style: TextStyle(fontSize: 12, color: P.textTertiary),
                       ),
                     ],
                   ),
-                  const Divider(height: 18),
+                  Divider(height: 18),
                   for (final change in release.changes)
                     _ChangelogChangeRow(change: change),
                 ],
@@ -174,7 +174,7 @@ class WhatsNewDialog extends StatelessWidget {
       title: Row(
         children: [
           Icon(Icons.new_releases_outlined, color: P.accentLight),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               'v${release.version} 更新内容',
@@ -200,9 +200,9 @@ class WhatsNewDialog extends StatelessWidget {
         TextButton(
           onPressed: () {
             Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ChangelogPage()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => ChangelogPage()));
           },
           child: const Text('查看全部'),
         ),

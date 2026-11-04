@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'package:dsh_mobile/chat_view.dart';
 import 'package:dsh_mobile/quick_start.dart';
 import 'package:dsh_mobile/composer.dart';
+import 'package:dsh_mobile/src/ui/glass.dart';
+import 'package:dsh_mobile/src/theme.dart';
 import 'package:dsh_mobile/state.dart';
 import 'package:dsh_mobile/task_queue.dart';
 import 'package:flutter/material.dart';
@@ -56,18 +58,13 @@ void main() {
       ),
     );
 
-    BoxDecoration decoration() =>
-        (tester
-                .widget<AnimatedContainer>(find.byType(AnimatedContainer))
-                .decoration!)
-            as BoxDecoration;
-
-    expect(decoration().border!.top.width, 1);
+    expect(tester.widget<GlassPanel>(find.byType(GlassPanel)).tint, isNull);
     await tester.tap(find.byType(TextField));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(decoration().border!.top.width, greaterThan(1));
-    expect(decoration().boxShadow!.length, greaterThan(1));
+    expect(
+      tester.widget<GlassPanel>(find.byType(GlassPanel)).tint,
+      P.accent.withValues(alpha: .65),
+    );
   });
 
   testWidgets('quick commands contain the permission settings entry', (

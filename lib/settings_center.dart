@@ -16,6 +16,9 @@ import 'support_page.dart';
 import 'src/l10n.dart';
 import 'src/theme.dart';
 import 'state.dart';
+import 'app_account_page.dart';
+import 'src/ui/glass.dart';
+import 'src/ui/neumorphic.dart';
 
 class SettingsCenterPage extends StatefulWidget {
   const SettingsCenterPage({
@@ -105,6 +108,53 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: GlassPanel(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: P.accent,
+                      foregroundColor: P.onAccent,
+                      child: Text(
+                        widget.state.signedInAccount == null ? '访' : '思',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.state.signedInAccount?.email ?? S.guestMode,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            S.optionalAccountHint,
+                            style: TextStyle(
+                              color: P.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '思玄账号',
+                      icon: const Icon(Icons.account_circle_outlined),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AppAccountPage(
+                            state: widget.state,
+                            initialMode: AppAccountMode.login,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             _SectionHeader(S.language),
             AnimatedBuilder(
               animation: widget.language,
@@ -114,25 +164,34 @@ class _SettingsCenterPageState extends State<SettingsCenterPage> {
             _SectionHeader(S.theme),
             AnimatedBuilder(
               animation: widget.theme,
-              builder: (context, _) => Column(
-                children: [
-                  for (final spec in kAppThemes)
-                    ListTile(
-                      leading: Icon(
-                        Icons.palette_outlined,
-                        color: P.textSecondary,
-                      ),
-                      title: Text(spec.name),
-                      subtitle: Text(spec.subtitle),
-                      trailing: spec.id == widget.theme.themeId
-                          ? Icon(Icons.check_circle, color: P.accentLight)
-                          : null,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        widget.theme.select(spec.id);
-                      },
-                    ),
-                ],
+              builder: (context, _) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns =
+                        MediaQuery.textScalerOf(context).scale(14) > 18 ? 1 : 2;
+                    final width =
+                        (constraints.maxWidth - (columns - 1) * 12) / columns;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final spec in kAppThemes)
+                          SizedBox(
+                            width: width,
+                            child: ThemeChoiceCard(
+                              spec: spec,
+                              selected: spec.id == widget.theme.themeId,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                widget.theme.select(spec.id);
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
             _SectionHeader(S.connection),
@@ -342,4 +401,67 @@ class _EntryTile extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
+
+/// Shared native theme swatch; height follows content and text scaling.
+class ThemeChoiceCard extends StatelessWidget {
+  const ThemeChoiceCard({
+    super.key,
+    required this.spec,
+    required this.selected,
+    required this.onTap,
+  });
+  final AppThemeSpec spec;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    position: DecorationPosition.foreground,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: selected ? P.accent : P.divider,
+        width: selected ? 1.5 : 1,
+      ),
+    ),
+    child: NeuSurface(
+      child: Material(
+        color: P.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  gradient: LinearGradient(
+                    colors: [
+                      spec.palette.bg,
+                      spec.palette.bg,
+                      spec.palette.accent,
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Text(spec.name)),
+                  if (selected)
+                    Icon(Icons.check_circle, size: 18, color: P.accent),
+                ],
+              ),
+              Text(
+                spec.subtitle,
+                style: TextStyle(color: P.textSecondary, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

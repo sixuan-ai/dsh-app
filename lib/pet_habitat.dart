@@ -3,20 +3,24 @@ library;
 
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'src/theme.dart';
 import 'src/pet.dart';
 
 class PetHabitatColors {
   PetHabitatColors(this.dark);
   final bool dark;
-  Color get bg => dark ? const Color(0xFF101612) : const Color(0xFFF3F6ED);
-  Color get surface => dark ? const Color(0xFF1C241E) : const Color(0xFFFCFFF8);
-  Color get inset => dark ? const Color(0xFF101A12) : const Color(0xFFE7EEDC);
-  Color get text => dark ? const Color(0xFFF0F5E9) : const Color(0xFF1D2A1C);
-  Color get muted => dark ? const Color(0xFFABB8A4) : const Color(0xFF566550);
-  Color get lime => const Color(0xFFC8FF5F);
-  Color get accent => dark ? lime : const Color(0xFF456600);
-  Color get line => dark ? const Color(0xFF35402F) : const Color(0xFFD4DEC9);
-  Color get onLime => const Color(0xFF203000);
+  AppPalette get palette =>
+      dark == P.isDark ? P : paletteFor(dark ? "obsidian" : "light");
+  Color get bg => palette.bg;
+  Color get surface => palette.card;
+  Color get inset => palette.code;
+  Color get text => palette.text;
+  Color get muted => palette.textSecondary;
+  Color get lime => palette.accent;
+  Color get accent => palette.accent;
+  Color get line => palette.divider;
+  Color get onLime => palette.onAccent;
+  List<BoxShadow> get shadows => palette.neuShadows;
 }
 
 class PetHabitat extends StatelessWidget {
@@ -90,7 +94,7 @@ class PetHabitat extends StatelessWidget {
                         letterSpacing: 1.6,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       '今天也要好好吃饭',
                       style: TextStyle(
@@ -100,7 +104,7 @@ class PetHabitat extends StatelessWidget {
                         letterSpacing: -.8,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -114,7 +118,7 @@ class PetHabitat extends StatelessWidget {
                         _Pill(c: c, text: 'Lv.$level', accented: true),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _GlassSurface(
                       c: c,
                       child: Padding(
@@ -124,7 +128,7 @@ class PetHabitat extends StatelessWidget {
                             Row(
                               children: [
                                 Icon(Icons.circle, color: c.accent, size: 6),
-                                const SizedBox(width: 7),
+                                SizedBox(width: 7),
                                 Expanded(
                                   child: Text(
                                     activityLabel,
@@ -134,7 +138,7 @@ class PetHabitat extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Flexible(
                                   child: Text(
                                     pet.name,
@@ -150,7 +154,7 @@ class PetHabitat extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             _Pill(c: c, text: '🍚 最喜欢白米饭啦！', accented: true),
                             SizedBox(
                               height: 208,
@@ -193,7 +197,7 @@ class PetHabitat extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: c.text, fontSize: 12),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -202,7 +206,7 @@ class PetHabitat extends StatelessWidget {
                                   size: 13,
                                   color: c.muted,
                                 ),
-                                const SizedBox(width: 5),
+                                SizedBox(width: 5),
                                 Flexible(
                                   child: Text(
                                     '轻点摸头 · 长按提起',
@@ -218,14 +222,14 @@ class PetHabitat extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _RiceCard(
                       c: c,
                       tokens: contextTokens,
                       onFeed: onFeed,
                       onRules: onRules,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -236,7 +240,7 @@ class PetHabitat extends StatelessWidget {
                             onTap: onPlay,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: _CareButton(
                             c: c,
@@ -247,9 +251,9 @@ class PetHabitat extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _CareStats(c: c, pet: pet),
-                    const SizedBox(height: 18),
+                    SizedBox(height: 18),
                     _DetailRow(
                       c: c,
                       icon: Icons.auto_awesome_outlined,
@@ -270,7 +274,7 @@ class PetHabitat extends StatelessWidget {
                       ),
                       onTap: onRules,
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _DetailRow(
                       c: c,
                       icon: Icons.sports_martial_arts_rounded,
@@ -279,7 +283,7 @@ class PetHabitat extends StatelessWidget {
                           '${petRankForScore(pet.pkScore).name} · ${pet.pkScore} 积分 · 训练奖励 0.2M',
                       onTap: onBattle,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     TextButton.icon(
                       onPressed: onAbout,
                       icon: Icon(
@@ -313,12 +317,12 @@ class _GlassSurface extends StatelessWidget {
       borderRadius: BorderRadius.circular(28),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: c.dark ? .24 : .05),
+          color: P.neuShadow.withValues(alpha: c.dark ? .24 : .05),
           blurRadius: 20,
           offset: const Offset(6, 9),
         ),
         BoxShadow(
-          color: Colors.white.withValues(alpha: c.dark ? .025 : .75),
+          color: P.glassHighlight.withValues(alpha: c.dark ? .025 : .75),
           blurRadius: 12,
           offset: const Offset(-4, -4),
         ),
@@ -327,7 +331,7 @@ class _GlassSurface extends StatelessWidget {
     child: ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
@@ -336,7 +340,7 @@ class _GlassSurface extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                c.surface.withValues(alpha: .94),
+                c.dark ? P.glassHighlight.withValues(alpha: .08) : c.surface,
                 c.surface.withValues(alpha: .78),
               ],
             ),
@@ -374,7 +378,7 @@ class _Pill extends StatelessWidget {
       children: [
         if (icon != null) ...[
           Icon(icon, size: 13, color: accented ? c.accent : c.muted),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
         ],
         Flexible(
           child: Text(
@@ -428,11 +432,11 @@ class _RiceCard extends StatelessWidget {
                     color: c.inset,
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text('🍚', style: TextStyle(fontSize: 25)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +449,7 @@ class _RiceCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         '1M 上下文 = 1碗白米饭',
                         style: TextStyle(
@@ -468,7 +472,7 @@ class _RiceCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -518,7 +522,7 @@ class _RiceCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
@@ -528,7 +532,7 @@ class _RiceCard extends StatelessWidget {
                       backgroundColor: c.line,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     '再累计 ${remainingText}M 上下文，就有下一碗',
                     style: TextStyle(color: c.muted, fontSize: 10),
@@ -536,28 +540,25 @@ class _RiceCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             FilledButton.icon(
               key: const ValueKey('feed-rice'),
               onPressed: onFeed,
               style: FilledButton.styleFrom(
                 backgroundColor: c.lime,
                 foregroundColor: c.onLime,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
               icon: const Text('🍚', style: TextStyle(fontSize: 22)),
-              label: const Text(
+              label: Text(
                 '喂白米饭',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '上下文累计自动吃饭 · 手动喂饭是互动',
               textAlign: TextAlign.center,
@@ -630,12 +631,12 @@ class _CareStats extends StatelessWidget {
                   Row(
                     children: [
                       Icon(icon, size: 14, color: c.accent),
-                      const SizedBox(width: 5),
+                      SizedBox(width: 5),
                       Text(
                         label,
                         style: TextStyle(color: c.muted, fontSize: 11),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Text(
                         '$value',
                         style: TextStyle(
@@ -646,7 +647,7 @@ class _CareStats extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(5),
                     child: LinearProgressIndicator(
@@ -705,7 +706,7 @@ class _DetailRow extends StatelessWidget {
         child: Row(
           children: [
             Icon(icon, color: c.accent, size: 21),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,7 +719,7 @@ class _DetailRow extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(color: c.muted, fontSize: 10),
@@ -726,7 +727,7 @@ class _DetailRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             trailing ??
                 Icon(Icons.chevron_right_rounded, color: c.muted, size: 20),
           ],

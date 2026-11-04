@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'src/l10n.dart';
 import 'src/theme.dart';
+import 'src/ui/glass.dart';
 import 'session_mode_badge.dart';
 import 'state.dart';
 import 'task_queue.dart';
@@ -85,6 +86,12 @@ class SessionHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final sessionId = state.selectedSessionId;
     return AppBar(
+      backgroundColor: P.transparent,
+      flexibleSpace: const GlassPanel(
+        padding: EdgeInsets.zero,
+        radius: 0,
+        child: SizedBox.expand(),
+      ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

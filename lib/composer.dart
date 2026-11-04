@@ -14,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 import 'composer_input.dart';
 import 'src/prompt_image_normalizer.dart';
 import 'src/theme.dart';
+import 'src/ui/glass.dart';
 import 'src/l10n.dart';
 import 'state.dart';
 
@@ -171,20 +172,9 @@ class _ComposerState extends State<Composer> {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: P.card,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: focused
-                  ? P.accent.withValues(alpha: 0.65)
-                  : (P.isDark ? P.fillMedium : P.divider),
-              width: focused ? 1.2 : 1,
-            ),
-            boxShadow: focused ? [...P.cardShadow, P.brandGlow] : P.cardShadow,
-          ),
+        child: GlassPanel(
+          radius: 24,
+          tint: focused ? P.accent.withValues(alpha: .65) : null,
           padding: const EdgeInsets.only(left: 4, right: 6, top: 5, bottom: 5),
           child: Column(
             mainAxisSize: MainAxisSize.min,

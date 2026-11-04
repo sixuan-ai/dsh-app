@@ -4,6 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'state.dart';
 import 'access_policy.dart';
+import 'src/theme.dart';
+import 'src/ui/neumorphic.dart';
 
 class ConnectionEntryView extends StatelessWidget {
   const ConnectionEntryView({
@@ -17,8 +19,7 @@ class ConnectionEntryView extends StatelessWidget {
   final VoidCallback onPair, onSettings, onAccount;
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final muted = dark ? const Color(0xffa7b8bf) : const Color(0xff61727f);
+    final muted = P.textSecondary;
     final hasDevices =
         state.savedPairedComputers.isNotEmpty || state.computers.isNotEmpty;
     Widget route(
@@ -26,23 +27,31 @@ class ConnectionEntryView extends StatelessWidget {
       String title,
       String detail,
       VoidCallback action,
-    ) => Card(
-      color: dark ? const Color(0xff192e37) : const Color(0xfff3f7f6),
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 14,
+    ) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: NeuSurface(
+        padding: EdgeInsets.zero,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 14,
+          ),
+          leading: Icon(
+            icon,
+            color: icon == Icons.public_rounded ? P.info : P.accent,
+            size: 30,
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(detail, style: TextStyle(color: muted, height: 1.6)),
+          ),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: action,
         ),
-        leading: Icon(icon, color: const Color(0xff89b748), size: 30),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 7),
-          child: Text(detail, style: TextStyle(color: muted, height: 1.6)),
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: action,
       ),
     );
     return Center(
@@ -62,8 +71,7 @@ class ConnectionEntryView extends StatelessWidget {
                   size: 16,
                 ),
                 label: Text(
-                  state.signedInAccount?.email ??
-                      (state.guestAccess ? '局域网模式 · 未登录' : '连接你的电脑'),
+                  state.signedInAccount?.email ?? '连接你的电脑 · 无需登录',
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
@@ -91,25 +99,15 @@ class ConnectionEntryView extends StatelessWidget {
             ),
             route(
               Icons.public_rounded,
-              state.canUsePublicConnection ? '公网连接' : '登录后使用公网连接',
+              '公网连接',
               '使用已配对电脑的公网入口；电脑需先开启公网访问。',
-              state.canUsePublicConnection
-                  ? (hasDevices ? onSettings : onPair)
-                  : onAccount,
+              hasDevices ? onSettings : onPair,
             ),
             const SizedBox(height: 22),
-            FilledButton.icon(
+            NeonButton(
               onPressed: onPair,
-              icon: const Icon(Icons.qr_code_scanner_rounded),
-              label: const Text('配对我的电脑'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xffb9f46a),
-                foregroundColor: const Color(0xff1b3010),
-                minimumSize: const Size(0, 54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-              ),
+              icon: Icons.qr_code_scanner_rounded,
+              label: '配对我的电脑',
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
@@ -121,7 +119,7 @@ class ConnectionEntryView extends StatelessWidget {
             TextButton(
               onPressed: onAccount,
               child: Text(
-                state.signedInAccount != null ? '我的思玄账号' : '登录 / 注册思玄账号',
+                state.signedInAccount != null ? '我的思玄账号' : '登录 / 注册思玄账号 · 可选',
               ),
             ),
             TextButton.icon(

@@ -28,7 +28,7 @@ void main() {
       expect(find.text(kLocalAccessSummary), findsOneWidget);
       expect(find.textContaining(kLocalAccessLimits), findsOneWidget);
       expect(find.textContaining(kComputerPermissionSummary), findsWidgets);
-      expect(find.text('登录后 · 公网'), findsOneWidget);
+      expect(find.text('无需登录 · 公网'), findsOneWidget);
       expect(find.textContaining('设备备份'), findsNothing);
       expect(find.textContaining('跨端同步'), findsNothing);
       expect(state.signedInAccount, isNull);

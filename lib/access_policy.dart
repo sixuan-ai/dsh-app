@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-const kLocalAccessSummary = '无需登录，完整使用局域网功能';
+const kLocalAccessSummary = '无需登录，完整使用局域网与公网连接';
 const kLocalAccessLimits = 'App 不按登录状态限制电脑数量、任务次数或模型选择。';
 const kComputerPermissionSummary = '操作权限由电脑端授权，登录不会自动获得完全权限。';
 
@@ -73,8 +73,8 @@ class AccessPolicySheet extends StatelessWidget {
               ),
               section(
                 Icons.public_rounded,
-                '登录后 · 公网',
-                '登录后可访问已配对电脑的公网入口。电脑端需要先配置公网连接。',
+                '无需登录 · 公网',
+                '无需登录即可访问已配对电脑的公网入口或默认公网服务。电脑端需要先配置公网连接；登录可选，用于账号同步与注册。',
               ),
               section(
                 Icons.verified_user_outlined,

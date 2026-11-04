@@ -159,7 +159,7 @@ class _PetPageState extends State<PetPage> {
     if (refused && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('肚子饿啦，先来一碗白米饭吧！')));
+      ).showSnackBar(SnackBar(content: Text('肚子饿啦，先来一碗白米饭吧！')));
     }
   }
 
@@ -216,8 +216,8 @@ class _PetPageState extends State<PetPage> {
       appBar: AppBar(
         backgroundColor: c.bg,
         foregroundColor: c.text,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
+        surfaceTintColor: P.transparent,
+        title: Text(
           '大肥鱼',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
@@ -309,7 +309,7 @@ class _PetPageState extends State<PetPage> {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('白米饭与成长'),
-      content: const SingleChildScrollView(
+      content: SingleChildScrollView(
         child: Text(
           '1M 上下文 = 1碗白米饭\n\n'
           '每累计 1,000,000 上下文，大肥鱼自动吃一碗，恢复饱腹与心情。未满一碗的部分会继续累计。\n\n'
@@ -318,10 +318,7 @@ class _PetPageState extends State<PetPage> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('知道了'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('知道了')),
       ],
     ),
   );
@@ -330,7 +327,7 @@ class _PetPageState extends State<PetPage> {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('大肥鱼'),
-      content: const SingleChildScrollView(
+      content: SingleChildScrollView(
         child: SelectableText(
           '形象与动画：PC2005-cloud/dsh-pet\nCopyright (c) 2026 PC2005-cloud · MIT\n\n'
           '集成来源：https://github.com/QCYTSN/dsh-dafeiyu\n'
@@ -343,10 +340,7 @@ class _PetPageState extends State<PetPage> {
               showLicensePage(context: context, applicationName: 'XHarness'),
           child: const Text('完整许可证'),
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('关闭'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('关闭')),
       ],
     ),
   );
@@ -405,12 +399,12 @@ class _PetPageState extends State<PetPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const PetSprite(
+              PetSprite(
                 speciesId: 'dafeiyu',
                 stageIndex: 0,
                 animation: 'success',
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '${pet.name} 和你成为了${stage.name}!',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -466,28 +460,28 @@ class _AdoptViewState extends State<_AdoptView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const PetSprite(speciesId: 'dafeiyu', stageIndex: 0, size: 220),
-              const SizedBox(height: 12),
-              const Text(
+              PetSprite(speciesId: 'dafeiyu', stageIndex: 0, size: 220),
+              SizedBox(height: 12),
+              Text(
                 '把大肥鱼接回家',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 '最喜欢白米饭的大肥鱼，陪你一起工作。\n1M 上下文 = 1碗白米饭，自动吃饭、慢慢长大。',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: c.muted),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               TextField(
                 controller: _controller,
                 maxLength: 12,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '给它起个名字',
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -591,7 +585,7 @@ class _BattleDialogState extends State<_BattleDialog> {
       _settled = false;
     });
     var elapsed = 0;
-    _timer = Timer.periodic(const Duration(milliseconds: 350), (timer) {
+    _timer = Timer.periodic(Duration(milliseconds: 350), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -644,11 +638,11 @@ class _BattleDialogState extends State<_BattleDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               '训练家匹配赛',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -663,7 +657,7 @@ class _BattleDialogState extends State<_BattleDialog> {
                     color: P.accentLight,
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8),
                   child: Text('⚔️', style: TextStyle(fontSize: 24)),
                 ),
@@ -693,7 +687,7 @@ class _BattleDialogState extends State<_BattleDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             SizedBox(
               height: 120,
               child: _matching
@@ -710,7 +704,7 @@ class _BattleDialogState extends State<_BattleDialog> {
                     ),
             ),
             if (done) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text(
                 _result.playerWon
                     ? '🎉 赢了! +0.2M tokens,段位 +$kPetPkScoreWin'
@@ -720,7 +714,7 @@ class _BattleDialogState extends State<_BattleDialog> {
                   color: _result.playerWon ? P.success : P.danger,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -728,11 +722,8 @@ class _BattleDialogState extends State<_BattleDialog> {
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('收工'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _startBattle,
-                    child: const Text('再匹配一局'),
-                  ),
+                  SizedBox(width: 8),
+                  FilledButton(onPressed: _startBattle, child: Text('再匹配一局')),
                 ],
               ),
             ] else
@@ -769,7 +760,7 @@ class _BattleDialogState extends State<_BattleDialog> {
           size: 72,
           animation: placeholder ? 'thinking' : 'idle',
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           name,
           maxLines: 1,
@@ -783,7 +774,7 @@ class _BattleDialogState extends State<_BattleDialog> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 10, color: P.textTertiary),
           ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -793,7 +784,7 @@ class _BattleDialogState extends State<_BattleDialog> {
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Text('$hp/100', style: TextStyle(fontSize: 10, color: P.textTertiary)),
       ],
     );

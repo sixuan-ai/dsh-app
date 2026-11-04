@@ -122,7 +122,7 @@ class _StatChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 13, color: P.accentLight),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(label, style: TextStyle(fontSize: 11.5, color: P.textSecondary)),
         ],
       ),
@@ -144,7 +144,7 @@ class _ContextChip extends StatelessWidget {
     final color = pct >= 85
         ? P.danger
         : pct >= 70
-        ? Colors.amber
+        ? P.warning
         : P.success;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -157,12 +157,12 @@ class _ContextChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.data_usage, size: 13, color: color),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(
             '上下文 ${pct.toStringAsFixed(0)}%',
             style: TextStyle(fontSize: 11.5, color: color),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           SizedBox(
             width: 46,
             child: ClipRRect(

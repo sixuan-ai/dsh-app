@@ -77,14 +77,14 @@ class SupportPage extends StatelessWidget {
             ),
             _ChannelCard(
               icon: Icons.menu_book_outlined,
-              color: Colors.amber,
+              color: P.warning,
               title: S.connectionGuide,
               subtitle: S.computerConfig,
               onTap: () => _openGuide(context),
             ),
             _ChannelCard(
               icon: Icons.new_releases_outlined,
-              color: Colors.teal,
+              color: P.info,
               title: S.updateLog,
               subtitle: S.checkUpdate,
               onTap: () => Navigator.of(
@@ -136,19 +136,19 @@ class _ChannelCard extends StatelessWidget {
                   ),
                   child: Icon(icon, color: color, size: 21),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: TextStyle(fontSize: 12, color: P.textTertiary),

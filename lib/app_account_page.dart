@@ -2,8 +2,9 @@
 library;
 
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'src/theme.dart';
+import 'src/ui/glass.dart';
 import 'package:flutter/services.dart';
 import 'login_view.dart';
 import 'src/protocol.dart' show kDefaultServerUrl;
@@ -84,7 +85,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
   void _countdown() {
     _timer?.cancel();
     _cooldown = 60;
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -221,19 +222,19 @@ class _AppAccountPageState extends State<AppAccountPage> {
     prefixIcon: Icon(icon, size: 20),
     filled: true,
     fillColor: Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xff13262d)
-        : const Color(0xfff0f4f4),
+        ? P.code
+        : P.code,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: BorderSide(color: Colors.grey.withValues(alpha: .2)),
+      borderSide: BorderSide(color: P.textTertiary.withValues(alpha: .2)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: BorderSide(color: Colors.grey.withValues(alpha: .16)),
+      borderSide: BorderSide(color: P.textTertiary.withValues(alpha: .16)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: const BorderSide(color: Color(0xff9acb56), width: 1.5),
+      borderSide: BorderSide(color: P.accent, width: 1.5),
     ),
     suffixIcon: password
         ? IconButton(
@@ -269,7 +270,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
       textCapitalization: TextCapitalization.none,
       textInputAction: email ? TextInputAction.next : TextInputAction.done,
       autofillHints: email
-          ? const [AutofillHints.username]
+          ? [AutofillHints.username]
           : password
           ? [
               _mode == AppAccountMode.login
@@ -295,46 +296,45 @@ class _AppAccountPageState extends State<AppAccountPage> {
       },
     ),
   );
-  Widget _action(String label, VoidCallback? action, {bool primary = true}) =>
-      SizedBox(
-        width: double.infinity,
-        child: primary
-            ? FilledButton(
-                onPressed: _busy ? null : action,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xffb9f46a),
-                  foregroundColor: const Color(0xff1b3010),
-                  minimumSize: const Size(0, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                child: _busy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        label,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-              )
-            : OutlinedButton(
-                onPressed: _busy ? null : action,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xffb9f46a)
-                      : const Color(0xff16313d),
-                  minimumSize: const Size(0, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                child: Text(label),
+  Widget _action(
+    String label,
+    VoidCallback? action, {
+    bool primary = true,
+  }) => SizedBox(
+    width: double.infinity,
+    child: primary
+        ? FilledButton(
+            onPressed: _busy ? null : action,
+            style: FilledButton.styleFrom(
+              backgroundColor: P.accent,
+              foregroundColor: P.onAccent,
+              minimumSize: const Size(0, 54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
               ),
-      );
+            ),
+            child: _busy
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(label, style: TextStyle(fontWeight: FontWeight.w700)),
+          )
+        : OutlinedButton(
+            onPressed: _busy ? null : action,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? P.accent
+                  : P.text,
+              minimumSize: const Size(0, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: Text(label),
+          ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -342,10 +342,10 @@ class _AppAccountPageState extends State<AppAccountPage> {
     final compact =
         MediaQuery.sizeOf(context).width < 360 ||
         MediaQuery.textScalerOf(context).scale(14) > 18;
-    final ink = dark ? const Color(0xffeaf1f1) : const Color(0xff16313d);
-    final muted = dark ? const Color(0xffa7b8bf) : const Color(0xff61727f);
+    final ink = P.text;
+    final muted = P.textSecondary;
     return Scaffold(
-      backgroundColor: dark ? const Color(0xff0f1d25) : const Color(0xfff5f8fa),
+      backgroundColor: dark ? P.bg : P.bg,
       body: SafeArea(
         child: Stack(
           children: [
@@ -360,10 +360,8 @@ class _AppAccountPageState extends State<AppAccountPage> {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(
-                          0xffb9f46a,
-                        ).withValues(alpha: dark ? .06 : .14),
-                        Colors.transparent,
+                        P.accent.withValues(alpha: dark ? .06 : .14),
+                        P.transparent,
                       ],
                     ),
                   ),
@@ -387,16 +385,16 @@ class _AppAccountPageState extends State<AppAccountPage> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: const Color(0xffb9f46a),
+                            color: P.accent,
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.all_inclusive_rounded,
-                            color: Color(0xff16313d),
+                            color: P.text,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Text(
                             'xHarness',
                             overflow: TextOverflow.ellipsis,
@@ -413,7 +411,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 36),
+                    SizedBox(height: 36),
                     AnimatedBuilder(
                       animation: widget.state,
                       builder: (context, _) {
@@ -424,12 +422,12 @@ class _AppAccountPageState extends State<AppAccountPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.verified_user_outlined,
                                   size: 36,
-                                  color: Color(0xff90b94d),
+                                  color: P.accent,
                                 ),
-                                const SizedBox(height: 18),
+                                SizedBox(height: 18),
                                 Text(
                                   '我的思玄账号',
                                   style: TextStyle(
@@ -438,7 +436,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                SizedBox(height: 10),
                                 Text(
                                   account.name,
                                   style: const TextStyle(fontSize: 18),
@@ -447,20 +445,14 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                   account.email,
                                   style: TextStyle(color: muted),
                                 ),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                                 Text(
                                   widget.state.identityNotice ??
                                       '可使用局域网和已配置的公网入口',
                                   style: TextStyle(color: muted),
                                 ),
-                                if (!widget.state.canUsePublicConnection) ...[
-                                  const SizedBox(height: 18),
-                                  _action('重新验证账号', () async {
-                                    await widget.state.verifyAppAccount();
-                                  }),
-                                ],
-                                const SizedBox(height: 18),
-                                _action('退出账号，保留局域网使用', () async {
+                                SizedBox(height: 18),
+                                _action('退出账号，保留电脑连接', () async {
                                   await widget.state.signOutAppAccount();
                                   if (mounted) widget.onCompleted?.call();
                                 }, primary: false),
@@ -481,69 +473,69 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                   height: 1.35,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               Text(
-                                '局域网功能完整开放。也可登录思玄账号，使用已配置的公网入口。',
+                                '无需登录即可使用局域网与公网。登录可选，用于账号同步与注册。',
                                 style: TextStyle(color: muted, height: 1.8),
                               ),
-                              const SizedBox(height: 28),
+                              SizedBox(height: 28),
                               _card(
                                 dark,
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.wifi_rounded,
                                       size: 32,
-                                      color: Color(0xff90b94d),
+                                      color: P.accent,
                                     ),
-                                    const SizedBox(height: 14),
-                                    const Text(
+                                    SizedBox(height: 14),
+                                    Text(
                                       '局域网直连',
                                       style: TextStyle(
                                         fontSize: 21,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 7),
+                                    SizedBox(height: 7),
                                     Text(
                                       '无需登录，支持多电脑、任务与模型选择。',
                                       style: TextStyle(color: muted),
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     _action('不登录，先连接', _guest),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 18),
+                              SizedBox(height: 18),
                               _card(
                                 dark,
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       '使用思玄账号',
                                       style: TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 7),
+                                    SizedBox(height: 7),
                                     Text(
-                                      '与官网使用同一套邮箱认证，登录后增加公网连接。电脑需先配对并开启公网入口。',
+                                      '与官网使用同一套邮箱认证，登录可选用于账号同步与注册。公网连接仍遵循电脑端配对与授权。',
                                       style: TextStyle(
                                         color: muted,
                                         height: 1.7,
                                       ),
                                     ),
-                                    const SizedBox(height: 18),
+                                    SizedBox(height: 18),
                                     if (compact) ...[
                                       _action(
                                         '邮箱登录',
                                         () => _change(AppAccountMode.login),
                                         primary: false,
                                       ),
-                                      const SizedBox(height: 10),
+                                      SizedBox(height: 10),
                                       _action(
                                         '邮箱注册',
                                         () => _change(AppAccountMode.register),
@@ -560,7 +552,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                               primary: false,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          SizedBox(width: 12),
                                           Expanded(
                                             child: _action(
                                               '邮箱注册',
@@ -604,13 +596,9 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                                 ? '注册'
                                                 : '找回密码',
                                           ),
-                                          selectedColor: const Color(
-                                            0xffb9f46a,
-                                          ),
+                                          selectedColor: P.accent,
                                           labelStyle: TextStyle(
-                                            color: _mode == mode
-                                                ? const Color(0xff16313d)
-                                                : ink,
+                                            color: _mode == mode ? P.text : ink,
                                           ),
                                           selected: _mode == mode,
                                           showCheckmark: false,
@@ -620,7 +608,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                         ),
                                     ],
                                   ),
-                                  const SizedBox(height: 24),
+                                  SizedBox(height: 24),
                                 ],
                                 Text(
                                   _complete
@@ -640,7 +628,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                SizedBox(height: 10),
                                 Text(
                                   _verification
                                       ? _email.text.trim()
@@ -649,7 +637,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                       : '邮箱验证，确认是你。',
                                   style: TextStyle(color: muted),
                                 ),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                                 if (_complete)
                                   _action(
                                     '继续登录',
@@ -686,7 +674,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                       ),
                                     if (_mode == AppAccountMode.login)
                                       Material(
-                                        color: Colors.transparent,
+                                        color: P.transparent,
                                         child: CheckboxListTile(
                                           contentPadding: EdgeInsets.zero,
                                           controlAffinity:
@@ -698,7 +686,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                                   () => _remember =
                                                       value ?? false,
                                                 ),
-                                          title: const Text(
+                                          title: Text(
                                             '保持登录 7 天',
                                             style: TextStyle(fontSize: 13),
                                           ),
@@ -709,7 +697,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                       controller: _code,
                                       enabled: !_busy,
                                       keyboardType: TextInputType.number,
-                                      autofillHints: const [
+                                      autofillHints: [
                                         AutofillHints.oneTimeCode,
                                       ],
                                       inputFormatters: [
@@ -727,7 +715,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                                           ? null
                                           : '请输入六位验证码',
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     if (_mode == AppAccountMode.recover) ...[
                                       _field(
                                         _password,
@@ -812,7 +800,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                     if (widget.allowGuest && _mode != AppAccountMode.welcome)
                       TextButton(
                         onPressed: _busy ? null : _guest,
-                        child: const Text('暂不登录，使用局域网'),
+                        child: Text('暂不登录，连接电脑'),
                       ),
                     if (_mode == AppAccountMode.welcome ||
                         widget.state.signedInAccount == null)
@@ -828,7 +816,7 @@ class _AppAccountPageState extends State<AppAccountPage> {
                       icon: const Icon(Icons.info_outline_rounded, size: 17),
                       label: const Text('功能与权限'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       kComputerPermissionSummary,
                       textAlign: TextAlign.center,
@@ -844,25 +832,6 @@ class _AppAccountPageState extends State<AppAccountPage> {
     );
   }
 
-  Widget _card(bool dark, Widget child) => ClipRRect(
-    borderRadius: BorderRadius.circular(26),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: (dark ? const Color(0xff1b3039) : Colors.white).withValues(
-            alpha: .8,
-          ),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: (dark ? Colors.white : Colors.white).withValues(
-              alpha: dark ? .12 : .95,
-            ),
-          ),
-        ),
-        child: child,
-      ),
-    ),
-  );
+  Widget _card(bool dark, Widget child) =>
+      GlassPanel(padding: const EdgeInsets.all(24), child: child);
 }
