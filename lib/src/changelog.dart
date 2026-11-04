@@ -25,10 +25,20 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.7.1';
+const kAppVersion = '2.7.2';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.7.2',
+    date: '2026-11-05',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.improvement,
+        '宠物排行榜与侧边栏改用大肥鱼头像和爪印图标，前三名按奖牌色描边',
+      ),
+    ],
+  ),
   ChangelogRelease(
     version: '2.7.1',
     date: '2026-11-05',
