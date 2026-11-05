@@ -25,10 +25,21 @@ class ChangelogRelease {
 }
 
 /// App version mirrored from pubspec.yaml (versionName); bump both together.
-const kAppVersion = '2.7.2';
+const kAppVersion = '2.7.3';
 
 /// Release notes, newest first.
 const kChangelog = [
+  ChangelogRelease(
+    version: '2.7.3',
+    date: '2026-11-05',
+    changes: [
+      ChangelogChange(
+        ChangelogChangeType.feature,
+        '新建会话可直接浏览电脑文件夹选择工作区，支持新建文件夹，已注册工作区一目了然',
+      ),
+      ChangelogChange(ChangelogChangeType.fix, '修复手机端远程目录浏览接口失效的问题'),
+    ],
+  ),
   ChangelogRelease(
     version: '2.7.2',
     date: '2026-11-05',
