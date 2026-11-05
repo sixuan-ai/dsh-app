@@ -534,7 +534,9 @@ class DshApi {
           'args':
               endpoint == 'session/modelCatalog' ||
                   endpoint == 'commands/list' ||
-                  endpoint == 'commands/execute'
+                  endpoint == 'commands/execute' ||
+                  endpoint == 'directoryPicker/list' ||
+                  endpoint == 'directoryPicker/createDirectory'
               ? args
               : wireArgs,
         },

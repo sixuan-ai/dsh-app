@@ -1,4 +1,4 @@
-/// Directory listing model for the host browse RPC (`host.listDirectory`).
+/// Directory listing model for the host browse RPC (`directoryPicker/list`).
 library;
 
 /// One directory row: a listing child or a breadcrumb ancestor.
@@ -66,3 +66,8 @@ class DirectoryListingView {
   /// True when the host cut `entries` at its complete-result bound.
   final bool truncated;
 }
+
+/// Guidance shared by remote directory browsers.
+const directoryBrowseUnavailableMessage =
+    '电脑端 DSH 当前使用桌面原生文件夹选择器，手机无法远程浏览。'
+    '请升级 xHarness 连接器或在电脑上让 DSH 以浏览模式启动（见帮助）。';

@@ -324,6 +324,7 @@ def install(args):
     internal_user = "bridge-" + uuid.uuid4().hex
     internal_pass = base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
     cookie = os.urandom(32).hex()
+    # Clear desktop displays so DSH composes the remotely usable browse picker.
     if managed:
         log = str(state / "dsh.log")
         Path(log).touch(mode=0o600)
@@ -334,7 +335,7 @@ def install(args):
             + os.environ.get("PATH", ""),
         )
         unit = (
-            "[Unit]\nDescription=xHarness managed DSH\n[Service]\nExecStart="
+            "[Unit]\nDescription=xHarness managed DSH\n[Service]\nEnvironment=DISPLAY=\nEnvironment=WAYLAND_DISPLAY=\nExecStart="
             + quote(dsh)
             + " web --no-open --host 127.0.0.1 --port "
             + str(port)
@@ -678,6 +679,7 @@ def repair(args):
             + quote(runtime / script)
             + "\nRestart=on-failure\nUMask=0077\n[Install]\nWantedBy=default.target\n"
         )
+    # Remote phones cannot see native OS dialogs; force browse on managed DSH.
     if c.get("managedDsh") and not (units / "xharness-dsh.service").exists():
         dsh = shutil.which(
             "dsh",
@@ -688,7 +690,7 @@ def repair(args):
         if not dsh:
             raise ValueError("需要重新安装 DSH")
         (units / "xharness-dsh.service").write_text(
-            "[Service]\nExecStart="
+            "[Service]\nEnvironment=DISPLAY=\nEnvironment=WAYLAND_DISPLAY=\nExecStart="
             + quote(dsh)
             + " web --no-open --host 127.0.0.1 --port "
             + str(c["dshPort"])

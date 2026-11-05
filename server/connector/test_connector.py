@@ -17,7 +17,10 @@ import time
 import unittest
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
+import connector
 from connector import atomic, fingerprint, tls_get
 
 SOURCE = Path(__file__).parent
@@ -64,6 +67,52 @@ class Upstream(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+
+
+class ManagedDshUnitTests(unittest.TestCase):
+    def test_install_and_repair_force_browse_and_preserve_user_service(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            state = home / "state"
+            args = SimpleNamespace(
+                state=state,
+                dsh_url=None,
+                token_file=None,
+                token_unit=None,
+                name="test",
+                port=0,
+                bridge_port=0,
+            )
+
+            def generate_test_certificate(*unused_args, **unused_kwargs):
+                (state / "tls.key").touch()
+                (state / "tls.crt").touch()
+
+            # All service/subprocess operations are mocked; only temp files are written.
+            with mock.patch.object(Path, "home", return_value=home), \
+                 mock.patch.object(connector.shutil, "which", return_value="/test/bin/tool"), \
+                 mock.patch.object(connector.socket, "socket"), \
+                 mock.patch.object(connector.subprocess, "check_output", return_value="20"), \
+                 mock.patch.object(connector.subprocess, "run"), \
+                 mock.patch.object(connector, "detect_dsh", return_value=(18395, None, True)), \
+                 mock.patch.object(connector, "run", side_effect=generate_test_certificate), \
+                 mock.patch.object(connector, "systemctl"), \
+                 mock.patch.object(connector, "wait_ready"), \
+                 mock.patch.object(connector, "desktop_shortcut"):
+                connector.install(args)
+                unit = home / ".config/systemd/user/xharness-dsh.service"
+                self.assertIn("[Service]\nEnvironment=DISPLAY=\nEnvironment=WAYLAND_DISPLAY=\n", unit.read_text())
+                unit.unlink()
+                connector.repair(args)
+                self.assertIn("[Service]\nEnvironment=DISPLAY=\nEnvironment=WAYLAND_DISPLAY=\n", unit.read_text())
+
+                config = connector.read(state / "config.json")
+                config["managedDsh"] = False
+                atomic(state / "config.json", config)
+                original = "[Service]\nExecStart=/user/dsh\nEnvironment=DISPLAY=:0\n"
+                unit.write_text(original)
+                connector.repair(args)
+                self.assertEqual(unit.read_text(), original)
 
 
 class ConnectorTests(unittest.TestCase):

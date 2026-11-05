@@ -71,18 +71,26 @@ void main() {
     await tester.pump();
     expect(find.text('code'), findsOneWidget);
   });
-  testWidgets('explains when the host lacks the browse capability', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DirectoryTreePage(
-          directoryLoader: (path) async =>
-              throw DshError('directory-picker-unavailable', 'native picker'),
+  for (final code in [
+    'directory-picker/unavailable',
+    'directory-picker-unavailable',
+  ]) {
+    testWidgets('explains unavailable browse capability: $code', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DirectoryTreePage(
+            directoryLoader: (path) async =>
+                throw DshError(code, 'native picker'),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    expect(find.textContaining('未开启远程目录浏览'), findsOneWidget);
-  });
+      );
+      await tester.pump();
+      expect(
+        find.textContaining(directoryBrowseUnavailableMessage),
+        findsOneWidget,
+      );
+    });
+  }
 }

@@ -119,3 +119,25 @@ flutter build apk --release
 ```
 
 测试使用临时证书、合成账号与假上游，不读取生产密钥；桌面二维码测试需要 venv 中的 qrcode。实际部署协议检查可使用 `tool/connector_smoke.dart`，从 stdin 输入临时设备凭据，结束后在电脑撤销测试设备；不要把密码放命令行或提交为测试固定值。该检查只读取主机信息和会话列表，不发起任务。
+
+### 手机/云端无法浏览文件夹
+
+若提示 DSH 使用桌面原生文件夹选择器，升级连接器；新建的托管 DSH 服务会清空显示环境变量，让 DSH 使用远程浏览模式。连接器不会修改用户已有的 DSH 服务。已有服务可自行添加 systemd drop-in（将 `<unit>` 替换为实际 DSH 单元名）：
+
+```sh
+systemctl --user edit <unit>
+```
+
+写入：
+
+```ini
+[Service]
+Environment=DISPLAY=
+Environment=WAYLAND_DISPLAY=
+```
+
+然后运行：
+
+```sh
+systemctl --user daemon-reload && systemctl --user restart <unit>
+```
