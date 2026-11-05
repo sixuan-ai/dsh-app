@@ -8,7 +8,7 @@ import 'src/directory_listing.dart';
 import 'src/protocol.dart';
 import 'src/theme.dart';
 
-/// Lazily expanded directory tree over the host's `host.listDirectory` RPC.
+/// Lazily expanded directory tree over the host's `directoryPicker/list` RPC.
 class DirectoryTreePage extends StatefulWidget {
   const DirectoryTreePage({super.key, required this.directoryLoader});
 
@@ -55,10 +55,10 @@ class _DirectoryTreePageState extends State<DirectoryTreePage> {
 
   /// Maps wire errors to actionable Chinese guidance.
   static String _friendlyError(Object error) {
-    if (error is DshError && error.code == 'directory-picker-unavailable') {
-      return '当前电脑未开启远程目录浏览。\n'
-          '服务器组合的是本地原生选择器(native)，'
-          '需要在电脑上为 web 配置固定 browse 后端后重启 DSH。';
+    if (error is DshError &&
+        (error.code == 'directory-picker/unavailable' ||
+            error.code == 'directory-picker-unavailable')) {
+      return directoryBrowseUnavailableMessage;
     }
     return '$error';
   }

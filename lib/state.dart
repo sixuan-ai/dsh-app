@@ -1004,10 +1004,33 @@ class AppState extends ChangeNotifier {
   Future<DirectoryListingView> listDirectory([String? path]) async {
     final client = _api;
     if (client == null) throw StateError('未连接服务器');
-    final value =
-        await client.call('host.listDirectory', {'path': ?path})
-            as Map<String, dynamic>;
-    return DirectoryListingView.fromJson(value);
+    dynamic value;
+    try {
+      value = await client.call('directoryPicker/list', {'path': ?path});
+    } on DshError catch (error) {
+      final message = error.message.toLowerCase();
+      if (error.code != '404' &&
+          !(error.code == 'transport' &&
+              (message.contains('http 404:') ||
+                  message.contains('not found')))) {
+        rethrow;
+      }
+      value = await client.call('host.listDirectory', {'path': ?path});
+    }
+    return DirectoryListingView.fromJson(
+      (value as Map).cast<String, dynamic>(),
+    );
+  }
+
+  /// Creates a single child directory and returns its absolute host path.
+  Future<String> createDirectory(String parent, String name) async {
+    final client = _api;
+    if (client == null) throw StateError('未连接服务器');
+    return await client.call('directoryPicker/createDirectory', {
+          'path': parent,
+          'name': name,
+        })
+        as String;
   }
 
   /// Measures one round trip to the connected host; throws on failure.
